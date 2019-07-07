@@ -1,0 +1,14 @@
+"If the code contains lines that start with 44, 42, 8C, or 0C add the code as an Action Replay code. If not, add the code as a Gecko Code."
+
+You add it in this format inside the AR tab Dolphin's GUI:
+
+Enable 60Hz Mode [Ralf]
+BV4M-0070-2QY55
+PPPF-YKUA-27R9T
+FYCF-8037-4BVQ5
+
+But they auto convert to the next format in the INI.
+
+$Enable 60Hz Mode [Ralf]
+0402C08C 38600000
+041E7A28 00000014
