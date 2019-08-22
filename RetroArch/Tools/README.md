@@ -1,0 +1,1 @@
+Will compute console system resolution output according to display resolution and correct geometry aspect ratio upon the discussion on this thread: [Correct Geometry - Aspect Ratio for different systems](https://forums.libretro.com/t/correct-geometry-aspect-ratio-for-different-systems/1502)
