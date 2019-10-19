@@ -1,0 +1,3 @@
+These settings are for version 1.3.1 in order to workaround mega man x7 audio issues.
+
+It requires an old SPU plugin which only works with an old build (pre 1.4.0)

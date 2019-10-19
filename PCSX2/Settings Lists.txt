@@ -1,0 +1,123 @@
+interlace=3
+
+Tim Burton's The Nightmare Before Christmas - Oogie's Revenge (Europe) (En,Fr,De,Es,It)
+Klonoa 2 - Lunatea's Veil (Europe) (En,Fr,De,Es,It)
+Maximo - Ghosts to Glory (Europe) (En,Fr,De,Es,It)
+Maximo vs. Army of Zin (Europe) (En,Fr,De,Es,It)
+Onimusha 2 - Samurai's Destiny (Europe) (En,Fr,De,Es,It)
+Sly Raccoon (Europe) (En,Fr,De,Es,It)
+Sly 2 - Band of Thieves (Europe) (En,Fr,De,Es,It,Nl,Pt,Sv,No,Da,Fi)
+Shinobi (Europe) (En,Fr,De,Es,It)
+Time Crisis 3 (USA)
+Vampire Night (USA)
+Rez (USA)
+
+
+interlace=4
+
+Jojo no Kimyou na Bouken - Ougon no Kaze (Japan)
+Onimusha - Warlords (USA) (En,Ja)
+Rumble Roses (USA)
+
+interlace=5
+
+Black (Europe) (En,Fr,De,Es,It)
+Super Dragon Ball Z (USA)
+
+-----------------------------------------
+
+480p (@ 60Hz) - Progressive Scan
+
+Hold Triangle+Cross for Progressive
+
+Black (Europe) (En,Fr,De,Es,It)
+Sonic Riders: Zero Gravity
+Soulcalibur II (USA) (This one is tricky, do it after the Memory Card dialog and just before the Namco logo)
+Soulcalibur III (USA)
+
+Game Options Progressive
+
+Capcom Fighting Jam
+Getaway, The
+Shadow of the Colossus
+Soul Calibur II
+Tekken 4
+
+Progressive Patches (enable cheats and set interlace=0 or none)
+
+Bloody Roar 3 SLUS_202
+Devil May Cry SLUS_202
+Dino Stalker SLUS_204
+Final Fantasy X (Spain) (still 50fps though)
+Gitaroo Man SLUS_202
+Jak and Daxter The Precursor Legacy SCUS_971
+Onimusha 3 Demon Siege SLUS_206
+Street Fighter EX3 SLUS_201
+Tokyo Xtreme Racer 3 SLUS_208
+Tokyo Xtreme Racer DRIFT 2 SLUS_213
+
+-----------------------------------------
+
+Unsupported Widescreen
+
+PAL
+Onimusha 2 - Samurai's Destiny
+Star Wars - Battlefront
+
+NTSC-U
+Onimusha - Warlords
+Silent Scope
+Silent Scope 2 - Dark Silhouette 
+
+-----------------------------------------
+
+Unfixed bugs:
+
+; Black Sky
+Black (Europe) (En,Fr,De,Es,It)
+; Black Eyes (fixed for v1.6.0)
+Jak and Daxter - The Precursor Legacy (USA) (En,Fr,De,Es,It)
+; Black Horizon
+Heatseeker (Europe) (En,Es,It)
+; Bug on Test License
+Tourist Trophy - The Real Riding Simulator (Europe) (En,Fr,De,Es,It)
+; Scanlines flicker on chapter introduction
+Silent Scope 3 (USA) (En,Ja,Es)
+; polygon/shading flicker
+Sonic Riders (USA) (En,Ja,Fr,De,Es,It)
+; Ultra slow, Seam flicker, polygonal shadow stretch
+Getaway, The (Europe) (En,Fr,De,Es,It) (v3.00)
+; Some polygon flicker
+God Hand (Europe) (En,Fr,De,Es,It)
+; Horizon is  black (after fixing the sprite bugs) (same on DX11 HW)
+Heatseeker (Europe) (En,Es,It)
+; SW only mode, and lots of bugs as opposed to perfect NTSC version
+Onimusha 3 - Demon Siege (Europe, Australia) (En,Fr,De,Es,It)
+; Widescreen Hack Crash
+Star Wars - Battlefront (Europe) (En,Es,It)
+; face polygon flicker
+Okage - Shadow King (USA)
+
+; A lot of heavy ghosting (left out those with 480p patches)
+Grand Theft Auto - San Andreas (Europe, Australia) (En,Fr,De,Es,It) (v2.01)
+Grand Theft Auto - Vice City (Europe) (En,Fr,De,Es,It) (v3.00)
+Grand Theft Auto - Liberty City Stories (Europe, Australia) (En,Fr,De,Es,It)
+Grand Theft Auto - Vice City Stories (Europe, Australia) (En,Fr,De,Es,It)
+Jojo no Kimyou na Bouken - Phantom Blood (Japan)
+Psychonauts (Europe) (En,Fr,De,Es,It)
+Saint Seiya - The Hades (Europe) (En,Ja,Fr,Es,It)
+Star Wars - Battlefront (Europe) (En,Es,It)
+Star Wars - Battlefront II (Europe) (En,Es,It)
+Tekken 4 (USA)
+Yakuza (USA)
+Yakuza 2 (USA)
+
+; FMV hiccups
+Kingdom Hearts II (Spain)
+Shadow of Rome (Europe) (En,Fr,De,Es,It) (if fixed with EE, then crash in Ch.3)
+Time Crisis 3 (USA) (audio desyc)
+
+; Blurry (due to interlacing)
+God Hand (Europe) (En,Fr,De,Es,It)
+Shadow of Rome (Europe) (En,Fr,De,Es,It)
+Tourist Trophy - The Real Riding Simulator (Europe) (En,Fr,De,Es,It) *Use USA version for internal 480p
