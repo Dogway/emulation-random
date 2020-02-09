@@ -9,6 +9,6 @@ Notification is in audio file format (place Audio folder inside "..\HeSuVi\hrir"
 I only include 4 profiles to cycle through:
 - cmss_game (for games)
 - dh++ (for movies)
-- dtshx2+ (for movies or games, a darker flavour) (download from [here](https://sourceforge.net/p/hesuvi/discussion/general/thread/108490f54e)
+- dtshx2+ (for movies or games, a darker flavour) (download from [here](https://sourceforge.net/p/hesuvi/discussion/general/thread/108490f54e))
 - stereo (for comparison) (renamed from "none")
 
