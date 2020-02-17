@@ -30,7 +30,7 @@ Return
 	Run, "%HeSuVi_exe%\HeSuVi.exe" -virtualizationvolume %vol%;100;100;100;100;200
 Return
 
-; Cycle Up HeSuVi profiles
+; Cycle Down HeSuVi profiles
 ~PgDn::
 	number := Mod(number + 1, 6)
 	number := if (number == 0) ? 1 : number
@@ -39,7 +39,7 @@ Return
 	SoundPlay, %HeSuVi_exe%\hrir\Audio\%num%.wav, Wait
 Return
 
-; Cycle Down HeSuVi profiles
+; Cycle Up HeSuVi profiles
 ~PgUp::
 	number := Mod(number - 1, 6)
 	number := if (number == 0) ? 5 : number
