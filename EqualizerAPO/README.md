@@ -9,7 +9,7 @@ Use these configs in [EqualizerAPO](https://sourceforge.net/projects/equalizerap
 </pre>
 
 <pre>
-  Super Nintendo (Undocumented):
+	Super Nintendo (Undocumented):
 	<a href="https://shmups.system11.org/viewtopic.php?p=1053076&sid=e679527cce943e38d0b23e1c002939e7#p1053076">https://shmups.system11.org/viewtopic.php?p=1053076&sid=e679527cce943e38d0b23e1c002939e7#p1053076</a>
 	<a href="https://shmups.system11.org/viewtopic.php?p=1051210&sid=e679527cce943e38d0b23e1c002939e7#p1051210">https://shmups.system11.org/viewtopic.php?p=1051210&sid=e679527cce943e38d0b23e1c002939e7#p1051210</a>
 </pre>
