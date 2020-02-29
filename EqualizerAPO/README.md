@@ -4,6 +4,7 @@ Use these configs in [EqualizerAPO](https://sourceforge.net/projects/equalizerap
 
 - [Dolby Surround](https://en.wikipedia.org/wiki/Dolby_Pro_Logic#Dolby_Surround): It's Quadraphonic channel audio encoded in Stereo mix. It was used extensively in retro (16-bit and 32-bit) console systems. Check the links:
 
+```
 	Super Nintendo:
 
 	https://www.mobygames.com/attribute/sheet/attributeId,136/p,15/
@@ -29,15 +30,18 @@ Use these configs in [EqualizerAPO](https://sourceforge.net/projects/equalizerap
 	PlayStation 2
 
 	https://www.mobygames.com/attribute/sheet/attributeId,136/offset,0/p,7/so,0a/
+```
 
 - [Dolby ProLogic](https://en.wikipedia.org/wiki/Dolby_Pro_Logic#Dolby_Pro_Logic): It's a 5.1 channel configuration audio encoded in Stereo mix. It was used in later systems like the PlayStation 2 although it was quickly superseeded by Dolby ProLogic II in late release games and same generation consoles like the GameCube:
-
+```
 	Dreamcast (Undocumented)
 
 	https://www.sega-16.com/forum/showthread.php?33481-Dreamcast-games-with-verified-surround-sound&p=818920&viewfull=1#post818920
-
+```
 - [QSound](https://en.wikipedia.org/wiki/QSound): It was a virtualization audio technology to make Stereo audio setups sound as it was Surround. It was popularized by the Capcom arcade boards like CPS2 and CPS3 although late CPS1 (CPS Dash) titles also implement this technology. It was also employed in the Zinc arcade boards and a bunch of post-MegaDrive Sega console systems. The gist here is that QSound is known to upmix well using Dolby ProLogic.
 
+```
 	Mega-CD, 32X, Saturn, Dreamcast:
 
 	https://segaretro.org/QSound
+```
