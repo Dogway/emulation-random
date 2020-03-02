@@ -1,8 +1,5 @@
 # Dolby ProLogic 1 and QSound upmix to 5.1
 
-Channel: L R
-Preamp: +10 dB
-
 Copy: MUP=-1.0*L+-1.0*R
 Channel: MUP
 Delay: 24 ms
@@ -10,9 +7,9 @@ Filter 1: ON LP Fc 7000 Hz
 Filter 2: ON HP Fc 100 Hz
 
 Copy: CX=0.5*L+0.5*R
-Copy: LI=L-0.5*CX RI=R-0.5*CX
+Copy: LI=L+-0.4*CX RI=R+-0.4*CX
 
 Copy: L=0.8*LI+0.2*CX R=0.8*RI+0.2*CX C=0.75*CX LFE=0.9*CX RL=0.45*MUP RR=0.45*MUP
 
 Channel: LFE
-Filter: ON LP Fc 120 Hz Gain -3.5 dB
+Filter: ON LP Fc 120 Hz Gain
