@@ -1,12 +1,12 @@
 # Dolby Surround is 4.0 in Stereo (2.0), this upmixes to 5.1
 
-Copy: MUP=-1.00*L+-1.00*R
+Copy: MUP=-1.0*L+-1.0*R
 Channel: MUP
 Delay: 24 ms
 Filter 1: ON LP Fc 7000 Hz
 Filter 2: ON HP Fc 100 Hz
 
-Copy: CX=0.50*L+0.50*R
+Copy: CX=0.5*L+0.5*R
 
 Copy: L=L R=R C=CX LFE=CX RL=0.5*MUP RR=0.5*MUP
 
