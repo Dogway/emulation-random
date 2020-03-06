@@ -42,8 +42,8 @@
 #define COMPAT_ATTRIBUTE in
 #define COMPAT_TEXTURE texture
 #else
-#define COMPAT_VARYING varying 
-#define COMPAT_ATTRIBUTE attribute 
+#define COMPAT_VARYING varying
+#define COMPAT_ATTRIBUTE attribute
 #define COMPAT_TEXTURE texture2D
 #endif
 
@@ -184,27 +184,27 @@ uniform COMPAT_PRECISION float bg;
 // http://www.zombieprototypes.com/?p=210
 vec3 wp_adjust(vec3 color){
    float temp = temperature / 100.0;
-   
+
    // all calculations assume a scale of 255. We'll normalize this at the end
    vec3 wp = vec3(255.);
-   
+
    // calculate RED
    wp.r = (temp <= 66.) ? 255. : 351.97690566805693 + 0.114206453784165 * (temp - 55.) - 40.25366309332127 * log(temp - 55.);
-   
+
    // calculate GREEN
    float mg = - 155.25485562709179 - 0.44596950469579133 * (temp - 2.)  + 104.49216199393888 * log(temp - 2.);
    float pg =   325.4494125711974  + 0.07943456536662342 * (temp - 50.) - 28.0852963507957   * log(temp - 50.);
    wp.g = (temp <= 66.) ? mg : pg;
-   
+
    // calculate BLUE
    wp.b = (temp >= 66.) ? 255. : (temp <= 19.) ? 0. : - 254.76935184120902 + 0.8274096064007395 * (temp - 10.) + 115.67994401066147 * log(temp - 10.) ;
-   
+
    // clamp and normalize
    wp.rgb = clamp(wp.rgb, vec3(0.), vec3(255.)) / vec3(255.);
-   
+
    // this is dumb, but various cores don't always show white as white. Use this to make white white...
    wp.rgb += vec3(red, green, blue);
-   
+
    return (color * wp);
 }
 
@@ -250,24 +250,24 @@ vec3 YxytoXYZ(vec3 Yxy){
 // all values within a safe range
 vec3 mixfix(vec3 a, vec3 b, float c)
 {
-	return (a.z < 1.0) ? mix(a, b, c) : a;
+    return (a.z < 1.0) ? mix(a, b, c) : a;
 }
 
 void main()
 {
 
 
-	vec3 imgColor = COMPAT_TEXTURE(Source, TEX0.xy);
-	float red = ( imgColor.r * (LUT_Size1 - 1.0) + 0.4999 ) / (LUT_Size1 * LUT_Size1);
-	float green = ( imgColor.g * (LUT_Size1 - 1.0) + 0.4999 ) / LUT_Size1;
-	float blue1 = (floor( imgColor.b  * (LUT_Size1 - 1.0) ) / LUT_Size1) + red;
-	float blue2 = (ceil( imgColor.b  * (LUT_Size1 - 1.0) ) / LUT_Size1) + red;
-	float mixer = clamp(max((imgColor.b - blue1) / (blue2 - blue1), 0.0), 0.0, 32.0);
-	vec3 color1 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue1, green ));
-	vec3 color2 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue2, green ));
-	vec3 vcolor =  (LUT1_toggle < 1.0) ? imgColor : mixfix(color1, color2, mixer);      // mix(color1, color2, mixer);
+    vec3 imgColor = COMPAT_TEXTURE(Source, TEX0.xy);
+    float red = ( imgColor.r * (LUT_Size1 - 1.0) + 0.4999 ) / (LUT_Size1 * LUT_Size1);
+    float green = ( imgColor.g * (LUT_Size1 - 1.0) + 0.4999 ) / LUT_Size1;
+    float blue1 = (floor( imgColor.b  * (LUT_Size1 - 1.0) ) / LUT_Size1) + red;
+    float blue2 = (ceil( imgColor.b  * (LUT_Size1 - 1.0) ) / LUT_Size1) + red;
+    float mixer = clamp(max((imgColor.b - blue1) / (blue2 - blue1), 0.0), 0.0, 32.0);
+    vec3 color1 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue1, green ));
+    vec3 color2 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue2, green ));
+    vec3 vcolor =  (LUT1_toggle < 1.0) ? imgColor : mixfix(color1, color2, mixer);
 
-// a simple calculation for the vignette/hotspot effects
+//  a simple calculation for the vignette/hotspot effects
     vec2 mid = vec2(0.49999, 0.49999) * InputSize / TextureSize;
     vec2 middle = TEX0.xy - mid;
     float len = length(middle);
@@ -282,7 +282,7 @@ void main()
     vec4 avglum = vec4(0.5);
     vec4 screen = mix(vignetted.rgba, avglum, (1.0 - cntrst));
 
-                   //  r    g    b  alpha ; alpha does nothing for our purposes
+//                      r    g    b  alpha ; alpha does nothing for our purposes
     mat4 color = mat4(  r,  rg,  rb, 0.0,  //red tint
                        gr,   g,  gb, 0.0,  //green tint
                        br,  bg,   b, 0.0,  //blue tint
@@ -292,6 +292,7 @@ void main()
                        (1.0 - sat) * 0.7152, (1.0 - sat) * 0.7152 + sat, (1.0 - sat) * 0.7152, 1.0,
                        (1.0 - sat) * 0.0722, (1.0 - sat) * 0.0722, (1.0 - sat) * 0.0722 + sat, 1.0,
                        0.0, 0.0, 0.0, 1.0);
+
     color *= adjust;
     screen = clamp(screen * lum, 0.0, 1.0);
     screen = color * screen;
@@ -302,15 +303,15 @@ void main()
     adjusted = (luma_preserve > 0.5) ? adjusted_luma + (vec3(base_luma.r,0.,0.) - vec3(adjusted_luma.r,0.,0.)) : adjusted_luma;
     adjusted = clamp(XYZ_to_sRGB(YxytoXYZ(adjusted)), 0.0, 1.0);
 
- 	float red_2 = ( adjusted.r * (LUT_Size2 - 1.0) + 0.4999 ) / (LUT_Size2 * LUT_Size2);
- 	float green_2 = ( adjusted.g * (LUT_Size2 - 1.0) + 0.4999 ) / LUT_Size2;
- 	float blue1_2 = (floor( adjusted.b  * (LUT_Size2 - 1.0) ) / LUT_Size2) + red_2;
- 	float blue2_2 = (ceil( adjusted.b  * (LUT_Size2 - 1.0) ) / LUT_Size2) + red_2;
- 	float mixer_2 = clamp(max((adjusted.b - blue1_2) / (blue2_2 - blue1_2), 0.0), 0.0, 32.0);
- 	vec3 color1_2 = COMPAT_TEXTURE( SamplerLUT2, vec2( blue1_2, green_2 ));
- 	vec3 color2_2 = COMPAT_TEXTURE( SamplerLUT2, vec2( blue2_2, green_2 ));
- 	vec3 LUT2_output = mixfix(color1_2, color2_2, mixer_2);      // mix(color1_2, color2_2, mixer_2);
+    float red_2 = ( adjusted.r * (LUT_Size2 - 1.0) + 0.4999 ) / (LUT_Size2 * LUT_Size2);
+    float green_2 = ( adjusted.g * (LUT_Size2 - 1.0) + 0.4999 ) / LUT_Size2;
+    float blue1_2 = (floor( adjusted.b  * (LUT_Size2 - 1.0) ) / LUT_Size2) + red_2;
+    float blue2_2 = (ceil( adjusted.b  * (LUT_Size2 - 1.0) ) / LUT_Size2) + red_2;
+    float mixer_2 = clamp(max((adjusted.b - blue1_2) / (blue2_2 - blue1_2), 0.0), 0.0, 32.0);
+    vec3 color1_2 = COMPAT_TEXTURE( SamplerLUT2, vec2( blue1_2, green_2 ));
+    vec3 color2_2 = COMPAT_TEXTURE( SamplerLUT2, vec2( blue2_2, green_2 ));
+    vec3 LUT2_output = mixfix(color1_2, color2_2, mixer_2);
 
-	FragColor = (LUT2_toggle < 1.0) ? vec4(adjusted, 1.0) : vec4(LUT2_output, 1.0);
-	}
+    FragColor = (LUT2_toggle < 1.0) ? vec4(adjusted, 1.0) : vec4(LUT2_output, 1.0);
+}
 #endif
