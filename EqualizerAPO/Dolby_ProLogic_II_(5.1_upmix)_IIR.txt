@@ -1,0 +1,135 @@
+# Dolby ProLogic II upmix to 5.1
+#    Jose Linares -Dogway-
+#        >> https://github.com/Dogway
+
+
+Copy: LI=L RI=R
+Channel: LI RI
+Delay: 12 ms
+
+Filter 1: ON HPQ Fc 100 Hz Q 0.541
+Filter 2: ON HPQ Fc 100 Hz Q 1.307
+Filter 3: ON LPQ Fc 8000 Hz Q 0.541
+Filter 4: ON LPQ Fc 8000 Hz Q 1.307
+
+Eval: Q = 1/sqrt(2)
+
+Eval: freq = 100
+Eval: omega = 2 * pi * freq / sampleRate
+Eval: sn = sin(omega)
+Eval: cs = cos(omega)
+Eval: alpha = sn / (2 * Q)
+Eval: a0 = 1 + alpha
+Eval: a1 = -2 * cs
+Eval: a2 = 1 - alpha
+Eval: b0 = 1 - alpha
+Eval: b1 = -2 * cs
+Eval: b2 = 1 + alpha
+Filter 5: ON IIR Order 2 Coefficients `a0` `a1` `a2` `b0` `b1` `b2`
+
+Eval: freq = 200
+Eval: omega = 2 * pi * freq / sampleRate
+Eval: sn = sin(omega)
+Eval: cs = cos(omega)
+Eval: alpha = sn / (2 * Q)
+Eval: a0 = 1 + alpha
+Eval: a1 = -2 * cs
+Eval: a2 = 1 - alpha
+Eval: b0 = 1 - alpha
+Eval: b1 = -2 * cs
+Eval: b2 = 1 + alpha
+Filter 6: ON IIR Order 2 Coefficients `a0` `a1` `a2` `b0` `b1` `b2`
+
+Eval: freq = 400
+Eval: omega = 2 * pi * freq / sampleRate
+Eval: sn = sin(omega)
+Eval: cs = cos(omega)
+Eval: alpha = sn / (2 * Q)
+Eval: a0 = 1 + alpha
+Eval: a1 = -2 * cs
+Eval: a2 = 1 - alpha
+Eval: b0 = 1 - alpha
+Eval: b1 = -2 * cs
+Eval: b2 = 1 + alpha
+Filter 7: ON IIR Order 2 Coefficients `a0` `a1` `a2` `b0` `b1` `b2`
+
+Eval: freq = 1000
+Eval: omega = 2 * pi * freq / sampleRate
+Eval: sn = sin(omega)
+Eval: cs = cos(omega)
+Eval: alpha = sn / (2 * Q)
+Eval: a0 = 1 + alpha
+Eval: a1 = -2 * cs
+Eval: a2 = 1 - alpha
+Eval: b0 = 1 - alpha
+Eval: b1 = -2 * cs
+Eval: b2 = 1 + alpha
+Filter 8: ON IIR Order 2 Coefficients `a0` `a1` `a2` `b0` `b1` `b2`
+
+Eval: freq = 2000
+Eval: omega = 2 * pi * freq / sampleRate
+Eval: sn = sin(omega)
+Eval: cs = cos(omega)
+Eval: alpha = sn / (2 * Q)
+Eval: a0 = 1 + alpha
+Eval: a1 = -2 * cs
+Eval: a2 = 1 - alpha
+Eval: b0 = 1 - alpha
+Eval: b1 = -2 * cs
+Eval: b2 = 1 + alpha
+Filter 9: ON IIR Order 2 Coefficients `a0` `a1` `a2` `b0` `b1` `b2`
+
+Eval: freq = 3000
+Eval: omega = 2 * pi * freq / sampleRate
+Eval: sn = sin(omega)
+Eval: cs = cos(omega)
+Eval: alpha = sn / (2 * Q)
+Eval: a0 = 1 + alpha
+Eval: a1 = -2 * cs
+Eval: a2 = 1 - alpha
+Eval: b0 = 1 - alpha
+Eval: b1 = -2 * cs
+Eval: b2 = 1 + alpha
+Filter 10: ON IIR Order 2 Coefficients `a0` `a1` `a2` `b0` `b1` `b2`
+
+Eval: freq = 5000
+Eval: omega = 2 * pi * freq / sampleRate
+Eval: sn = sin(omega)
+Eval: cs = cos(omega)
+Eval: alpha = sn / (2 * Q)
+Eval: a0 = 1 + alpha
+Eval: a1 = -2 * cs
+Eval: a2 = 1 - alpha
+Eval: b0 = 1 - alpha
+Eval: b1 = -2 * cs
+Eval: b2 = 1 + alpha
+Filter 11: ON IIR Order 2 Coefficients `a0` `a1` `a2` `b0` `b1` `b2`
+
+Eval: freq = 7000
+Eval: omega = 2 * pi * freq / sampleRate
+Eval: sn = sin(omega)
+Eval: cs = cos(omega)
+Eval: alpha = sn / (2 * Q)
+Eval: a0 = 1 + alpha
+Eval: a1 = -2 * cs
+Eval: a2 = 1 - alpha
+Eval: b0 = 1 - alpha
+Eval: b1 = -2 * cs
+Eval: b2 = 1 + alpha
+Filter 12: ON IIR Order 2 Coefficients `a0` `a1` `a2` `b0` `b1` `b2`
+
+
+
+Copy: CX=0.354*L+0.354*R LX=-1.0*LI
+
+Copy: L=0.5*L R=0.5*R C=CX LFE=CX RL=0.436*LX+0.245*RI RR=0.436*RI+0.245*LX
+
+Channel: C
+Filter 1: ON HPQ Fc 70 Hz Q 0.541
+Filter 2: ON HPQ Fc 70 Hz Q 1.307
+Filter 3: ON LPQ Fc 20000 Hz Q 0.541
+Filter 4: ON LPQ Fc 20000 Hz Q 1.307
+
+Channel: LFE
+Filter 1: ON LPQ Fc 120 Hz Q 0.541
+Filter 2: ON LPQ Fc 120 Hz Q 1.307
