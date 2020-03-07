@@ -1,4 +1,7 @@
 # Dolby ProLogic 1 and QSound upmix to 5.1
+#    Jose Linares -Dogway-
+#        >> https://github.com/Dogway
+
 
 Copy: MUP=-1.0*L+-1.0*R
 Channel: MUP

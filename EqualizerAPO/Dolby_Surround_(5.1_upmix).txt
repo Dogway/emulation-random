@@ -1,4 +1,7 @@
 # Dolby Surround is 4.0 in Stereo (2.0), this upmixes to 5.1
+#    Jose Linares -Dogway-
+#        >> https://github.com/Dogway
+
 
 Copy: MUP=-1.0*L+-1.0*R
 Channel: MUP
