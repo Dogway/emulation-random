@@ -1,18 +1,22 @@
-# Dolby ProLogic 1 and QSound upmix to 5.1
+# Dolby ProLogic upmix to 5.1
 #    Jose Linares -Dogway-
 #        >> https://github.com/Dogway
 
 
-Copy: MUP=-1.0*L+-1.0*R
-Channel: MUP
-Delay: 24 ms
-Filter 1: ON LP Fc 7000 Hz
-Filter 2: ON HP Fc 100 Hz
+Copy: LI=0.354*L RI=0.354*R
+Channel: LI RI
+Delay: 12 ms
+Filter 1: ON LPQ Fc 7000 Hz Q 0.541
+Filter 2: ON LPQ Fc 7000 Hz Q 1.307
+Filter 3: ON HPQ Fc 100 Hz Q 0.541
+Filter 4: ON HPQ Fc 100 Hz Q 1.307
+Convolution: dirac24_48_stereo_(90_phaseLR_and_invert_L).wav
 
-Copy: CX=0.5*L+0.5*R
-Copy: LI=L+-0.4*CX RI=R+-0.4*CX
 
-Copy: L=0.8*LI+0.2*CX R=0.8*RI+0.2*CX C=0.75*CX LFE=0.9*CX RL=0.45*MUP RR=0.45*MUP
+Copy: CX=0.354*L+0.354*R
+
+Copy: L=0.8*LI+0.2*CX R=0.8*RI+0.2*CX C=0.75*CX LFE=0.9*CX RL=LI+RI RR=LI+RI
 
 Channel: LFE
-Filter: ON LP Fc 120 Hz
+Filter 1: ON LPQ Fc 120 Hz Q 0.541
+Filter 2: ON LPQ Fc 120 Hz Q 1.307
