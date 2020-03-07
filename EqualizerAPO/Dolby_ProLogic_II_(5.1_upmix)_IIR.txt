@@ -19,104 +19,80 @@ Eval: omega = 2 * pi * freq / sampleRate
 Eval: sn = sin(omega)
 Eval: cs = cos(omega)
 Eval: alpha = sn / (2 * Q)
-Eval: a0 = 1 + alpha
-Eval: a1 = -2 * cs
-Eval: a2 = 1 - alpha
-Eval: b0 = 1 - alpha
-Eval: b1 = -2 * cs
-Eval: b2 = 1 + alpha
-Filter 5: ON IIR Order 2 Coefficients `a0` `a1` `a2` `b0` `b1` `b2`
+Eval: aa = 1 - alpha
+Eval: ab = -2 * cs
+Eval: ac = 1 + alpha
+Filter 5: ON IIR Order 2 Coefficients `aa` `ab` `ac` `ac` `ab` `aa`
 
 Eval: freq = 200
 Eval: omega = 2 * pi * freq / sampleRate
 Eval: sn = sin(omega)
 Eval: cs = cos(omega)
 Eval: alpha = sn / (2 * Q)
-Eval: a0 = 1 + alpha
-Eval: a1 = -2 * cs
-Eval: a2 = 1 - alpha
-Eval: b0 = 1 - alpha
-Eval: b1 = -2 * cs
-Eval: b2 = 1 + alpha
-Filter 6: ON IIR Order 2 Coefficients `a0` `a1` `a2` `b0` `b1` `b2`
+Eval: aa = 1 - alpha
+Eval: ab = -2 * cs
+Eval: ac = 1 + alpha
+Filter 6: ON IIR Order 2 Coefficients `aa` `ab` `ac` `ac` `ab` `aa`
 
 Eval: freq = 400
 Eval: omega = 2 * pi * freq / sampleRate
 Eval: sn = sin(omega)
 Eval: cs = cos(omega)
 Eval: alpha = sn / (2 * Q)
-Eval: a0 = 1 + alpha
-Eval: a1 = -2 * cs
-Eval: a2 = 1 - alpha
-Eval: b0 = 1 - alpha
-Eval: b1 = -2 * cs
-Eval: b2 = 1 + alpha
-Filter 7: ON IIR Order 2 Coefficients `a0` `a1` `a2` `b0` `b1` `b2`
+Eval: aa = 1 - alpha
+Eval: ab = -2 * cs
+Eval: ac = 1 + alpha
+Filter 7: ON IIR Order 2 Coefficients `aa` `ab` `ac` `ac` `ab` `aa`
 
 Eval: freq = 1000
 Eval: omega = 2 * pi * freq / sampleRate
 Eval: sn = sin(omega)
 Eval: cs = cos(omega)
 Eval: alpha = sn / (2 * Q)
-Eval: a0 = 1 + alpha
-Eval: a1 = -2 * cs
-Eval: a2 = 1 - alpha
-Eval: b0 = 1 - alpha
-Eval: b1 = -2 * cs
-Eval: b2 = 1 + alpha
-Filter 8: ON IIR Order 2 Coefficients `a0` `a1` `a2` `b0` `b1` `b2`
+Eval: aa = 1 - alpha
+Eval: ab = -2 * cs
+Eval: ac = 1 + alpha
+Filter 8: ON IIR Order 2 Coefficients `aa` `ab` `ac` `ac` `ab` `aa`
 
 Eval: freq = 2000
 Eval: omega = 2 * pi * freq / sampleRate
 Eval: sn = sin(omega)
 Eval: cs = cos(omega)
 Eval: alpha = sn / (2 * Q)
-Eval: a0 = 1 + alpha
-Eval: a1 = -2 * cs
-Eval: a2 = 1 - alpha
-Eval: b0 = 1 - alpha
-Eval: b1 = -2 * cs
-Eval: b2 = 1 + alpha
-Filter 9: ON IIR Order 2 Coefficients `a0` `a1` `a2` `b0` `b1` `b2`
+Eval: aa = 1 - alpha
+Eval: ab = -2 * cs
+Eval: ac = 1 + alpha
+Filter 9: ON IIR Order 2 Coefficients `aa` `ab` `ac` `ac` `ab` `aa`
 
 Eval: freq = 3000
 Eval: omega = 2 * pi * freq / sampleRate
 Eval: sn = sin(omega)
 Eval: cs = cos(omega)
 Eval: alpha = sn / (2 * Q)
-Eval: a0 = 1 + alpha
-Eval: a1 = -2 * cs
-Eval: a2 = 1 - alpha
-Eval: b0 = 1 - alpha
-Eval: b1 = -2 * cs
-Eval: b2 = 1 + alpha
-Filter 10: ON IIR Order 2 Coefficients `a0` `a1` `a2` `b0` `b1` `b2`
+Eval: aa = 1 - alpha
+Eval: ab = -2 * cs
+Eval: ac = 1 + alpha
+Filter 10: ON IIR Order 2 Coefficients `aa` `ab` `ac` `ac` `ab` `aa`
 
 Eval: freq = 5000
 Eval: omega = 2 * pi * freq / sampleRate
 Eval: sn = sin(omega)
 Eval: cs = cos(omega)
 Eval: alpha = sn / (2 * Q)
-Eval: a0 = 1 + alpha
-Eval: a1 = -2 * cs
-Eval: a2 = 1 - alpha
-Eval: b0 = 1 - alpha
-Eval: b1 = -2 * cs
-Eval: b2 = 1 + alpha
-Filter 11: ON IIR Order 2 Coefficients `a0` `a1` `a2` `b0` `b1` `b2`
+Eval: aa = 1 - alpha
+Eval: ab = -2 * cs
+Eval: ac = 1 + alpha
+Filter 11: ON IIR Order 2 Coefficients `aa` `ab` `ac` `ac` `ab` `aa`
 
 Eval: freq = 7000
 Eval: omega = 2 * pi * freq / sampleRate
 Eval: sn = sin(omega)
 Eval: cs = cos(omega)
 Eval: alpha = sn / (2 * Q)
-Eval: a0 = 1 + alpha
-Eval: a1 = -2 * cs
-Eval: a2 = 1 - alpha
-Eval: b0 = 1 - alpha
-Eval: b1 = -2 * cs
-Eval: b2 = 1 + alpha
-Filter 12: ON IIR Order 2 Coefficients `a0` `a1` `a2` `b0` `b1` `b2`
+Eval: aa = 1 - alpha
+Eval: ab = -2 * cs
+Eval: ac = 1 + alpha
+Filter 12: ON IIR Order 2 Coefficients `aa` `ab` `ac` `ac` `ab` `aa`
 
 
 
