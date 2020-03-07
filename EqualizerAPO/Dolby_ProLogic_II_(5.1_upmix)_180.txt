@@ -1,4 +1,7 @@
 # Dolby ProLogic II upmix to 5.1
+#    Jose Linares -Dogway-
+#        >> https://github.com/Dogway
+
 
 Copy: LI=-1.0*L RI=-1.0*R
 Channel: LI RI
