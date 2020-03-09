@@ -5,9 +5,8 @@
 */
 
 #pragma parameter vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
-#pragma parameter hotspot "Hotspot" 0.0 0.0 1.0 0.1
-#pragma parameter inner "Inner Ring" 0.35 0.0 1.0 0.01
-#pragma parameter outer "Outer Ring" 0.7 0.0 1.0 0.01
+#pragma parameter str "Strength" 15.0 10.0 40.0 1.0
+#pragma parameter power "Power" 0.10 0.0 0.5 0.01
 #pragma parameter LUT_Size1 "LUT Size 1" 16.0 0.0 64.0 16.0
 #pragma parameter LUT1_toggle "LUT 1 Toggle" 1.0 0.0 1.0 1.0
 #pragma parameter LUT_Size2 "LUT Size 2" 64.0 0.0 64.0 16.0
@@ -118,10 +117,9 @@ COMPAT_VARYING vec4 TEX0;
 #define OutSize vec4(OutputSize, 1.0 / OutputSize)
 
 #ifdef PARAMETER_UNIFORM
-uniform COMPAT_PRECISION float hotspot;
 uniform COMPAT_PRECISION float vignette;
-uniform COMPAT_PRECISION float inner;
-uniform COMPAT_PRECISION float outer;
+uniform COMPAT_PRECISION float str;
+uniform COMPAT_PRECISION float power;
 uniform COMPAT_PRECISION float LUT_Size1;
 uniform COMPAT_PRECISION float LUT1_toggle;
 uniform COMPAT_PRECISION float LUT_Size2;
@@ -149,9 +147,8 @@ uniform COMPAT_PRECISION float br;
 uniform COMPAT_PRECISION float bg;
 #else
 #define vignette 1.0
-#define hotspot 1.0
-#define inner 0.0
-#define outer 1.0
+#define str 15.0
+#define power 0.1
 #define LUT_Size1 16.0
 #define LUT1_toggle 1.0
 #define LUT_Size2 64.0
@@ -257,7 +254,8 @@ void main()
 {
 
 
-    vec3 imgColor = COMPAT_TEXTURE(Source, TEX0.xy);
+    vec3 imgColor = COMPAT_TEXTURE(Source, vTexCoord);
+
     float red = ( imgColor.r * (LUT_Size1 - 1.0) + 0.4999 ) / (LUT_Size1 * LUT_Size1);
     float green = ( imgColor.g * (LUT_Size1 - 1.0) + 0.4999 ) / LUT_Size1;
     float blue1 = (floor( imgColor.b  * (LUT_Size1 - 1.0) ) / LUT_Size1) + red;
@@ -265,24 +263,22 @@ void main()
     float mixer = clamp(max((imgColor.b - blue1) / (blue2 - blue1), 0.0), 0.0, 32.0);
     vec3 color1 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue1, green ));
     vec3 color2 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue2, green ));
-    vec3 vcolor =  (LUT1_toggle < 1.0) ? imgColor : mixfix(color1, color2, mixer);
+    vec3 vcolor =  (LUT1_toggle < 1.0) ? imgColor : mixfix(color1, color2, mixer);      // mix(color1, color2, mixer);
 
-//  a simple calculation for the vignette/hotspot effects
-    vec2 mid = vec2(0.49999, 0.49999) * InputSize / TextureSize;
-    vec2 middle = TEX0.xy - mid;
-    float len = length(middle);
-    float vig = smoothstep(inner, outer, len);
+//  vignette block
+    vec2 vpos = vTexCoord * (TextureSize.xy / InputSize.xy);
+    vpos *= 1.0 - vpos.xy;
+    float vig = vpos.x * vpos.y * str;
+    vig = min(pow(vig, power), 1.0);
+    vcolor *= (vignette > 0.5) ? vig : 1.0;
 
-    vcolor += vec3(black_level) * (1.0-vcolor); // apply black level
-    vcolor *= (vignette > 0.5) ? (1.0 - vig) : 1.0; // Vignette
-    vcolor += ((1.0 - vig) * 0.2) * hotspot; // Hotspot
+    vcolor += vec3(black_level) * (1.0-vcolor);
     vec4 vignetted = vec4(vcolor,1.0);
-
 
     vec4 avglum = vec4(0.5);
     vec4 screen = mix(vignetted.rgba, avglum, (1.0 - cntrst));
 
-//                      r    g    b  alpha ; alpha does nothing for our purposes
+                   //  r    g    b  alpha ; alpha does nothing for our purposes
     mat4 color = mat4(  r,  rg,  rb, 0.0,  //red tint
                        gr,   g,  gb, 0.0,  //green tint
                        br,  bg,   b, 0.0,  //blue tint
