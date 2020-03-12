@@ -24,7 +24,7 @@ Eval: ab = -2 * cs
 Eval: ac = 1 + alpha
 Filter 5: ON IIR Order 2 Coefficients `aa` `ab` `ac` `ac` `ab` `aa`
 
-Eval: freq = 200
+Eval: freq = 220
 Eval: omega = 2 * pi * freq / sampleRate
 Eval: sn = sin(omega)
 Eval: cs = cos(omega)
@@ -34,7 +34,7 @@ Eval: ab = -2 * cs
 Eval: ac = 1 + alpha
 Filter 6: ON IIR Order 2 Coefficients `aa` `ab` `ac` `ac` `ab` `aa`
 
-Eval: freq = 400
+Eval: freq = 450
 Eval: omega = 2 * pi * freq / sampleRate
 Eval: sn = sin(omega)
 Eval: cs = cos(omega)
@@ -44,7 +44,7 @@ Eval: ab = -2 * cs
 Eval: ac = 1 + alpha
 Filter 7: ON IIR Order 2 Coefficients `aa` `ab` `ac` `ac` `ab` `aa`
 
-Eval: freq = 1000
+Eval: freq = 1280
 Eval: omega = 2 * pi * freq / sampleRate
 Eval: sn = sin(omega)
 Eval: cs = cos(omega)
@@ -54,7 +54,7 @@ Eval: ab = -2 * cs
 Eval: ac = 1 + alpha
 Filter 8: ON IIR Order 2 Coefficients `aa` `ab` `ac` `ac` `ab` `aa`
 
-Eval: freq = 2000
+Eval: freq = 2200
 Eval: omega = 2 * pi * freq / sampleRate
 Eval: sn = sin(omega)
 Eval: cs = cos(omega)
@@ -74,7 +74,7 @@ Eval: ab = -2 * cs
 Eval: ac = 1 + alpha
 Filter 10: ON IIR Order 2 Coefficients `aa` `ab` `ac` `ac` `ab` `aa`
 
-Eval: freq = 5000
+Eval: freq = 5700
 Eval: omega = 2 * pi * freq / sampleRate
 Eval: sn = sin(omega)
 Eval: cs = cos(omega)
@@ -84,7 +84,7 @@ Eval: ab = -2 * cs
 Eval: ac = 1 + alpha
 Filter 11: ON IIR Order 2 Coefficients `aa` `ab` `ac` `ac` `ab` `aa`
 
-Eval: freq = 7000
+Eval: freq = 6600
 Eval: omega = 2 * pi * freq / sampleRate
 Eval: sn = sin(omega)
 Eval: cs = cos(omega)
@@ -93,6 +93,16 @@ Eval: aa = 1 - alpha
 Eval: ab = -2 * cs
 Eval: ac = 1 + alpha
 Filter 12: ON IIR Order 2 Coefficients `aa` `ab` `ac` `ac` `ab` `aa`
+
+Eval: freq = 7600
+Eval: omega = 2 * pi * freq / sampleRate
+Eval: sn = sin(omega)
+Eval: cs = cos(omega)
+Eval: alpha = sn / (2 * Q)
+Eval: aa = 1 - alpha
+Eval: ab = -2 * cs
+Eval: ac = 1 + alpha
+Filter 13: ON IIR Order 2 Coefficients `aa` `ab` `ac` `ac` `ab` `aa`
 
 
 
