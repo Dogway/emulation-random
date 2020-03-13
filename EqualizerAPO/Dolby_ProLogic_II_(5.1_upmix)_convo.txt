@@ -8,13 +8,16 @@ Channel: LI RI
 Delay: 12 ms
 Filter 1: ON HPQ Fc 100 Hz Q 0.541
 Filter 2: ON HPQ Fc 100 Hz Q 1.307
-
 Convolution: dirac24_48_stereo_(90_phaseLR_and_invert_L).wav
 
 
 Copy: CX=0.354*L+0.354*R
 
 Copy: L=0.5*L R=0.5*R C=CX LFE=CX RL=0.436*LI+0.245*RI RR=0.436*RI+0.245*LI
+
+Channel: L R RL RR
+Filter 1: ON LPQ Fc 22050 Hz Q 0.541
+Filter 2: ON LPQ Fc 22050 Hz Q 1.307
 
 Channel: C
 Filter 1: ON HPQ Fc 70 Hz Q 0.541
