@@ -1,9 +1,9 @@
 // White Point Mapping
 //          ported by Dogway
 //
-// Based on first comment post (sRGB and linear light compensated)
+// From the first comment post (sRGB and linear light compensated)
 //      http://www.zombieprototypes.com/?p=210#comment-4695029660
-// From the blog entry by Neil Bartlett
+// Based on the Neil Bartlett's blog update
 //      http://www.zombieprototypes.com/?p=210
 // Inspired itself by Tanner Helland's work
 //      http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
