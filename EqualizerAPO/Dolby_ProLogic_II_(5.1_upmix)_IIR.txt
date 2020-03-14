@@ -14,7 +14,7 @@ Filter 4: ON LPQ Fc 8000 Hz Q 1.307
 
 Eval: Q = 1/sqrt(2)
 
-Eval: freq = 100
+Eval: freq = 105
 Eval: omega = 2 * pi * freq / sampleRate
 Eval: sn = sin(omega)
 Eval: cs = cos(omega)
