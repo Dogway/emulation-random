@@ -1,7 +1,7 @@
 /*
    Grade
-   > Ubershader grouping some monolithic shaders like color-mangler, vignette, lut, white_point
-   > and the addition of black level and proper gamma transforms.
+   > Ubershader grouping some color related monolithic shaders like color-mangler, vignette, lut,
+   >  white_point, and the addition of black level and proper gamma transforms.
 
    Author: hunterk, Guest, Dr. Venom, Dogway
    License: Public domain
@@ -182,6 +182,7 @@ uniform COMPAT_PRECISION float bg;
 #define bg 0.0
 #endif
 
+
 // White Point Mapping function
 //
 // From the first comment post (sRGB and linear light compensated)
@@ -193,8 +194,8 @@ uniform COMPAT_PRECISION float bg;
 
 vec3 wp_adjust(vec3 color){
 
-    float temp = temperature / 100.0;
-    float k = temperature / 10000.0;
+    float temp = temperature / 100.;
+    float k = temperature / 10000.;
     float lk = log(k);
 
     vec3 wp = vec3(1.);
@@ -284,7 +285,6 @@ vec3 linear_to_sRGB(vec3 color, float gamma){
 void main()
 {
 
-
     vec3 imgColor = pow(COMPAT_TEXTURE(Source, vTexCoord).rgb, vec3(gamma_in));
 
     float red = ( imgColor.r * (LUT_Size1 - 1.0) + 0.4999 ) / (LUT_Size1 * LUT_Size1);
@@ -306,7 +306,7 @@ void main()
     vcolor += vec3(black_level) * (1.0-vcolor);
     vec4 vignetted = vec4(vcolor,1.0);
 
-    // change this to sigmoidal contrast
+// change this to sigmoidal contrast
     vec4 avglum = vec4(0.5);
     vec4 screen = mix(vignetted.rgba, avglum, (1.0 - cntrst));
 
