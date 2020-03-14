@@ -1,7 +1,7 @@
 /*
    Grade
    > Ubershader grouping some color related monolithic shaders like color-mangler, vignette, lut,
-   >  white_point, and the addition of black level and proper gamma transforms.
+   >  white_point, and the addition of black level, sigmoidal contrast and proper gamma transforms.
 
    Author: hunterk, Guest, Dr. Venom, Dogway
    License: Public domain
@@ -9,17 +9,18 @@
 
 #pragma parameter gamma_in "CRT Gamma" 2.4 0.0 3.0 0.05
 #pragma parameter vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
-#pragma parameter str "Strength" 15.0 10.0 40.0 1.0
-#pragma parameter power "Power" 0.10 0.0 0.5 0.01
+#pragma parameter str "Vig.Strength" 15.0 10.0 40.0 1.0
+#pragma parameter power "Vig.Power" 0.10 0.0 0.5 0.01
 #pragma parameter LUT_Size1 "LUT Size 1" 16.0 0.0 64.0 16.0
 #pragma parameter LUT1_toggle "LUT 1 Toggle" 0.0 0.0 1.0 1.0
 #pragma parameter LUT_Size2 "LUT Size 2" 64.0 0.0 64.0 16.0
 #pragma parameter LUT2_toggle "LUT 2 Toggle" 0.0 0.0 1.0 1.0
 #pragma parameter temperature "White Point" 6504.0 1000.0 12000.0 100.0
-#pragma parameter luma_preserve "Preserve Luminance" 1.0 0.0 1.0 1.0
+#pragma parameter luma_preserve "WP Preserve Luminance" 1.0 0.0 1.0 1.0
 #pragma parameter sat "Saturation" 1.0 0.0 3.0 0.01
-#pragma parameter lum "Luminance" 1.0 0.0 5.0 0.01
-#pragma parameter cntrst "Contrast" 1.0 0.0 2.0 0.01
+#pragma parameter lum "Brightness" 1.0 0.0 5.0 0.01
+#pragma parameter cntrst "Contrast" 0.0 -1.0 1.0 0.05
+#pragma parameter mid "Contrast Pivot" 0.5 0.0 1.0 0.01
 #pragma parameter black_level "Black Level" 0.0 0.0 1.0 0.005
 #pragma parameter blr "Black-Red Tint" 0.0 0.0 1.0 0.005
 #pragma parameter blg "Black-Green Tint" 0.0 0.0 1.0 0.005
@@ -134,6 +135,7 @@ uniform COMPAT_PRECISION float luma_preserve;
 uniform COMPAT_PRECISION float sat;
 uniform COMPAT_PRECISION float lum;
 uniform COMPAT_PRECISION float cntrst;
+uniform COMPAT_PRECISION float mid;
 uniform COMPAT_PRECISION float black_level;
 uniform COMPAT_PRECISION float blr;
 uniform COMPAT_PRECISION float blg;
@@ -163,7 +165,8 @@ uniform COMPAT_PRECISION float bg;
 #define luma_preserve 1.0
 #define sat 1.0
 #define lum 1.0
-#define cntrst 1.0
+#define cntrst 0.0
+#define mid 0.5
 #define black_level 0.0
 #define blr 0.0
 #define blg 0.0
@@ -282,6 +285,39 @@ vec3 linear_to_sRGB(vec3 color, float gamma){
 }
 
 
+vec3 contrast_sigmoid(vec3 color, float cntrst, float mid){
+
+    cntrst = pow(cntrst + 1, 3.);
+    mid = pow(mid, 2.2);
+
+    float knee = 1. / (1. + exp(cntrst * mid));
+    float shldr = 1. / (1. + exp(cntrst * (mid - 1.)));
+
+    color.r = (1. / (1. + exp(cntrst * (mid - color.r))) - knee) / (shldr - knee);
+    color.g = (1. / (1. + exp(cntrst * (mid - color.g))) - knee) / (shldr - knee);
+    color.b = (1. / (1. + exp(cntrst * (mid - color.b))) - knee) / (shldr - knee);
+
+    return color;
+}
+
+
+vec3 contrast_sigmoid_inv(vec3 color, float cntrst, float mid){
+
+    cntrst = pow(cntrst - 1, 3.);
+    mid = pow(mid, 2.2);
+
+    float knee = 1. / (1. + exp (cntrst * mid));
+    float shldr = 1. / (1. + exp (cntrst * (mid - 1.)));
+
+    color.r = mid - log(1. / (color.r * (shldr - knee) + knee) - 1.) / cntrst;
+    color.g = mid - log(1. / (color.g * (shldr - knee) + knee) - 1.) / cntrst;
+    color.b = mid - log(1. / (color.b * (shldr - knee) + knee) - 1.) / cntrst;
+
+    return color;
+}
+
+
+
 void main()
 {
 
@@ -296,19 +332,19 @@ void main()
     vec3 color2 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue2, green ));
     vec3 vcolor =  (LUT1_toggle < 1.0) ? imgColor : mixfix(color1, color2, mixer);
 
+    vec3 contrast = (cntrst == 0.0) ? vcolor : (cntrst > 0.0) ? contrast_sigmoid(vcolor, cntrst, mid) : contrast_sigmoid_inv(vcolor, cntrst, mid);
+
 //  vignette block
     vec2 vpos = vTexCoord * (TextureSize.xy / InputSize.xy);
     vpos *= 1.0 - vpos.xy;
     float vig = vpos.x * vpos.y * str;
     vig = min(pow(vig, power), 1.0);
-    vcolor *= (vignette > 0.5) ? vig : 1.0;
+    contrast *= (vignette > 0.5) ? vig : 1.0;
 
-    vcolor += vec3(black_level) * (1.0-vcolor);
-    vec4 vignetted = vec4(vcolor,1.0);
+    contrast += vec3(black_level) * (1.0-contrast);
 
-// change this to sigmoidal contrast
-    vec4 avglum = vec4(0.5);
-    vec4 screen = mix(vignetted.rgba, avglum, (1.0 - cntrst));
+    vec4 screen = vec4(contrast,1.0);
+
 
                    //  r    g    b  alpha ; alpha does nothing for our purposes
     mat4 color = mat4(  r,  rg,  rb, 0.0,  //red tint
