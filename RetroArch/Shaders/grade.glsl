@@ -1,5 +1,8 @@
 /*
    Grade
+   > Ubershader grouping some monolithic shaders like color-mangler, vignette, lut, white_point
+   > and the addition of black level and proper gamma transforms.
+
    Author: hunterk, Guest, Dr. Venom, Dogway
    License: Public domain
 */
