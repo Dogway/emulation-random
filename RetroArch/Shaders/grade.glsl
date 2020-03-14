@@ -4,19 +4,20 @@
    License: Public domain
 */
 
+#pragma parameter gamma_in "CRT Gamma" 2.4 0.0 3.0 0.05
 #pragma parameter vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
 #pragma parameter str "Strength" 15.0 10.0 40.0 1.0
 #pragma parameter power "Power" 0.10 0.0 0.5 0.01
 #pragma parameter LUT_Size1 "LUT Size 1" 16.0 0.0 64.0 16.0
-#pragma parameter LUT1_toggle "LUT 1 Toggle" 1.0 0.0 1.0 1.0
+#pragma parameter LUT1_toggle "LUT 1 Toggle" 0.0 0.0 1.0 1.0
 #pragma parameter LUT_Size2 "LUT Size 2" 64.0 0.0 64.0 16.0
-#pragma parameter LUT2_toggle "LUT 2 Toggle" 1.0 0.0 1.0 1.0
-#pragma parameter temperature "White Point" 6500.0 1000.0 12000.0 100.0
+#pragma parameter LUT2_toggle "LUT 2 Toggle" 0.0 0.0 1.0 1.0
+#pragma parameter temperature "White Point" 6504.0 1000.0 12000.0 100.0
 #pragma parameter luma_preserve "Preserve Luminance" 1.0 0.0 1.0 1.0
 #pragma parameter sat "Saturation" 1.0 0.0 3.0 0.01
 #pragma parameter lum "Luminance" 1.0 0.0 5.0 0.01
 #pragma parameter cntrst "Contrast" 1.0 0.0 2.0 0.01
-#pragma parameter black_level "Black Level" 0.0 0.0 1.0 0.01
+#pragma parameter black_level "Black Level" 0.0 0.0 1.0 0.005
 #pragma parameter blr "Black-Red Tint" 0.0 0.0 1.0 0.005
 #pragma parameter blg "Black-Green Tint" 0.0 0.0 1.0 0.005
 #pragma parameter blb "Black-Blue Tint" 0.0 0.0 1.0 0.005
@@ -117,6 +118,7 @@ COMPAT_VARYING vec4 TEX0;
 #define OutSize vec4(OutputSize, 1.0 / OutputSize)
 
 #ifdef PARAMETER_UNIFORM
+uniform COMPAT_PRECISION float gamma_in;
 uniform COMPAT_PRECISION float vignette;
 uniform COMPAT_PRECISION float str;
 uniform COMPAT_PRECISION float power;
@@ -146,14 +148,15 @@ uniform COMPAT_PRECISION float gb;
 uniform COMPAT_PRECISION float br;
 uniform COMPAT_PRECISION float bg;
 #else
+#define gamma_in 2.4
 #define vignette 1.0
 #define str 15.0
 #define power 0.1
 #define LUT_Size1 16.0
-#define LUT1_toggle 1.0
+#define LUT1_toggle 0.0
 #define LUT_Size2 64.0
-#define LUT2_toggle 1.0
-#define temperature 6500.0
+#define LUT2_toggle 0.0
+#define temperature 6504.0
 #define luma_preserve 1.0
 #define sat 1.0
 #define lum 1.0
@@ -176,33 +179,43 @@ uniform COMPAT_PRECISION float bg;
 #define bg 0.0
 #endif
 
-// white point adjustment
-// based on blog post by Neil Bartlett (inspired by Tanner Helland's work)
-// http://www.zombieprototypes.com/?p=210
+// White Point mapping (sRGB and linear light compensated)
+// Based on first comment post:
+//      http://www.zombieprototypes.com/?p=210#comment-4695029660
+// From the blog entry by Neil Bartlett
+//      http://www.zombieprototypes.com/?p=210
+// Inspired itself by Tanner Helland's work
+//      http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
+
 vec3 wp_adjust(vec3 color){
-   float temp = temperature / 100.0;
 
-   // all calculations assume a scale of 255. We'll normalize this at the end
-   vec3 wp = vec3(255.);
+    float temp = temperature / 100.0;
+    float k = temperature / 10000.0;
+    float lk = log(k);
+    // natural e
+    float e = 2.71828;
 
-   // calculate RED
-   wp.r = (temp <= 66.) ? 255. : 351.97690566805693 + 0.114206453784165 * (temp - 55.) - 40.25366309332127 * log(temp - 55.);
+    vec3 wp = vec3(1.);
 
-   // calculate GREEN
-   float mg = - 155.25485562709179 - 0.44596950469579133 * (temp - 2.)  + 104.49216199393888 * log(temp - 2.);
-   float pg =   325.4494125711974  + 0.07943456536662342 * (temp - 50.) - 28.0852963507957   * log(temp - 50.);
-   wp.g = (temp <= 66.) ? mg : pg;
+    // calculate RED                 a                       b                               e                       c                           d
+    wp.r = (temp <= 65.) ? 1. : 0.32068362618584273 + (0.19668730877673762 * pow(k - 0.21298613432655075, - 1.5139012907556737)) + (- 0.013883432789258415 * lk);
 
-   // calculate BLUE
-   wp.b = (temp >= 66.) ? 255. : (temp <= 19.) ? 0. : - 254.76935184120902 + 0.8274096064007395 * (temp - 10.) + 115.67994401066147 * log(temp - 10.) ;
+    // calculate GREEN   a                       b                               e                       c                           e                                   d
+    float mg = 1.226916242502167 + (- 1.3109482654223614 * pow(k - 0.44267061967913873, 3.) * pow(e, - 5.089297600846147 * (k - 0.44267061967913873))) + (0.6453936305542096 * lk);
+    float pg = 0.4860175851734596 + (0.1802139719519286 * pow(k - 0.14573069517701578, - 1.397716496795082)) + (- 0.00803698899233844 * lk);
+    wp.g = (temp <= 65.5) ? ((temp <= 8.) ? 0. : mg) : pg;
 
-   // clamp and normalize
-   wp.rgb = clamp(wp.rgb, vec3(0.), vec3(255.)) / vec3(255.);
+    // calculate BLUE
+    wp.b = (temp <= 19.) ? 0. : (temp >= 66.) ? 1. : 1.677499032830161 + (- 0.02313594016938082 * pow(k - 1.1367244820333684, 3.) * pow(e, - 4.221279555918655 * (k - 1.1367244820333684))) + (1.6550275798913296 * lk);
 
-   // this is dumb, but various cores don't always show white as white. Use this to make white white...
-   wp.rgb += vec3(red, green, blue);
+    // clamp
+    wp.rgb = clamp(wp.rgb, vec3(0.), vec3(1.));
 
-   return (color * wp);
+    // this is dumb, but various cores don't always show white as white. Use this to make white white...
+    wp.rgb += vec3(red, green, blue);
+
+    // Linear color input
+    return (color * wp);
 }
 
 vec3 sRGB_to_XYZ(vec3 RGB){
@@ -223,6 +236,7 @@ vec3 XYZtoYxy(vec3 XYZ){
     float Yxyb = (XYZrgb <= 0.0) ? 0.3769 : XYZ.g / XYZrgb;
     return vec3(Yxyr,Yxyg,Yxyb);
 }
+
 
 vec3 XYZ_to_sRGB(vec3 XYZ){
 
@@ -250,11 +264,26 @@ vec3 mixfix(vec3 a, vec3 b, float c)
     return (a.z < 1.0) ? mix(a, b, c) : a;
 }
 
+
+vec3 linear_to_sRGB(vec3 color, float gamma){
+
+    color = clamp(color, 0.0, 1.0);
+    color.r = (color.r <= 0.00313066844250063) ?
+    color.r * 12.92 : 1.055 * pow(color.r, 1.0 / gamma) - 0.055;
+    color.g = (color.g <= 0.00313066844250063) ?
+    color.g * 12.92 : 1.055 * pow(color.g, 1.0 / gamma) - 0.055;
+    color.b = (color.b <= 0.00313066844250063) ?
+    color.b * 12.92 : 1.055 * pow(color.b, 1.0 / gamma) - 0.055;
+
+    return color;
+}
+
+
 void main()
 {
 
 
-    vec3 imgColor = COMPAT_TEXTURE(Source, vTexCoord);
+    vec3 imgColor = pow(COMPAT_TEXTURE(Source, vTexCoord).rgb, vec3(gamma_in));
 
     float red = ( imgColor.r * (LUT_Size1 - 1.0) + 0.4999 ) / (LUT_Size1 * LUT_Size1);
     float green = ( imgColor.g * (LUT_Size1 - 1.0) + 0.4999 ) / LUT_Size1;
@@ -263,7 +292,7 @@ void main()
     float mixer = clamp(max((imgColor.b - blue1) / (blue2 - blue1), 0.0), 0.0, 32.0);
     vec3 color1 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue1, green ));
     vec3 color2 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue2, green ));
-    vec3 vcolor =  (LUT1_toggle < 1.0) ? imgColor : mixfix(color1, color2, mixer);      // mix(color1, color2, mixer);
+    vec3 vcolor =  (LUT1_toggle < 1.0) ? imgColor : mixfix(color1, color2, mixer);
 
 //  vignette block
     vec2 vpos = vTexCoord * (TextureSize.xy / InputSize.xy);
@@ -275,6 +304,7 @@ void main()
     vcolor += vec3(black_level) * (1.0-vcolor);
     vec4 vignetted = vec4(vcolor,1.0);
 
+    // change this to sigmoidal contrast
     vec4 avglum = vec4(0.5);
     vec4 screen = mix(vignetted.rgba, avglum, (1.0 - cntrst));
 
@@ -308,6 +338,6 @@ void main()
     vec3 color2_2 = COMPAT_TEXTURE( SamplerLUT2, vec2( blue2_2, green_2 ));
     vec3 LUT2_output = mixfix(color1_2, color2_2, mixer_2);
 
-    FragColor = (LUT2_toggle < 1.0) ? vec4(adjusted, 1.0) : vec4(LUT2_output, 1.0);
+    FragColor = (LUT2_toggle < 1.0) ? vec4(linear_to_sRGB(adjusted, 2.4), 1.0) : vec4(linear_to_sRGB(LUT2_output, 2.4), 1.0);
 }
 #endif
