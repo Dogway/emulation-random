@@ -334,7 +334,7 @@ vec3 contrast_sigmoid_inv(vec3 color, float cntrst, float mid){
 void main()
 {
 
-//  Pure power was crushing blacks (eg. DKC2). You can mimic pow(c, 2.4) by raising the gamma_in value
+//  Pure power was crushing blacks (eg. DKC2). You can mimic pow(c, 2.4) by raising the gamma_in value to 2.55
     vec3 imgColor = sRGB_to_linear(COMPAT_TEXTURE(Source, vTexCoord).rgb, vec3(gamma_in));
 
 //  Look LUT
