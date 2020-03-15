@@ -109,8 +109,8 @@ uniform COMPAT_PRECISION float temperature, luma_preserve, red, green, blue;
 
 vec3 wp_adjust(vec3 color){
 
-    float temp = temperature / 100.0;
-    float k = temperature / 10000.0;
+    float temp = temperature / 100.;
+    float k = temperature / 10000.;
     float lk = log(k);
 
     vec3 wp = vec3(1.);
