@@ -1,7 +1,7 @@
 /*
    Grade
    > Ubershader grouping some color related monolithic shaders like color-mangler, vignette, lut,
-   >  white_point, and the addition of black level, sigmoidal contrast and proper gamma transforms.
+   > white_point, and the addition of black level, sigmoidal contrast and proper gamma transforms.
 
    Author: hunterk, Guest, Dr. Venom, Dogway
    License: Public domain
@@ -349,7 +349,8 @@ void main()
 
 //  Saturation agnostic sigmoidal contrast
     vec3 Yxy = XYZtoYxy(sRGB_to_XYZ(vcolor));
-    vec3 contrast = (cntrst > 0.0) ? contrast_sigmoid(linear_to_sRGB(vec3(Yxy.r, 0.0, 0.0), 2.4), cntrst, mid) : contrast_sigmoid_inv(linear_to_sRGB(vec3(Yxy.r, 0.0, 0.0), 2.4), cntrst, mid);
+    vec3 toLinear = linear_to_sRGB(vec3(Yxy.r, 0.0, 0.0), 2.4);
+    vec3 contrast = (cntrst > 0.0) ? contrast_sigmoid(toLinear, cntrst, mid) : contrast_sigmoid_inv(toLinear, cntrst, mid);
     contrast.rgb = vec3(sRGB_to_linear(contrast, 2.4).r, Yxy.g, Yxy.b);
     vec3 XYZsrgb = clamp(XYZ_to_sRGB(YxytoXYZ(contrast)), 0.0, 1.0);
     contrast = (cntrst == 0.0) ? vcolor : XYZsrgb;
