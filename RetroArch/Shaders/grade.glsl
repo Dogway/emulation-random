@@ -21,7 +21,7 @@
 #pragma parameter lum "Brightness" 1.0 0.0 5.0 0.01
 #pragma parameter cntrst "Contrast" 0.0 -1.0 1.0 0.05
 #pragma parameter mid "Contrast Pivot" 0.5 0.0 1.0 0.01
-#pragma parameter black_level "Black Level" 0.0 0.0 1.0 0.01
+#pragma parameter black_level "Black Level" 0.0 -0.5 1.0 0.01
 #pragma parameter blr "Black-Red Tint" 0.0 0.0 1.0 0.005
 #pragma parameter blg "Black-Green Tint" 0.0 0.0 1.0 0.005
 #pragma parameter blb "Black-Blue Tint" 0.0 0.0 1.0 0.005
@@ -367,7 +367,7 @@ void main()
 
 
 //  RGB related transforms
-    vec4 screen = vec4(contrast, 1.0);
+    vec4 screen = vec4(max(contrast, 0.0), 1.0);
                    //  r    g    b  alpha ; alpha does nothing for our purposes
     mat4 color = mat4(  r,  rg,  rb, 0.0,  //red tint
                        gr,   g,  gb, 0.0,  //green tint
