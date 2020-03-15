@@ -7,7 +7,7 @@
    License: Public domain
 */
 
-#pragma parameter gamma_in "CRT Gamma" 2.4 0.0 3.0 0.05
+#pragma parameter gamma_in "CRT Gamma" 2.55 0.0 3.0 0.05
 #pragma parameter vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
 #pragma parameter str "Vig.Strength" 15.0 10.0 40.0 1.0
 #pragma parameter power "Vig.Power" 0.10 0.0 0.5 0.01
