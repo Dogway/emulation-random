@@ -21,7 +21,7 @@
 #pragma parameter lum "Brightness" 1.0 0.0 5.0 0.01
 #pragma parameter cntrst "Contrast" 0.0 -1.0 1.0 0.05
 #pragma parameter mid "Contrast Pivot" 0.5 0.0 1.0 0.01
-#pragma parameter black_level "Black Level" 0.0 0.0 1.0 0.005
+#pragma parameter black_level "Black Level" 0.0 0.0 1.0 0.01
 #pragma parameter blr "Black-Red Tint" 0.0 0.0 1.0 0.005
 #pragma parameter blg "Black-Green Tint" 0.0 0.0 1.0 0.005
 #pragma parameter blb "Black-Blue Tint" 0.0 0.0 1.0 0.005
@@ -237,10 +237,9 @@ vec3 sRGB_to_XYZ(vec3 RGB){
 vec3 XYZtoYxy(vec3 XYZ){
 
     float XYZrgb = XYZ.r+XYZ.g+XYZ.b;
-    float Yxyr = XYZ.g;
     float Yxyg = (XYZrgb <= 0.0) ? 0.3805 : XYZ.r / XYZrgb;
     float Yxyb = (XYZrgb <= 0.0) ? 0.3769 : XYZ.g / XYZrgb;
-    return vec3(Yxyr,Yxyg,Yxyb);
+    return vec3(XYZ.g, Yxyg, Yxyb);
 }
 
 
@@ -257,7 +256,7 @@ vec3 XYZ_to_sRGB(vec3 XYZ){
 vec3 YxytoXYZ(vec3 Yxy){
 
     float Xs = Yxy.r * (Yxy.g/Yxy.b);
-    float Xsz = (Yxy.r <= 0.0) ? 0 : 1;
+    float Xsz = (Yxy.r <= 0.0) ? 0.0 : 1.0;
     vec3 XYZ = vec3(Xsz,Xsz,Xsz) * vec3(Xs, Yxy.r, (Xs/Yxy.g)-Xs-Yxy.r);
     return XYZ;
 }
@@ -285,10 +284,24 @@ vec3 linear_to_sRGB(vec3 color, float gamma){
 }
 
 
+vec3 sRGB_to_linear(vec3 color, float gamma){
+
+    color = clamp(color, 0.0, 1.0);
+    color.r = (color.r <= 0.04045) ?
+    color.r / 12.92 : pow((color.r + 0.055) / (1.055), gamma);
+    color.g = (color.g <= 0.04045) ?
+    color.g / 12.92 : pow((color.g + 0.055) / (1.055), gamma);
+    color.b = (color.b <= 0.04045) ?
+    color.b / 12.92 : pow((color.b + 0.055) / (1.055), gamma);
+
+    return color;
+}
+
+
+//  Performs better in gamma encoded sources
 vec3 contrast_sigmoid(vec3 color, float cntrst, float mid){
 
     cntrst = pow(cntrst + 1, 3.);
-    mid = pow(mid, 2.2);
 
     float knee = 1. / (1. + exp(cntrst * mid));
     float shldr = 1. / (1. + exp(cntrst * (mid - 1.)));
@@ -301,10 +314,10 @@ vec3 contrast_sigmoid(vec3 color, float cntrst, float mid){
 }
 
 
+//  Performs better in gamma encoded sources
 vec3 contrast_sigmoid_inv(vec3 color, float cntrst, float mid){
 
     cntrst = pow(cntrst - 1, 3.);
-    mid = pow(mid, 2.2);
 
     float knee = 1. / (1. + exp (cntrst * mid));
     float shldr = 1. / (1. + exp (cntrst * (mid - 1.)));
@@ -321,8 +334,10 @@ vec3 contrast_sigmoid_inv(vec3 color, float cntrst, float mid){
 void main()
 {
 
-    vec3 imgColor = pow(COMPAT_TEXTURE(Source, vTexCoord).rgb, vec3(gamma_in));
+//  Pure power was crushing blacks (eg. DKC2). You can mimic pow(c, 2.4) by raising the gamma_in value
+    vec3 imgColor = sRGB_to_linear(COMPAT_TEXTURE(Source, vTexCoord).rgb, vec3(gamma_in));
 
+//  Look LUT
     float red = ( imgColor.r * (LUT_Size1 - 1.0) + 0.4999 ) / (LUT_Size1 * LUT_Size1);
     float green = ( imgColor.g * (LUT_Size1 - 1.0) + 0.4999 ) / LUT_Size1;
     float blue1 = (floor( imgColor.b  * (LUT_Size1 - 1.0) ) / LUT_Size1) + red;
@@ -332,20 +347,26 @@ void main()
     vec3 color2 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue2, green ));
     vec3 vcolor =  (LUT1_toggle < 1.0) ? imgColor : mixfix(color1, color2, mixer);
 
-    vec3 contrast = (cntrst == 0.0) ? vcolor : (cntrst > 0.0) ? contrast_sigmoid(vcolor, cntrst, mid) : contrast_sigmoid_inv(vcolor, cntrst, mid);
+//  Saturation agnostic sigmoidal contrast
+    vec3 Yxy = XYZtoYxy(sRGB_to_XYZ(vcolor));
+    vec3 contrast = (cntrst > 0.0) ? contrast_sigmoid(linear_to_sRGB(vec3(Yxy.r, 0.0, 0.0), 2.4), cntrst, mid) : contrast_sigmoid_inv(linear_to_sRGB(vec3(Yxy.r, 0.0, 0.0), 2.4), cntrst, mid);
+    contrast.rgb = vec3(sRGB_to_linear(contrast, 2.4).r, Yxy.g, Yxy.b);
+    vec3 XYZsrgb = clamp(XYZ_to_sRGB(YxytoXYZ(contrast)), 0.0, 1.0);
+    contrast = (cntrst == 0.0) ? vcolor : XYZsrgb;
 
-//  vignette block
+
+//  Vignetting & Black Level
     vec2 vpos = vTexCoord * (TextureSize.xy / InputSize.xy);
     vpos *= 1.0 - vpos.xy;
     float vig = vpos.x * vpos.y * str;
     vig = min(pow(vig, power), 1.0);
     contrast *= (vignette > 0.5) ? vig : 1.0;
 
-    contrast += vec3(black_level) * (1.0-contrast);
-
-    vec4 screen = vec4(contrast,1.0);
+    contrast += vec3(black_level / 5.0) * (1.0 - contrast);
 
 
+//  RGB related transforms
+    vec4 screen = vec4(contrast, 1.0);
                    //  r    g    b  alpha ; alpha does nothing for our purposes
     mat4 color = mat4(  r,  rg,  rb, 0.0,  //red tint
                        gr,   g,  gb, 0.0,  //green tint
@@ -361,12 +382,15 @@ void main()
     screen = clamp(screen * lum, 0.0, 1.0);
     screen = color * screen;
 
+//  Color Temperature
     vec3 adjusted = wp_adjust(vec3(screen));
     vec3 base_luma = XYZtoYxy(sRGB_to_XYZ(vec3(screen)));
     vec3 adjusted_luma = XYZtoYxy(sRGB_to_XYZ(adjusted));
-    adjusted = (luma_preserve > 0.5) ? adjusted_luma + (vec3(base_luma.r,0.,0.) - vec3(adjusted_luma.r,0.,0.)) : adjusted_luma;
+    adjusted = (luma_preserve > 0.5) ? adjusted_luma + (vec3(base_luma.r, 0.0, 0.0) - vec3(adjusted_luma.r, 0.0, 0.0)) : adjusted_luma;
     adjusted = clamp(XYZ_to_sRGB(YxytoXYZ(adjusted)), 0.0, 1.0);
 
+
+//  Technical LUT
     float red_2 = ( adjusted.r * (LUT_Size2 - 1.0) + 0.4999 ) / (LUT_Size2 * LUT_Size2);
     float green_2 = ( adjusted.g * (LUT_Size2 - 1.0) + 0.4999 ) / LUT_Size2;
     float blue1_2 = (floor( adjusted.b  * (LUT_Size2 - 1.0) ) / LUT_Size2) + red_2;
