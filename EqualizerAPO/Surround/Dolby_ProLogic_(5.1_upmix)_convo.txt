@@ -22,5 +22,5 @@ Filter 1: ON LPQ Fc 22050 Hz Q 0.541
 Filter 2: ON LPQ Fc 22050 Hz Q 1.307
 
 Channel: LFE
-Filter 1: ON LPQ Fc 120 Hz Q 0.541
-Filter 2: ON LPQ Fc 120 Hz Q 1.307
+Filter 1: ON LPQ Fc 100 Hz Q 0.541
+Filter 2: ON LPQ Fc 100 Hz Q 1.307
