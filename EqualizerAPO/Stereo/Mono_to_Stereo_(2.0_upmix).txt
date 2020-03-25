@@ -1,0 +1,14 @@
+# Mono to Stereo (2.0), ported from Evgeniy Gurovskikh algorithm
+#    Jose Linares -Dogway-
+#        >> https://github.com/Dogway
+
+
+Copy: LX=L
+Channel: LX
+Delay: 0.000755 ms
+
+Copy: RX=L
+Channel: RX
+Delay: 0.011345 ms
+
+Copy: L=0.7*LX+0.3*RX R=0.3*LX+0.7*RX

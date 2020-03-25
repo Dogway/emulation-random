@@ -1,0 +1,33 @@
+# BeHappy Stereo Action #2 (5.1 Upmix)
+#    Jose Linares -Dogway-
+#        >> https://github.com/Dogway
+
+
+# Back
+Copy: LB=L RB=R
+Channel: LB RB
+Delay: 20 ms
+
+Filter 1: ON HPQ Fc 100 Hz Q 0.707
+Filter 2: ON HPQ Fc 100 Hz Q 0.707
+Filter 3: ON LPQ Fc 7000 Hz Q 0.707
+Filter 4: ON LPQ Fc 7000 Hz Q 0.707
+
+# Front
+Copy: LI=L RI=R
+Channel: LI RI
+
+Filter 1: ON HPQ Fc 20 Hz Q 0.707
+Filter 2: ON HPQ Fc 20 Hz Q 0.707
+Filter 3: ON LPQ Fc 20000 Hz Q 0.707
+Filter 4: ON LPQ Fc 20000 Hz Q 0.707
+
+Copy: LFEX=0.5*L+0.5*R
+Copy: LC=0.668*LI+-0.668*RI RC=0.668*RI+-0.668*LI
+
+Copy: CX=LI+-1.0*LC+RI+-1.0*RC
+Copy: L=LC R=RC C=0.398*CX LFE=-0.447*LFEX RL=0.531*LB+-0.531*RB RR=0.531*RB+-0.531*LB
+
+Channel: LFE
+Filter 1: ON LPQ Fc 120 Hz Q 0.541
+Filter 2: ON LPQ Fc 120 Hz Q 1.307

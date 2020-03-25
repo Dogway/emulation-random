@@ -1,0 +1,32 @@
+# BeHappy Stereo Farina (5.1 Upmix)
+#    Jose Linares -Dogway-
+#        >> https://github.com/Dogway
+
+
+# Back
+Copy: LB=L RB=R
+Channel: LB RB
+Delay: 20 ms
+
+Filter 1: ON HPQ Fc 100 Hz Q 0.707
+Filter 2: ON HPQ Fc 100 Hz Q 0.707
+Filter 3: ON LPQ Fc 7000 Hz Q 0.707
+Filter 4: ON LPQ Fc 7000 Hz Q 0.707
+
+# Front
+Copy: LI=L RI=R
+Channel: LI RI
+
+Filter 1: ON HPQ Fc 20 Hz Q 0.707
+Filter 2: ON HPQ Fc 20 Hz Q 0.707
+Filter 3: ON LPQ Fc 20000 Hz Q 0.707
+Filter 4: ON LPQ Fc 20000 Hz Q 0.707
+
+Copy: LFEX=0.5*L+0.5*R
+Copy: LCA=0.5*LI+0.5*RI LCB=0.5*LI+-0.5*RI
+
+Copy: L=0.8125*LCA+1.1875*LCB R=0.8125*LCA+-1.1875*LCB C=0.375*LI+0.375*RI LFE=-0.5*LFEX RL=0.668*LB+-0.668*RB RR=0.668*RB+-0.668*LB
+
+Channel: LFE
+Filter 1: ON LPQ Fc 120 Hz Q 0.541
+Filter 2: ON LPQ Fc 120 Hz Q 1.307
