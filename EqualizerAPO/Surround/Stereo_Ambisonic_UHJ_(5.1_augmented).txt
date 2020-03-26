@@ -1,0 +1,33 @@
+# Stereo Ambisonic UHJ upmix to 4.0, augmented to 5.1 (left out Top channel)
+#    Jose Linares -Dogway-
+#        >> https://github.com/Dogway
+#
+# ref: https://midimagic.sgc-hosting.com/uhjbcode.htm
+
+
+Copy: LI=L RI=R
+Channel: LI RI
+Delay: 12 ms
+Filter 1: ON HPQ Fc 100 Hz Q 0.541
+Filter 2: ON HPQ Fc 100 Hz Q 1.307
+Convolution: linear_phase_24bit_48khz_stereo_(90_LR_phase_-_L_invert).wav
+
+Copy: LX=0.526175*L+0.204364*R+0.083*LI+0.1586*RI
+Copy: RX=0.526175*R+0.204364*L+0.083*RI+0.1586*LI
+Copy: CX=0.3535*LX+0.3535*RX
+
+Copy: L=LX R=RX C=CX LFE=CX RL=0.356779*L+0.034968*R+-0.251746*LI+-0.176145*RI RR=0.356779*R+0.034968*L+-0.251746*RI+-0.176145*LI
+
+Channel: L R RL RR
+Filter 1: ON LPQ Fc 22050 Hz Q 0.541
+Filter 2: ON LPQ Fc 22050 Hz Q 1.307
+
+Channel: C
+Filter 1: ON HPQ Fc 70 Hz Q 0.541
+Filter 2: ON HPQ Fc 70 Hz Q 1.307
+Filter 3: ON LPQ Fc 20000 Hz Q 0.541
+Filter 4: ON LPQ Fc 20000 Hz Q 1.307
+
+Channel: LFE
+Filter 1: ON LPQ Fc 120 Hz Q 0.541
+Filter 2: ON LPQ Fc 120 Hz Q 1.307
