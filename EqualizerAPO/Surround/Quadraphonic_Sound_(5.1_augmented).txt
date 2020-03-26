@@ -16,7 +16,7 @@ Convolution: linear_phase_24bit_48khz_stereo_(90_LR_phase_-_L_invert).wav
 
 Copy: CX=0.25*L+0.25*R
 
-Copy: L=0.436*L+0.19*R R=0.436*R+0.19*L C=CX LFE=CX RL=0.436*LI+0.19*RI RR=0.436*RI+0.19*LI
+Copy: L=0.46*L+0.19*R R=0.46*R+0.19*L C=CX LFE=CX RL=0.46*LI+0.19*RI RR=0.46*RI+0.19*LI
 
 Channel: L R RL RR
 Filter 1: ON LPQ Fc 22050 Hz Q 0.541
