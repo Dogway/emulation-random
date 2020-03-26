@@ -44,7 +44,7 @@ Use these configs in [EqualizerAPO](https://sourceforge.net/projects/equalizerap
 
 
 
-- [QSound](https://en.wikipedia.org/wiki/QSound): It was a virtualization audio technology to make Stereo audio setups sound as it was Surround. It was popularized by the Capcom arcade boards like CPS2 and CPS3 although late CPS1 (CPS Dash) titles also implement this technology. It was also employed in the Zinc arcade boards and a bunch of post-MegaDrive Sega console systems. The gist here is that QSound is known to upmix well using Dolby ProLogic.
+- [QSound](https://en.wikipedia.org/wiki/QSound): It was a virtualization audio technology to make Stereo audio setups sound as it was Surround. It was popularized by the Capcom arcade boards like CPS2 and CPS3 although late CPS1 (CPS Dash) titles also implement this technology. It was also employed in the Zinc arcade boards and a bunch of post-MegaDrive Sega console systems. The gist here is that QSound is known to upmix well using Dolby Surround. Other possible decoders include Sansui Quadraphonic and Dolby ProLogic.
 <pre>
 	Mega-CD, 32X, Saturn, Dreamcast:
 	<a href="https://segaretro.org/QSound">https://segaretro.org/QSound</a>
