@@ -1,4 +1,4 @@
-# Mono to Stereo (2.0), ported from Evgeniy Gurovskikh algorithm
+# Mono to (Pseudo) Stereo (2.0), ported from Evgeniy Gurovskikh algorithm
 #    Jose Linares -Dogway-
 #        >> https://github.com/Dogway
 

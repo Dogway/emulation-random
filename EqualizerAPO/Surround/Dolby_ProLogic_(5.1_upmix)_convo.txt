@@ -3,21 +3,21 @@
 #        >> https://github.com/Dogway
 
 
-Copy: LI=0.354*L RI=0.354*R
+Copy: LI=0.3535*L RI=0.3535*R
 Channel: LI RI
-Delay: 12 ms
+Delay: 20 ms
 Filter 1: ON HPQ Fc 100 Hz Q 0.541
 Filter 2: ON HPQ Fc 100 Hz Q 1.307
-Filter 3: ON LPQ Fc 8000 Hz Q 0.541
-Filter 4: ON LPQ Fc 8000 Hz Q 1.307
+Filter 3: ON LPQ Fc 7000 Hz Q 0.541
+Filter 4: ON LPQ Fc 7000 Hz Q 1.307
 Convolution: linear_phase_24bit_48khz_stereo_(90_LR_phase_-_L_invert).wav
 
 
-Copy: CX=0.354*L+0.354*R
+Copy: CX=0.3535*L+0.3535*R
 
-Copy: L=0.8*LI+0.2*CX R=0.8*RI+0.2*CX C=0.75*CX LFE=0.9*CX RL=LI+RI RR=LI+RI
+Copy: L=0.8*L+0.2*CX R=0.8*R+0.2*CX C=0.75*CX LFE=0.9*CX RL=LI+RI RR=LI+RI
 
-Channel: L R RL RR
+Channel: RL RR
 Filter 1: ON LPQ Fc 22050 Hz Q 0.541
 Filter 2: ON LPQ Fc 22050 Hz Q 1.307
 

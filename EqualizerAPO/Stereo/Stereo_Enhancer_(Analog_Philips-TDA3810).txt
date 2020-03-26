@@ -1,17 +1,13 @@
-# Stereo Enhancer - Analog Philips chip TDA3810 (sound porcessor)
+# Stereo Enhancer - Analog Philips chip TDA3810 (sound processor)
 #    Jose Linares -Dogway-
 #        >> https://github.com/Dogway
 
 
 Copy: LX=L RX=R
 Channel: LX RX
-
 Filter: ON BP Fc 3500 Hz BW Oct 0.533
 
-Channel: LX RX
-Preamp: -6.0 dB
-
-Copy: L=-1.0*LX+0.5*L R=-1.0*RX+0.5*R
+Copy: L=-0.5*LX+0.5*L R=-0.5*RX+0.5*R
 
 Channel: L R
 Preamp: +6.0 dB

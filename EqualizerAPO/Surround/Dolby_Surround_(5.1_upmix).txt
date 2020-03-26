@@ -1,17 +1,21 @@
-# Dolby Surround is 4.0 in Stereo (2.0), this upmixes to 5.1
+# Dolby Surround is 4.0 in Stereo (2.0), here augmented to 5.1
 #    Jose Linares -Dogway-
 #        >> https://github.com/Dogway
 
 
-Copy: MUP=-1.0*L+-1.0*R
+Copy: MUP=-0.3535*L+-0.3535*R
 Channel: MUP
 Delay: 24 ms
-Filter 1: ON LP Fc 7000 Hz
-Filter 2: ON HP Fc 100 Hz
+Filter 1: ON HP Fc 100 Hz Q 0.707
+Filter 2: ON HP Fc 100 Hz Q 0.707
+Filter 3: ON LP Fc 7000 Hz Q 0.707
+Filter 4: ON LP Fc 7000 Hz Q 0.707
 
 Copy: CX=0.5*L+0.5*R
 
-Copy: L=L R=R C=CX LFE=CX RL=0.5*MUP RR=0.5*MUP
+Copy: L=L R=R C=0.707*CX LFE=CX RL=MUP RR=MUP
 
 Channel: LFE
-Filter: ON LP Fc 120 Hz Gain -3.5 dB
+Preamp: -3.5 dB
+Filter 1: ON LPQ Fc 100 Hz Q 0.707
+Filter 2: ON LPQ Fc 100 Hz Q 0.707

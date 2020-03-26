@@ -10,12 +10,11 @@ Filter 1: ON HPQ Fc 100 Hz Q 0.541
 Filter 2: ON HPQ Fc 100 Hz Q 1.307
 Convolution: linear_phase_24bit_48khz_stereo_(90_LR_phase_-_L_invert).wav
 
-
-Copy: CX=0.354*L+0.354*R
+Copy: CX=0.3535*L+0.3535*R
 
 Copy: L=0.5*L R=0.5*R C=CX LFE=CX RL=0.436*LI+0.245*RI RR=0.436*RI+0.245*LI
 
-Channel: L R RL RR
+Channel: RL RR
 Filter 1: ON LPQ Fc 22050 Hz Q 0.541
 Filter 2: ON LPQ Fc 22050 Hz Q 1.307
 
