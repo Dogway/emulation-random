@@ -1,4 +1,4 @@
-# Dolby ProLogic IIz upmix to 7.1.2
+# Dolby ProLogic IIz upmix to 7.1.2 (backwards compatible up to Dolby Surround)
 #    Jose Linares -Dogway-
 #        >> https://github.com/Dogway
 
