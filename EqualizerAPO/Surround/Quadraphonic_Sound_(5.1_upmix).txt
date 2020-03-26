@@ -4,27 +4,20 @@
 
 # ref: https://midimagic.sgc-hosting.com/quadrafon.htm
 
+
 Copy: LI=L RI=R
 Channel: LI RI
 Preamp: -3 dB
 Delay: 12 ms
 Filter 1: ON HPQ Fc 100 Hz Q 0.541
 Filter 2: ON HPQ Fc 100 Hz Q 1.307
-# Filter 3: ON LPQ Fc 7000 Hz Q 0.541
-# Filter 4: ON LPQ Fc 7000 Hz Q 1.307
 
-# 90º Phase Shift and Invert L (-90) Convolution
 Convolution: linear_phase_24bit_48khz_stereo_(90_LR_phase_-_L_invert).wav
 
 Copy: CX=0.25*L+0.25*R
 
-# Quadraphonic Output
-# Copy: LF=0.436*L+0.19*R RF=0.436*R+0.19*L
-
-# Conform to 5.1 Output
 Copy: L=0.436*L+0.19*R R=0.436*R+0.19*L C=CX LFE=CX RL=0.436*LI+0.19*RI RR=0.436*RI+0.19*LI
 
-# Aliasing protection
 Channel: L R RL RR
 Filter 1: ON LPQ Fc 22050 Hz Q 0.541
 Filter 2: ON LPQ Fc 22050 Hz Q 1.307
