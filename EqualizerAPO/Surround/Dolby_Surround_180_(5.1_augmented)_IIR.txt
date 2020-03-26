@@ -1,0 +1,22 @@
+# Dolby Surround is 4.0 in Stereo (2.0), here augmented to 5.1
+#    Jose Linares -Dogway-
+#        >> https://github.com/Dogway
+
+
+# Originally 90º shift, but games mostly employed 180º phase shift for performance reasons
+Copy: MUP=-0.3535*L+-0.3535*R
+Channel: MUP
+Delay: 24 ms
+Filter 1: ON HP Fc 100 Hz Q 0.707
+Filter 2: ON HP Fc 100 Hz Q 0.707
+Filter 3: ON LP Fc 7000 Hz Q 0.707
+Filter 4: ON LP Fc 7000 Hz Q 0.707
+
+Copy: CX=0.5*L+0.5*R
+
+Copy: L=L R=R C=0.707*CX LFE=CX RL=MUP RR=MUP
+
+Channel: LFE
+Preamp: -3.5 dB
+Filter 1: ON LPQ Fc 100 Hz Q 0.707
+Filter 2: ON LPQ Fc 100 Hz Q 0.707
