@@ -1,8 +1,8 @@
 # EqualizerAPO - Upmix configs
 
-Use these configs in [EqualizerAPO](https://sourceforge.net/projects/equalizerapo/) for programs that can't upmix Surround to 5.1 channels on their own, for example Retroarch or MAME.
+Use these configs in [EqualizerAPO](https://sourceforge.net/projects/equalizerapo/) for programs that can't upmix Surround to 5.1 channels on their own, for example PCSX2, Retroarch or MAME.
 
-- [Dolby Surround](https://en.wikipedia.org/wiki/Dolby_Pro_Logic#Dolby_Surround): It's Quadraphonic channel audio encoded in Stereo mix. It was used extensively in retro (16-bit and 32-bit) console systems. Check the links:
+- [Dolby Surround](https://en.wikipedia.org/wiki/Dolby_Pro_Logic#Dolby_Surround): It's Dolby Quadraphonic channel audio encoded in Stereo mix. It was used extensively in retro (16-bit and 32-bit) console systems. See links:
 <pre>
 	Super Nintendo:
 	<a href="https://www.mobygames.com/attribute/sheet/attributeId,136/p,15/">https://www.mobygames.com/attribute/sheet/attributeId,136/p,15/</a>
@@ -44,7 +44,7 @@ Use these configs in [EqualizerAPO](https://sourceforge.net/projects/equalizerap
 
 
 
-- [QSound](https://en.wikipedia.org/wiki/QSound): It was a virtualization audio technology to make Stereo audio setups sound as it was Surround. It was popularized by the Capcom arcade boards like CPS2 and CPS3 although late CPS1 (CPS Dash) titles also implement this technology. It was also employed in the Zinc arcade boards and a bunch of post-MegaDrive Sega console systems. The gist here is that QSound is known to upmix well using Dolby Surround. Other possible decoders include Sansui Quadraphonic and Dolby ProLogic.
+- [QSound](https://en.wikipedia.org/wiki/QSound): It was a virtualization audio technology to make Stereo audio setups sound as it was Surround. It was popularized by the Capcom arcade boards like CPS2 and CPS3 although late CPS1 (CPS Dash) titles also implement this technology. It was also employed in the Zinc arcade boards and sparsely on post-MegaDrive Sega console systems. The gist here is that QSound is known to upmix well using Dolby Surround. However I recommend to use Quadraphonic Sound (included) for better upmix quality.
 <pre>
 	Mega-CD, 32X, Saturn, Dreamcast:
 	<a href="https://segaretro.org/QSound">https://segaretro.org/QSound</a>
