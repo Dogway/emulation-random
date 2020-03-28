@@ -9,8 +9,8 @@
 
 #pragma parameter gamma_in "CRT Gamma" 2.55 0.0 3.0 0.05
 #pragma parameter vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
-#pragma parameter str "Vig.Strength" 15.0 10.0 40.0 1.0
-#pragma parameter power "Vig.Power" 0.10 0.0 0.5 0.01
+#pragma parameter str "Vig.Strength" 40.0 10.0 40.0 1.0
+#pragma parameter power "Vig.Power" 0.20 0.0 0.5 0.01
 #pragma parameter LUT_Size1 "LUT Size 1" 16.0 0.0 64.0 16.0
 #pragma parameter LUT1_toggle "LUT 1 Toggle" 0.0 0.0 1.0 1.0
 #pragma parameter LUT_Size2 "LUT Size 2" 64.0 0.0 64.0 16.0
@@ -25,18 +25,15 @@
 #pragma parameter blr "Black-Red Tint" 0.0 0.0 1.0 0.005
 #pragma parameter blg "Black-Green Tint" 0.0 0.0 1.0 0.005
 #pragma parameter blb "Black-Blue Tint" 0.0 0.0 1.0 0.005
-#pragma parameter r "Red" 1.0 0.0 2.0 0.01
-#pragma parameter g "Green" 1.0 0.0 2.0 0.01
-#pragma parameter b "Blue" 1.0 0.0 2.0 0.01
-#pragma parameter red "Red Shift" 0.0 -1.0 1.0 0.01
-#pragma parameter green "Green Shift" 0.0 -1.0 1.0 0.01
-#pragma parameter blue "Blue Shift" 0.0 -1.0 1.0 0.01
-#pragma parameter rg "Red-Green Tint" 0.0 0.0 1.0 0.005
-#pragma parameter rb "Red-Blue Tint" 0.0 0.0 1.0 0.005
-#pragma parameter gr "Green-Red Tint" 0.0 0.0 1.0 0.005
-#pragma parameter gb "Green-Blue Tint" 0.0 0.0 1.0 0.005
-#pragma parameter br "Blue-Red Tint" 0.0 0.0 1.0 0.005
-#pragma parameter bg "Blue-Green Tint" 0.0 0.0 1.0 0.005
+#pragma parameter r "White-Red Tint" 1.0 0.0 2.0 0.01
+#pragma parameter g "White-Green Tint" 1.0 0.0 2.0 0.01
+#pragma parameter b "White-Blue Tint" 1.0 0.0 2.0 0.01
+#pragma parameter rg "Red-Green Tint" 0.0 -1.0 1.0 0.005
+#pragma parameter rb "Red-Blue Tint" 0.0 -1.0 1.0 0.005
+#pragma parameter gr "Green-Red Tint" 0.0 -1.0 1.0 0.005
+#pragma parameter gb "Green-Blue Tint" 0.0 -1.0 1.0 0.005
+#pragma parameter br "Blue-Red Tint" 0.0 -1.0 1.0 0.005
+#pragma parameter bg "Blue-Green Tint" 0.0 -1.0 1.0 0.005
 
 
 #if defined(VERTEX)
@@ -143,9 +140,6 @@ uniform COMPAT_PRECISION float blb;
 uniform COMPAT_PRECISION float r;
 uniform COMPAT_PRECISION float g;
 uniform COMPAT_PRECISION float b;
-uniform COMPAT_PRECISION float red;
-uniform COMPAT_PRECISION float green;
-uniform COMPAT_PRECISION float blue;
 uniform COMPAT_PRECISION float rg;
 uniform COMPAT_PRECISION float rb;
 uniform COMPAT_PRECISION float gr;
@@ -174,9 +168,6 @@ uniform COMPAT_PRECISION float bg;
 #define r 1.0
 #define g 1.0
 #define b 1.0
-#define red 0.0
-#define green 0.0
-#define blue 0.0
 #define rg 0.0
 #define rb 0.0
 #define gr 0.0
@@ -216,9 +207,6 @@ vec3 wp_adjust(vec3 color){
 
     // clamp
     wp.rgb = clamp(wp.rgb, vec3(0.), vec3(1.));
-
-    // this is dumb, but various cores don't always show white as white. Use this to make white white...
-    wp.rgb += vec3(red, green, blue);
 
     // Linear color input
     return (color * wp);
@@ -298,7 +286,7 @@ vec3 sRGB_to_linear(vec3 color, float gamma){
 }
 
 
-//  Performs better in gamma encoded sources
+//  Performs better in gamma encoded space
 vec3 contrast_sigmoid(vec3 color, float cntrst, float mid){
 
     cntrst = pow(cntrst + 1, 3.);
@@ -314,7 +302,7 @@ vec3 contrast_sigmoid(vec3 color, float cntrst, float mid){
 }
 
 
-//  Performs better in gamma encoded sources
+//  Performs better in gamma encoded space
 vec3 contrast_sigmoid_inv(vec3 color, float cntrst, float mid){
 
     cntrst = pow(cntrst - 1, 3.);
