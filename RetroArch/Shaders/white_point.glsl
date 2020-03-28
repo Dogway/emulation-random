@@ -129,7 +129,7 @@ vec3 wp_adjust(vec3 color){
     // clamp
     wp.rgb = clamp(wp.rgb, vec3(0.), vec3(1.));
 
-    // this is dumb, but various cores don't always show white as white. Use this to make white white...
+    // R/G/B independent manual White Point adjustment
     wp.rgb += vec3(red, green, blue);
 
     // Linear color input
