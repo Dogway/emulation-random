@@ -18,7 +18,7 @@
 #pragma parameter temperature "White Point" 6504.0 1000.0 12000.0 100.0
 #pragma parameter luma_preserve "WP Preserve Luminance" 1.0 0.0 1.0 1.0
 #pragma parameter sat "Saturation" 1.0 0.0 3.0 0.01
-#pragma parameter lum "Brightness" 1.0 0.0 5.0 0.01
+#pragma parameter lum "Brightness" 1.0 0.0 2.0 0.01
 #pragma parameter cntrst "Contrast" 0.0 -1.0 1.0 0.05
 #pragma parameter mid "Contrast Pivot" 0.5 0.0 1.0 0.01
 #pragma parameter black_level "Black Level" 0.0 -0.5 1.0 0.01
@@ -368,7 +368,7 @@ void main()
                        0.0, 0.0, 0.0, 1.0);
 
     color *= adjust;
-    screen = clamp(screen * lum, 0.0, 1.0);
+    screen = clamp(screen * lum * 2.0, 0.0, 1.0);
     screen = color * screen;
 
 //  Color Temperature
