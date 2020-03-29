@@ -209,7 +209,7 @@ vec3 wp_adjust(vec3 color){
     wp.rgb = clamp(wp.rgb, vec3(0.), vec3(1.));
 
     // Linear color input
-    return (color * wp);
+    return color * wp;
 }
 
 vec3 sRGB_to_XYZ(vec3 RGB){
@@ -268,7 +268,7 @@ vec3 linear_to_sRGB(vec3 color, float gamma){
     color.b = (color.b <= 0.00313066844250063) ?
     color.b * 12.92 : 1.055 * pow(color.b, 1.0 / gamma) - 0.055;
 
-    return color;
+    return color.rgb;
 }
 
 
@@ -282,14 +282,14 @@ vec3 sRGB_to_linear(vec3 color, float gamma){
     color.b = (color.b <= 0.04045) ?
     color.b / 12.92 : pow((color.b + 0.055) / (1.055), gamma);
 
-    return color;
+    return color.rgb;
 }
 
 
 //  Performs better in gamma encoded space
 vec3 contrast_sigmoid(vec3 color, float cntrst, float mid){
 
-    cntrst = pow(cntrst + 1, 3.);
+    cntrst = pow(cntrst + 1., 3.);
 
     float knee = 1. / (1. + exp(cntrst * mid));
     float shldr = 1. / (1. + exp(cntrst * (mid - 1.)));
@@ -298,14 +298,14 @@ vec3 contrast_sigmoid(vec3 color, float cntrst, float mid){
     color.g = (1. / (1. + exp(cntrst * (mid - color.g))) - knee) / (shldr - knee);
     color.b = (1. / (1. + exp(cntrst * (mid - color.b))) - knee) / (shldr - knee);
 
-    return color;
+    return color.rgb;
 }
 
 
 //  Performs better in gamma encoded space
 vec3 contrast_sigmoid_inv(vec3 color, float cntrst, float mid){
 
-    cntrst = pow(cntrst - 1, 3.);
+    cntrst = pow(cntrst - 1., 3.);
 
     float knee = 1. / (1. + exp (cntrst * mid));
     float shldr = 1. / (1. + exp (cntrst * (mid - 1.)));
@@ -314,7 +314,7 @@ vec3 contrast_sigmoid_inv(vec3 color, float cntrst, float mid){
     color.g = mid - log(1. / (color.g * (shldr - knee) + knee) - 1.) / cntrst;
     color.b = mid - log(1. / (color.b * (shldr - knee) + knee) - 1.) / cntrst;
 
-    return color;
+    return color.rgb;
 }
 
 
@@ -323,7 +323,7 @@ void main()
 {
 
 //  Pure power was crushing blacks (eg. DKC2). You can mimic pow(c, 2.4) by raising the gamma_in value to 2.55
-    vec3 imgColor = sRGB_to_linear(COMPAT_TEXTURE(Source, vTexCoord).rgb, vec3(gamma_in));
+    vec3 imgColor = sRGB_to_linear(COMPAT_TEXTURE(Source, vTexCoord).rgb, gamma_in);
 
 //  Look LUT
     float red = ( imgColor.r * (LUT_Size1 - 1.0) + 0.4999 ) / (LUT_Size1 * LUT_Size1);
@@ -368,12 +368,12 @@ void main()
                        0.0, 0.0, 0.0, 1.0);
 
     color *= adjust;
-    screen = clamp(screen * lum * 2.0, 0.0, 1.0);
+    screen = clamp(screen * ((lum - 1.0) * 2.0 + 1.0), 0.0, 1.0);
     screen = color * screen;
 
 //  Color Temperature
-    vec3 adjusted = wp_adjust(vec3(screen));
-    vec3 base_luma = XYZtoYxy(sRGB_to_XYZ(vec3(screen)));
+    vec3 adjusted = wp_adjust(screen.rgb);
+    vec3 base_luma = XYZtoYxy(sRGB_to_XYZ(screen.rgb));
     vec3 adjusted_luma = XYZtoYxy(sRGB_to_XYZ(adjusted));
     adjusted = (luma_preserve > 0.5) ? adjusted_luma + (vec3(base_luma.r, 0.0, 0.0) - vec3(adjusted_luma.r, 0.0, 0.0)) : adjusted_luma;
     adjusted = clamp(XYZ_to_sRGB(YxytoXYZ(adjusted)), 0.0, 1.0);
