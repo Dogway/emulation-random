@@ -215,9 +215,9 @@ vec3 wp_adjust(vec3 color){
 vec3 sRGB_to_XYZ(vec3 RGB){
 
     const mat3x3 m = mat3x3(
-    0.4124564,  0.3575761,  0.1804375,
-    0.2126729,  0.7151522,  0.0721750,
-    0.0193339,  0.1191920,  0.9503041);
+    0.4124564, 0.3575761, 0.1804375,
+    0.2126729, 0.7151522, 0.0721750,
+    0.0193339, 0.1191920, 0.9503041);
     return RGB * m;
 }
 
@@ -235,8 +235,8 @@ vec3 XYZ_to_sRGB(vec3 XYZ){
 
     const mat3x3 m = mat3x3(
     3.2404542, -1.5371385, -0.4985314,
-   -0.9692660,  1.8760108,  0.0415560,
-    0.0556434, -0.2040259,  1.0572252);
+   -0.9692660, 1.8760108, 0.0415560,
+    0.0556434, -0.2040259, 1.0572252);
     return XYZ * m;
 }
 
@@ -287,32 +287,32 @@ vec3 sRGB_to_linear(vec3 color, float gamma){
 
 
 //  Performs better in gamma encoded space
-vec3 contrast_sigmoid(vec3 color, float cntrst, float mid){
+vec3 contrast_sigmoid(vec3 color, float cont, float pivot){
 
-    cntrst = pow(cntrst + 1., 3.);
+    cntrst = pow(cont + 1., 3.);
 
-    float knee = 1. / (1. + exp(cntrst * mid));
-    float shldr = 1. / (1. + exp(cntrst * (mid - 1.)));
+    float knee = 1. / (1. + exp(cntrst * pivot));
+    float shldr = 1. / (1. + exp(cntrst * (pivot - 1.)));
 
-    color.r = (1. / (1. + exp(cntrst * (mid - color.r))) - knee) / (shldr - knee);
-    color.g = (1. / (1. + exp(cntrst * (mid - color.g))) - knee) / (shldr - knee);
-    color.b = (1. / (1. + exp(cntrst * (mid - color.b))) - knee) / (shldr - knee);
+    color.r = (1. / (1. + exp(cntrst * (pivot - color.r))) - knee) / (shldr - knee);
+    color.g = (1. / (1. + exp(cntrst * (pivot - color.g))) - knee) / (shldr - knee);
+    color.b = (1. / (1. + exp(cntrst * (pivot - color.b))) - knee) / (shldr - knee);
 
     return color.rgb;
 }
 
 
 //  Performs better in gamma encoded space
-vec3 contrast_sigmoid_inv(vec3 color, float cntrst, float mid){
+vec3 contrast_sigmoid_inv(vec3 color, float cont, float pivot){
 
-    cntrst = pow(cntrst - 1., 3.);
+    cntrst = pow(cont - 1., 3.);
 
-    float knee = 1. / (1. + exp (cntrst * mid));
-    float shldr = 1. / (1. + exp (cntrst * (mid - 1.)));
+    float knee = 1. / (1. + exp (cntrst * pivot));
+    float shldr = 1. / (1. + exp (cntrst * (pivot - 1.)));
 
-    color.r = mid - log(1. / (color.r * (shldr - knee) + knee) - 1.) / cntrst;
-    color.g = mid - log(1. / (color.g * (shldr - knee) + knee) - 1.) / cntrst;
-    color.b = mid - log(1. / (color.b * (shldr - knee) + knee) - 1.) / cntrst;
+    color.r = pivot - log(1. / (color.r * (shldr - knee) + knee) - 1.) / cntrst;
+    color.g = pivot - log(1. / (color.g * (shldr - knee) + knee) - 1.) / cntrst;
+    color.b = pivot - log(1. / (color.b * (shldr - knee) + knee) - 1.) / cntrst;
 
     return color.rgb;
 }
@@ -328,12 +328,12 @@ void main()
 //  Look LUT
     float red = ( imgColor.r * (LUT_Size1 - 1.0) + 0.4999 ) / (LUT_Size1 * LUT_Size1);
     float green = ( imgColor.g * (LUT_Size1 - 1.0) + 0.4999 ) / LUT_Size1;
-    float blue1 = (floor( imgColor.b  * (LUT_Size1 - 1.0) ) / LUT_Size1) + red;
-    float blue2 = (ceil( imgColor.b  * (LUT_Size1 - 1.0) ) / LUT_Size1) + red;
+    float blue1 = (floor( imgColor.b * (LUT_Size1 - 1.0) ) / LUT_Size1) + red;
+    float blue2 = (ceil( imgColor.b * (LUT_Size1 - 1.0) ) / LUT_Size1) + red;
     float mixer = clamp(max((imgColor.b - blue1) / (blue2 - blue1), 0.0), 0.0, 32.0);
     vec3 color1 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue1, green ));
     vec3 color2 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue2, green ));
-    vec3 vcolor =  (LUT1_toggle < 1.0) ? imgColor : mixfix(color1, color2, mixer);
+    vec3 vcolor = (LUT1_toggle < 1.0) ? imgColor : mixfix(color1, color2, mixer);
 
 //  Saturation agnostic sigmoidal contrast
     vec3 Yxy = XYZtoYxy(sRGB_to_XYZ(vcolor));
@@ -382,8 +382,8 @@ void main()
 //  Technical LUT
     float red_2 = ( adjusted.r * (LUT_Size2 - 1.0) + 0.4999 ) / (LUT_Size2 * LUT_Size2);
     float green_2 = ( adjusted.g * (LUT_Size2 - 1.0) + 0.4999 ) / LUT_Size2;
-    float blue1_2 = (floor( adjusted.b  * (LUT_Size2 - 1.0) ) / LUT_Size2) + red_2;
-    float blue2_2 = (ceil( adjusted.b  * (LUT_Size2 - 1.0) ) / LUT_Size2) + red_2;
+    float blue1_2 = (floor( adjusted.b * (LUT_Size2 - 1.0) ) / LUT_Size2) + red_2;
+    float blue2_2 = (ceil( adjusted.b * (LUT_Size2 - 1.0) ) / LUT_Size2) + red_2;
     float mixer_2 = clamp(max((adjusted.b - blue1_2) / (blue2_2 - blue1_2), 0.0), 0.0, 32.0);
     vec3 color1_2 = COMPAT_TEXTURE( SamplerLUT2, vec2( blue1_2, green_2 ));
     vec3 color2_2 = COMPAT_TEXTURE( SamplerLUT2, vec2( blue2_2, green_2 ));
