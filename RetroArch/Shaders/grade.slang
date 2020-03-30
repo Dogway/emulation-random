@@ -281,11 +281,11 @@ void main()
 
 //  RGB related transforms
     vec4 screen = vec4(max(contrast, 0.0), 1.0);
-
-    mat4 color = mat4(params.r, params.rg,  params.rb,  0.0,
-                     params.gr,  params.g,  params.gb,  0.0,
-                     params.br, params.bg,   params.b,  0.0,
-                    params.blr, params.blg, params.blb, 0.0);
+                   //  r    g    b  alpha ; alpha does nothing for our purposes
+    mat4 color = mat4(params.r, params.rg,  params.rb,  0.0,  //red tint
+                     params.gr,  params.g,  params.gb,  0.0,  //green tint
+                     params.br, params.bg,   params.b,  0.0,  //blue tint
+                    params.blr, params.blg, params.blb, 0.0); //black tint
 
     mat4 adjust = mat4((1.0 - params.sat) * 0.2126 + params.sat, (1.0 - params.sat) * 0.2126, (1.0 - params.sat) * 0.2126, 1.0,
                        (1.0 - params.sat) * 0.7152, (1.0 - params.sat) * 0.7152 + params.sat, (1.0 - params.sat) * 0.7152, 1.0,
