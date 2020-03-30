@@ -8,6 +8,7 @@
 */
 
 #pragma parameter gamma_in "CRT Gamma" 2.55 0.0 3.0 0.05
+#pragma parameter gamma_type "CRT Gamma (POW = 0, sRGB = 1)" 1.0 0.0 1.0 1.0
 #pragma parameter vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
 #pragma parameter str "Vig.Strength" 40.0 10.0 40.0 1.0
 #pragma parameter power "Vig.Power" 0.20 0.0 0.5 0.01
@@ -15,13 +16,13 @@
 #pragma parameter LUT1_toggle "LUT 1 Toggle" 0.0 0.0 1.0 1.0
 #pragma parameter LUT_Size2 "LUT Size 2" 64.0 0.0 64.0 16.0
 #pragma parameter LUT2_toggle "LUT 2 Toggle" 0.0 0.0 1.0 1.0
-#pragma parameter temperature "White Point" 6504.0 1000.0 12000.0 100.0
+#pragma parameter temperature "White Point" 9311.0 1031.0 12047.0 72.0
 #pragma parameter luma_preserve "WP Preserve Luminance" 1.0 0.0 1.0 1.0
 #pragma parameter sat "Saturation" 1.0 0.0 3.0 0.01
 #pragma parameter lum "Brightness" 1.0 0.0 2.0 0.01
 #pragma parameter cntrst "Contrast" 0.0 -1.0 1.0 0.05
 #pragma parameter mid "Contrast Pivot" 0.5 0.0 1.0 0.01
-#pragma parameter black_level "Black Level" 0.0 -0.5 1.0 0.01
+#pragma parameter black_level "Black Level" 0.0 -0.5 0.5 0.01
 #pragma parameter blr "Black-Red Tint" 0.0 0.0 1.0 0.005
 #pragma parameter blg "Black-Green Tint" 0.0 0.0 1.0 0.005
 #pragma parameter blb "Black-Blue Tint" 0.0 0.0 1.0 0.005
@@ -120,6 +121,7 @@ COMPAT_VARYING vec4 TEX0;
 
 #ifdef PARAMETER_UNIFORM
 uniform COMPAT_PRECISION float gamma_in;
+uniform COMPAT_PRECISION float gamma_type;
 uniform COMPAT_PRECISION float vignette;
 uniform COMPAT_PRECISION float str;
 uniform COMPAT_PRECISION float power;
@@ -147,15 +149,16 @@ uniform COMPAT_PRECISION float gb;
 uniform COMPAT_PRECISION float br;
 uniform COMPAT_PRECISION float bg;
 #else
-#define gamma_in 2.4
+#define gamma_in 2.55
+#define gamma_type 1.0
 #define vignette 1.0
-#define str 15.0
-#define power 0.1
+#define str 40.0
+#define power 0.2
 #define LUT_Size1 16.0
 #define LUT1_toggle 0.0
 #define LUT_Size2 64.0
 #define LUT2_toggle 0.0
-#define temperature 6504.0
+#define temperature 9311.0
 #define luma_preserve 1.0
 #define sat 1.0
 #define lum 1.0
@@ -235,8 +238,8 @@ vec3 XYZ_to_sRGB(vec3 XYZ){
 
     const mat3x3 m = mat3x3(
     3.2404542, -1.5371385, -0.4985314,
-   -0.9692660, 1.8760108, 0.0415560,
-    0.0556434, -0.2040259, 1.0572252);
+   -0.9692660,  1.8760108,  0.0415560,
+    0.0556434, -0.2040259,  1.0572252);
     return XYZ * m;
 }
 
@@ -289,14 +292,14 @@ vec3 sRGB_to_linear(vec3 color, float gamma){
 //  Performs better in gamma encoded space
 vec3 contrast_sigmoid(vec3 color, float cont, float pivot){
 
-    cntrst = pow(cont + 1., 3.);
+    cont = pow(cont + 1., 3.);
 
-    float knee = 1. / (1. + exp(cntrst * pivot));
-    float shldr = 1. / (1. + exp(cntrst * (pivot - 1.)));
+    float knee = 1. / (1. + exp(cont * pivot));
+    float shldr = 1. / (1. + exp(cont * (pivot - 1.)));
 
-    color.r = (1. / (1. + exp(cntrst * (pivot - color.r))) - knee) / (shldr - knee);
-    color.g = (1. / (1. + exp(cntrst * (pivot - color.g))) - knee) / (shldr - knee);
-    color.b = (1. / (1. + exp(cntrst * (pivot - color.b))) - knee) / (shldr - knee);
+    color.r = (1. / (1. + exp(cont * (pivot - color.r))) - knee) / (shldr - knee);
+    color.g = (1. / (1. + exp(cont * (pivot - color.g))) - knee) / (shldr - knee);
+    color.b = (1. / (1. + exp(cont * (pivot - color.b))) - knee) / (shldr - knee);
 
     return color.rgb;
 }
@@ -305,14 +308,14 @@ vec3 contrast_sigmoid(vec3 color, float cont, float pivot){
 //  Performs better in gamma encoded space
 vec3 contrast_sigmoid_inv(vec3 color, float cont, float pivot){
 
-    cntrst = pow(cont - 1., 3.);
+    cont = pow(cont - 1., 3.);
 
-    float knee = 1. / (1. + exp (cntrst * pivot));
-    float shldr = 1. / (1. + exp (cntrst * (pivot - 1.)));
+    float knee = 1. / (1. + exp (cont * pivot));
+    float shldr = 1. / (1. + exp (cont * (pivot - 1.)));
 
-    color.r = pivot - log(1. / (color.r * (shldr - knee) + knee) - 1.) / cntrst;
-    color.g = pivot - log(1. / (color.g * (shldr - knee) + knee) - 1.) / cntrst;
-    color.b = pivot - log(1. / (color.b * (shldr - knee) + knee) - 1.) / cntrst;
+    color.r = pivot - log(1. / (color.r * (shldr - knee) + knee) - 1.) / cont;
+    color.g = pivot - log(1. / (color.g * (shldr - knee) + knee) - 1.) / cont;
+    color.b = pivot - log(1. / (color.b * (shldr - knee) + knee) - 1.) / cont;
 
     return color.rgb;
 }
@@ -323,7 +326,9 @@ void main()
 {
 
 //  Pure power was crushing blacks (eg. DKC2). You can mimic pow(c, 2.4) by raising the gamma_in value to 2.55
-    vec3 imgColor = sRGB_to_linear(COMPAT_TEXTURE(Source, vTexCoord).rgb, gamma_in);
+    vec3 imgColor = COMPAT_TEXTURE(Source, vTexCoord).rgb;
+    imgColor = (gamma_type == 1.0) ? sRGB_to_linear(imgColor, gamma_in) : pow(imgColor, vec3(gamma_in - 0.15));
+
 
 //  Look LUT
     float red = ( imgColor.r * (LUT_Size1 - 1.0) + 0.4999 ) / (LUT_Size1 * LUT_Size1);
@@ -331,9 +336,10 @@ void main()
     float blue1 = (floor( imgColor.b * (LUT_Size1 - 1.0) ) / LUT_Size1) + red;
     float blue2 = (ceil( imgColor.b * (LUT_Size1 - 1.0) ) / LUT_Size1) + red;
     float mixer = clamp(max((imgColor.b - blue1) / (blue2 - blue1), 0.0), 0.0, 32.0);
-    vec3 color1 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue1, green ));
-    vec3 color2 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue2, green ));
-    vec3 vcolor = (LUT1_toggle < 1.0) ? imgColor : mixfix(color1, color2, mixer);
+    vec3 color1 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue1, green )).rgb;
+    vec3 color2 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue2, green )).rgb;
+    vec3 vcolor = (LUT1_toggle == 0.0) ? imgColor : mixfix(color1, color2, mixer);
+
 
 //  Saturation agnostic sigmoidal contrast
     vec3 Yxy = XYZtoYxy(sRGB_to_XYZ(vcolor));
@@ -349,9 +355,9 @@ void main()
     vpos *= 1.0 - vpos.xy;
     float vig = vpos.x * vpos.y * str;
     vig = min(pow(vig, power), 1.0);
-    contrast *= (vignette > 0.5) ? vig : 1.0;
+    contrast *= (vignette == 1.0) ? vig : 1.0;
 
-    contrast += vec3(black_level / 5.0) * (1.0 - contrast);
+    contrast += (black_level / 20.0) * (1.0 - contrast);
 
 
 //  RGB related transforms
@@ -371,11 +377,12 @@ void main()
     screen = clamp(screen * ((lum - 1.0) * 2.0 + 1.0), 0.0, 1.0);
     screen = color * screen;
 
+
 //  Color Temperature
     vec3 adjusted = wp_adjust(screen.rgb);
     vec3 base_luma = XYZtoYxy(sRGB_to_XYZ(screen.rgb));
     vec3 adjusted_luma = XYZtoYxy(sRGB_to_XYZ(adjusted));
-    adjusted = (luma_preserve > 0.5) ? adjusted_luma + (vec3(base_luma.r, 0.0, 0.0) - vec3(adjusted_luma.r, 0.0, 0.0)) : adjusted_luma;
+    adjusted = (luma_preserve == 1.0) ? adjusted_luma + (vec3(base_luma.r, 0.0, 0.0) - vec3(adjusted_luma.r, 0.0, 0.0)) : adjusted_luma;
     adjusted = clamp(XYZ_to_sRGB(YxytoXYZ(adjusted)), 0.0, 1.0);
 
 
@@ -385,10 +392,10 @@ void main()
     float blue1_2 = (floor( adjusted.b * (LUT_Size2 - 1.0) ) / LUT_Size2) + red_2;
     float blue2_2 = (ceil( adjusted.b * (LUT_Size2 - 1.0) ) / LUT_Size2) + red_2;
     float mixer_2 = clamp(max((adjusted.b - blue1_2) / (blue2_2 - blue1_2), 0.0), 0.0, 32.0);
-    vec3 color1_2 = COMPAT_TEXTURE( SamplerLUT2, vec2( blue1_2, green_2 ));
-    vec3 color2_2 = COMPAT_TEXTURE( SamplerLUT2, vec2( blue2_2, green_2 ));
+    vec3 color1_2 = COMPAT_TEXTURE( SamplerLUT2, vec2( blue1_2, green_2 )).rgb;
+    vec3 color2_2 = COMPAT_TEXTURE( SamplerLUT2, vec2( blue2_2, green_2 )).rgb;
     vec3 LUT2_output = mixfix(color1_2, color2_2, mixer_2);
 
-    FragColor = (LUT2_toggle < 1.0) ? vec4(linear_to_sRGB(adjusted, 2.4), 1.0) : vec4(linear_to_sRGB(LUT2_output, 2.4), 1.0);
+    FragColor = (LUT2_toggle == 0.0) ? vec4(linear_to_sRGB(adjusted, 2.4), 1.0) : vec4(linear_to_sRGB(LUT2_output, 2.4), 1.0);
 }
 #endif
