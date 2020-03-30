@@ -353,9 +353,9 @@ void main()
 
 //  Saturation agnostic sigmoidal contrast
     vec3 Yxy = XYZtoYxy(sRGB_to_XYZ(vcolor));
-    vec3 toLinear = moncurve_r(Yxy.r, 2.40, 0.055);
-    vec3 contrast = (cntrst > 0.0) ? contrast_sigmoid(toLinear, cntrst, mid) : contrast_sigmoid_inv(toLinear, cntrst, mid);
-    contrast.rgb = vec3(moncurve_f(contrast, 2.40, 0.055), Yxy.g, Yxy.b);
+    float toLinear = moncurve_r(Yxy.r, 2.40, 0.055);
+    float sigmoid = (cntrst > 0.0) ? contrast_sigmoid(toLinear, cntrst, mid) : contrast_sigmoid_inv(toLinear, cntrst, mid);
+    vec3 contrast = vec3(moncurve_f(sigmoid, 2.40, 0.055), Yxy.g, Yxy.b);
     vec3 XYZsrgb = clamp(XYZ_to_sRGB(YxytoXYZ(contrast)), 0.0, 1.0);
     contrast = (cntrst == 0.0) ? vcolor : XYZsrgb;
 

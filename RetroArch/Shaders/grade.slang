@@ -255,7 +255,7 @@ void main()
 
 //  Pure power was crushing blacks (eg. DKC2). You can mimic pow(c, 2.4) by raising the gamma_in value to 2.55
     vec3 imgColor = texture(Source, vTexCoord.xy).rgb;
-    imgColor = (params.gamma_type == 1.0) ? moncurve_f_f3(imgColor, params.gamma_in + 0.15) : pow(imgColor, vec3(params.gamma_in));
+    imgColor = (params.gamma_type == 1.0) ? moncurve_f_f3(imgColor, params.gamma_in + 0.15, 0.055) : pow(imgColor, vec3(params.gamma_in));
 
 
 //  Look LUT
@@ -271,9 +271,9 @@ void main()
 
 //  Saturation agnostic sigmoidal contrast
     vec3 Yxy = XYZtoYxy(sRGB_to_XYZ(vcolor));
-    vec3 toLinear = moncurve_r(Yxy.r, 2.40);
-    vec3 contrast = (params.cntrst > 0.0) ? contrast_sigmoid(toLinear, params.cntrst, params.mid) : contrast_sigmoid_inv(toLinear, params.cntrst, params.mid);
-    contrast.rgb = vec3(moncurve_f(contrast, 2.40), Yxy.g, Yxy.b);
+    float toLinear = moncurve_r(Yxy.r, 2.40, 0.055);
+    float sigmoid = (params.cntrst > 0.0) ? contrast_sigmoid(toLinear, params.cntrst, params.mid) : contrast_sigmoid_inv(toLinear, params.cntrst, params.mid);
+    vec3 contrast = vec3(moncurve_f(sigmoid, 2.40, 0.055), Yxy.g, Yxy.b);
     vec3 XYZsrgb = clamp(XYZ_to_sRGB(YxytoXYZ(contrast)), 0.0, 1.0);
     contrast = (params.cntrst == 0.0) ? vcolor : XYZsrgb;
 
@@ -325,5 +325,5 @@ void main()
     vec3 color2_2 = texture(SamplerLUT2, vec2(blue2_2, green_2)).rgb;
     vec3 LUT2_output = mixfix(color1_2, color2_2, mixer_2);
 
-    FragColor = (params.LUT2_toggle == 0.0) ? vec4(moncurve_r_f3(adjusted, 2.40), 1.0) : vec4(moncurve_r_f3(LUT2_output, 2.40), 1.0);
-} 
+    FragColor = (params.LUT2_toggle == 0.0) ? vec4(moncurve_r_f3(adjusted, 2.40, 0.055), 1.0) : vec4(moncurve_r_f3(LUT2_output, 2.40, 0.055), 1.0);
+}
