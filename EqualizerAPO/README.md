@@ -49,3 +49,7 @@ Use these configs in [EqualizerAPO](https://sourceforge.net/projects/equalizerap
 	Mega-CD, 32X, Saturn, Dreamcast:
 	<a href="https://segaretro.org/QSound">https://segaretro.org/QSound</a>
 </pre>
+
+*Currently only [MAME](https://github.com/vgmrips/vgmplay/issues/51#issuecomment-459873091) and FBNeo emulate the QSound engine correctly, Sega related emulators like genesis_plus_gx_libretro, picodrive, kronos or flycast still lack QSound support.
+
+
