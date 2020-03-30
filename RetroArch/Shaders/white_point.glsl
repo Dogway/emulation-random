@@ -9,7 +9,7 @@
 //      http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
 
 
-#pragma parameter temperature "White Point" 6504.0 1000.0 12000.0 100.0
+#pragma parameter temperature "White Point" 9311.0 1031.0 12047.0 72.0
 #pragma parameter luma_preserve "Preserve Luminance" 1.0 0.0 1.0 1.0
 #pragma parameter red "Red Shift" 0.0 -1.0 1.0 0.01
 #pragma parameter green "Green Shift" 0.0 -1.0 1.0 0.01
@@ -99,7 +99,7 @@ COMPAT_VARYING vec4 TEX0;
 #ifdef PARAMETER_UNIFORM
 uniform COMPAT_PRECISION float temperature, luma_preserve, red, green, blue;
 #else
-#define temperature 6504.0
+#define temperature 9311.0
 #define luma_preserve 1.0
 #define red 0.0
 #define green 0.0
@@ -133,7 +133,7 @@ vec3 wp_adjust(vec3 color){
     wp.rgb += vec3(red, green, blue);
 
     // Linear color input
-    return (color * wp);
+    return color * wp;
 }
 
 vec3 sRGB_to_XYZ(vec3 RGB){
@@ -204,11 +204,11 @@ vec3 sRGB_to_linear(vec3 color, float gamma){
 
 void main()
 {
-   vec3 original = sRGB_to_linear(COMPAT_TEXTURE(Source, vTexCoord).rgb, vec3(2.4));
+   vec3 original = sRGB_to_linear(COMPAT_TEXTURE(Source, vTexCoord).rgb, 2.4);
    vec3 adjusted = wp_adjust(original);
    vec3 base_luma = XYZtoYxy(sRGB_to_XYZ(original));
    vec3 adjusted_luma = XYZtoYxy(sRGB_to_XYZ(adjusted));
-   adjusted = (luma_preserve > 0.5) ? adjusted_luma + (vec3(base_luma.r,0.,0.) - vec3(adjusted_luma.r,0.,0.)) : adjusted_luma;
-   FragColor = vec4(linear_to_sRGB(XYZ_to_sRGB(YxytoXYZ(adjusted)), vec3(2.4)), 1.0);
+   adjusted = (luma_preserve == 1.0) ? adjusted_luma + (vec3(base_luma.r,0.,0.) - vec3(adjusted_luma.r,0.,0.)) : adjusted_luma;
+   FragColor = vec4(linear_to_sRGB(XYZ_to_sRGB(YxytoXYZ(adjusted)), 2.4), 1.0);
 }
 #endif
