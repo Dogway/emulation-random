@@ -7,7 +7,7 @@
    License: Public domain
 */
 
-#pragma parameter gamma_in "CRT Gamma" 2.55 0.0 3.0 0.05
+#pragma parameter gamma_in "CRT Gamma" 2.40 0.0 3.0 0.05
 #pragma parameter gamma_type "CRT Gamma (POW = 0, sRGB = 1)" 1.0 0.0 1.0 1.0
 #pragma parameter vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
 #pragma parameter str "Vig.Strength" 40.0 10.0 40.0 1.0
@@ -149,7 +149,7 @@ uniform COMPAT_PRECISION float gb;
 uniform COMPAT_PRECISION float br;
 uniform COMPAT_PRECISION float bg;
 #else
-#define gamma_in 2.55
+#define gamma_in 2.40
 #define gamma_type 1.0
 #define vignette 1.0
 #define str 40.0
@@ -261,63 +261,73 @@ vec3 mixfix(vec3 a, vec3 b, float c)
 }
 
 
-vec3 linear_to_sRGB(vec3 color, float gamma){
 
+float moncurve_r( float color, float gamma, float offs)
+{
+    // Reverse monitor curve
     color = clamp(color, 0.0, 1.0);
-    color.r = (color.r <= 0.00313066844250063) ?
-    color.r * 12.92 : 1.055 * pow(color.r, 1.0 / gamma) - 0.055;
-    color.g = (color.g <= 0.00313066844250063) ?
-    color.g * 12.92 : 1.055 * pow(color.g, 1.0 / gamma) - 0.055;
-    color.b = (color.b <= 0.00313066844250063) ?
-    color.b * 12.92 : 1.055 * pow(color.b, 1.0 / gamma) - 0.055;
+    float yb = pow( offs * gamma / ( ( gamma - 1.0) * ( 1.0 + offs)), gamma);
+    float rs = pow( ( gamma - 1.0) / offs, gamma - 1.0) * pow( ( 1.0 + offs) / gamma, gamma);
 
+    color = ( color > yb) ? ( 1.0 + offs) * pow( color, 1.0 / gamma) - offs : color * rs;
+    return color;
+}
+
+
+vec3 moncurve_r_f3( vec3 color, float gamma, float offs)
+{
+    color.r = moncurve_r( color.r, gamma, offs);
+    color.g = moncurve_r( color.g, gamma, offs);
+    color.b = moncurve_r( color.b, gamma, offs);
     return color.rgb;
 }
 
 
-vec3 sRGB_to_linear(vec3 color, float gamma){
-
+float moncurve_f( float color, float gamma, float offs)
+{
+    // Forward monitor curve
     color = clamp(color, 0.0, 1.0);
-    color.r = (color.r <= 0.04045) ?
-    color.r / 12.92 : pow((color.r + 0.055) / (1.055), gamma);
-    color.g = (color.g <= 0.04045) ?
-    color.g / 12.92 : pow((color.g + 0.055) / (1.055), gamma);
-    color.b = (color.b <= 0.04045) ?
-    color.b / 12.92 : pow((color.b + 0.055) / (1.055), gamma);
+    float fs = (( gamma - 1.0) / offs) * pow( offs * gamma / ( ( gamma - 1.0) * ( 1.0 + offs)), gamma);
+    float xb = offs / ( gamma - 1.0);
 
+    color = ( color > xb) ? pow( ( color + offs) / ( 1.0 + offs), gamma) : color * fs;
+    return color;
+}
+
+vec3 moncurve_f_f3( vec3 color, float gamma, float offs)
+{
+    color.r = moncurve_f( color.r, gamma, offs);
+    color.g = moncurve_f( color.g, gamma, offs);
+    color.b = moncurve_f( color.b, gamma, offs);
     return color.rgb;
 }
 
 
 //  Performs better in gamma encoded space
-vec3 contrast_sigmoid(vec3 color, float cont, float pivot){
+float contrast_sigmoid(float color, float cont, float pivot){
 
     cont = pow(cont + 1., 3.);
 
     float knee = 1. / (1. + exp(cont * pivot));
     float shldr = 1. / (1. + exp(cont * (pivot - 1.)));
 
-    color.r = (1. / (1. + exp(cont * (pivot - color.r))) - knee) / (shldr - knee);
-    color.g = (1. / (1. + exp(cont * (pivot - color.g))) - knee) / (shldr - knee);
-    color.b = (1. / (1. + exp(cont * (pivot - color.b))) - knee) / (shldr - knee);
+    color = (1. / (1. + exp(cont * (pivot - color))) - knee) / (shldr - knee);
 
-    return color.rgb;
+    return color;
 }
 
 
 //  Performs better in gamma encoded space
-vec3 contrast_sigmoid_inv(vec3 color, float cont, float pivot){
+float contrast_sigmoid_inv(float color, float cont, float pivot){
 
     cont = pow(cont - 1., 3.);
 
     float knee = 1. / (1. + exp (cont * pivot));
     float shldr = 1. / (1. + exp (cont * (pivot - 1.)));
 
-    color.r = pivot - log(1. / (color.r * (shldr - knee) + knee) - 1.) / cont;
-    color.g = pivot - log(1. / (color.g * (shldr - knee) + knee) - 1.) / cont;
-    color.b = pivot - log(1. / (color.b * (shldr - knee) + knee) - 1.) / cont;
+    color = pivot - log(1. / (color * (shldr - knee) + knee) - 1.) / cont;
 
-    return color.rgb;
+    return color;
 }
 
 
@@ -327,7 +337,7 @@ void main()
 
 //  Pure power was crushing blacks (eg. DKC2). You can mimic pow(c, 2.4) by raising the gamma_in value to 2.55
     vec3 imgColor = COMPAT_TEXTURE(Source, vTexCoord).rgb;
-    imgColor = (gamma_type == 1.0) ? sRGB_to_linear(imgColor, gamma_in) : pow(imgColor, vec3(gamma_in - 0.15));
+    imgColor = (gamma_type == 1.0) ? moncurve_f_f3(imgColor, gamma_in + 0.15, 0.055) : pow(imgColor, vec3(gamma_in));
 
 
 //  Look LUT
@@ -343,9 +353,9 @@ void main()
 
 //  Saturation agnostic sigmoidal contrast
     vec3 Yxy = XYZtoYxy(sRGB_to_XYZ(vcolor));
-    vec3 toLinear = linear_to_sRGB(vec3(Yxy.r, 0.0, 0.0), 2.4);
+    vec3 toLinear = moncurve_r(Yxy.r, 2.40, 0.055);
     vec3 contrast = (cntrst > 0.0) ? contrast_sigmoid(toLinear, cntrst, mid) : contrast_sigmoid_inv(toLinear, cntrst, mid);
-    contrast.rgb = vec3(sRGB_to_linear(contrast, 2.4).r, Yxy.g, Yxy.b);
+    contrast.rgb = vec3(moncurve_f(contrast, 2.40, 0.055), Yxy.g, Yxy.b);
     vec3 XYZsrgb = clamp(XYZ_to_sRGB(YxytoXYZ(contrast)), 0.0, 1.0);
     contrast = (cntrst == 0.0) ? vcolor : XYZsrgb;
 
@@ -396,6 +406,6 @@ void main()
     vec3 color2_2 = COMPAT_TEXTURE( SamplerLUT2, vec2( blue2_2, green_2 )).rgb;
     vec3 LUT2_output = mixfix(color1_2, color2_2, mixer_2);
 
-    FragColor = (LUT2_toggle == 0.0) ? vec4(linear_to_sRGB(adjusted, 2.4), 1.0) : vec4(linear_to_sRGB(LUT2_output, 2.4), 1.0);
+    FragColor = (LUT2_toggle == 0.0) ? vec4(moncurve_r_f3(adjusted, 2.40, 0.055), 1.0) : vec4(moncurve_r_f3(LUT2_output, 2.40, 0.055), 1.0);
 }
 #endif
