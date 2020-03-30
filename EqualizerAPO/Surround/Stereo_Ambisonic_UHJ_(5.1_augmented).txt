@@ -1,4 +1,4 @@
-# Stereo Ambisonic UHJ upmix to 4.0, augmented to 5.1 (left out Top channel)
+# Stereo Ambisonic UHJ upmix to 4.0 (left out Top channel), augmented to Dolby 5.1
 #    Jose Linares -Dogway-
 #        >> https://github.com/Dogway
 #

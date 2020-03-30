@@ -5,7 +5,7 @@
 
 Copy: LI=L RI=R
 Channel: LI RI
-Delay: 20 ms
+Delay: 12 ms
 Filter 1: ON HPQ Fc 100 Hz Q 0.541
 Filter 2: ON HPQ Fc 100 Hz Q 1.307
 Filter 3: ON LPQ Fc 7000 Hz Q 0.541
@@ -18,8 +18,14 @@ Copy: CX=0.3535*L+0.3535*R
 Copy: L=0.8*L+0.2*CX R=0.8*R+0.2*CX C=0.75*CX LFE=0.9*CX RL=0.3535*LI+0.3535*RI RR=0.3535*LI+0.3535*RI
 
 Channel: RL RR
-Filter 1: ON LPQ Fc 22050 Hz Q 0.541
-Filter 2: ON LPQ Fc 22050 Hz Q 1.307
+Filter 1: ON LPQ Fc 24000 Hz Q 0.541
+Filter 2: ON LPQ Fc 24000 Hz Q 1.307
+
+Channel: C
+Filter 1: ON HPQ Fc 70 Hz Q 0.541
+Filter 2: ON HPQ Fc 70 Hz Q 1.307
+Filter 3: ON LPQ Fc 20000 Hz Q 0.541
+Filter 4: ON LPQ Fc 20000 Hz Q 1.307
 
 Channel: LFE
 Filter 1: ON LPQ Fc 100 Hz Q 0.541

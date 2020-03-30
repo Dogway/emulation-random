@@ -108,11 +108,11 @@ Filter 13: ON IIR Order 2 Coefficients `aa` `ab` `ac` `ac` `ab` `aa`
 
 Copy: CX=0.3535*L+0.3535*R LX=-1.0*LI
 
-Copy: L=0.5*L R=0.5*R C=CX LFE=CX RL=0.436*LX+0.245*RI RR=0.436*RI+0.245*LX
+Copy: L=0.5*L R=0.5*R C=CX LFE=CX RL=0.4359*LX+0.2449*RI RR=0.4359*RI+0.2449*LX
 
-Channel: L R RL RR
-Filter 1: ON LPQ Fc 22050 Hz Q 0.541
-Filter 2: ON LPQ Fc 22050 Hz Q 1.307
+Channel: RL RR
+Filter 1: ON LPQ Fc 24000 Hz Q 0.541
+Filter 2: ON LPQ Fc 24000 Hz Q 1.307
 
 Channel: C
 Filter 1: ON HPQ Fc 70 Hz Q 0.541

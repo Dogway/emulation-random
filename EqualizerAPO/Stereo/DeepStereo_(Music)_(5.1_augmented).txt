@@ -1,4 +1,4 @@
-# DeepStereo (2Ch to 3Ch), augmented to 5.1
+# DeepStereo (2Ch to 3Ch), augmented to Dolby 5.1
 #    Jose Linares -Dogway-
 #        >> https://github.com/Dogway
 #
@@ -15,12 +15,10 @@ Preamp: -3 dB
 Delay: 12 ms
 Filter 1: ON HPQ Fc 120 Hz Q 0.541
 Filter 2: ON HPQ Fc 120 Hz Q 1.307
-Filter 3: ON LPQ Fc 8000 Hz Q 0.541
-Filter 4: ON LPQ Fc 8000 Hz Q 1.307
 Convolution: linear_phase_24bit_48khz_stereo_(90_LR_phase_-_L_invert).wav
 
 
-Copy: L=LX R=RX C=0.3535*CX LFE=0.3535*CX RL=0.436*LI+0.19*RI RR=0.436*RI+0.19*LI
+Copy: L=LX R=RX C=0.3535*CX LFE=0.3535*CX RL=0.4359*LI+0.19*RI RR=0.4359*RI+0.19*LI
 
 Channel: L R RL RR
 Filter 1: ON LPQ Fc 22050 Hz Q 0.541

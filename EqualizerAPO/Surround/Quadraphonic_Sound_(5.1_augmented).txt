@@ -1,4 +1,4 @@
-# Quadraphonic Sound (Sansui Systems, Regular Matrix) upmix to 4.0 and augmented to 5.1
+# Quadraphonic Sound (Sansui Systems, Regular Matrix) upmix to 4.0 and augmented to Dolby 5.1
 #    Jose Linares -Dogway-
 #        >> https://github.com/Dogway
 
@@ -7,7 +7,6 @@
 
 Copy: LI=L RI=R
 Channel: LI RI
-Preamp: -3 dB
 Delay: 12 ms
 Filter 1: ON HPQ Fc 100 Hz Q 0.541
 Filter 2: ON HPQ Fc 100 Hz Q 1.307

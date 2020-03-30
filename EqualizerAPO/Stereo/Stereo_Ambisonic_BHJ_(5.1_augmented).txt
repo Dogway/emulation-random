@@ -1,4 +1,4 @@
-# Stereo Ambisonic BHJ for Stereo - Augmented to 5.1
+# Stereo Ambisonic BHJ for Stereo - augmented to Dolby 5.1
 #    Jose Linares -Dogway-
 #        >> https://github.com/Dogway
 

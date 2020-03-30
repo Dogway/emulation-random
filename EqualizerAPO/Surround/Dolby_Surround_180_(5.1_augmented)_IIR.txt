@@ -1,4 +1,4 @@
-# Dolby Surround is 4.0 in Stereo (2.0), here augmented to 5.1
+# Dolby Surround is 4.0 in Stereo (2.0), here augmented to Dolby 5.1
 #    Jose Linares -Dogway-
 #        >> https://github.com/Dogway
 
@@ -15,6 +15,12 @@ Filter 4: ON LP Fc 7000 Hz Q 0.707
 Copy: CX=0.5*L+0.5*R
 
 Copy: L=L R=R C=0.707*CX LFE=CX RL=0.3535*MUP RR=0.3535*MUP
+
+Channel: C
+Filter 1: ON HPQ Fc 70 Hz Q 0.541
+Filter 2: ON HPQ Fc 70 Hz Q 1.307
+Filter 3: ON LPQ Fc 20000 Hz Q 0.541
+Filter 4: ON LPQ Fc 20000 Hz Q 1.307
 
 Channel: LFE
 Preamp: -3.5 dB
