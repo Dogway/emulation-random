@@ -184,7 +184,7 @@ vec3 linear_to_sRGB(vec3 color, float gamma){
     color.b = (color.b <= 0.00313066844250063) ?
     color.b * 12.92 : 1.055 * pow(color.b, 1.0 / gamma) - 0.055;
 
-    return color;
+    return color.rgb;
 }
 
 
@@ -198,17 +198,17 @@ vec3 sRGB_to_linear(vec3 color, float gamma){
     color.b = (color.b <= 0.04045) ?
     color.b / 12.92 : pow((color.b + 0.055) / (1.055), gamma);
 
-    return color;
+    return color.rgb;
 }
 
 
 void main()
 {
-   vec3 original = sRGB_to_linear(COMPAT_TEXTURE(Source, vTexCoord).rgb, 2.4);
+   vec3 original = sRGB_to_linear(COMPAT_TEXTURE(Source, vTexCoord).rgb, 2.40);
    vec3 adjusted = wp_adjust(original);
    vec3 base_luma = XYZtoYxy(sRGB_to_XYZ(original));
    vec3 adjusted_luma = XYZtoYxy(sRGB_to_XYZ(adjusted));
    adjusted = (luma_preserve == 1.0) ? adjusted_luma + (vec3(base_luma.r,0.,0.) - vec3(adjusted_luma.r,0.,0.)) : adjusted_luma;
-   FragColor = vec4(linear_to_sRGB(XYZ_to_sRGB(YxytoXYZ(adjusted)), 2.4), 1.0);
+   FragColor = vec4(linear_to_sRGB(XYZ_to_sRGB(YxytoXYZ(adjusted)), 2.40), 1.0);
 }
 #endif
