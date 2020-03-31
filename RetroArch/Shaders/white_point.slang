@@ -18,16 +18,16 @@ layout(push_constant) uniform Push
     uint FrameCount;
    float temperature;
    float luma_preserve;
-   float red;
-   float green;
-   float blue;
+   float wp_red;
+   float wp_green;
+   float wp_blue;
 } params;
 
 #pragma parameter temperature "White Point" 9311.0 1031.0 12047.0 72.0
 #pragma parameter luma_preserve "Preserve Luminance" 1.0 0.0 1.0 1.0
-#pragma parameter red "Red Shift" 0.0 -1.0 1.0 0.01
-#pragma parameter green "Green Shift" 0.0 -1.0 1.0 0.01
-#pragma parameter blue "Blue Shift" 0.0 -1.0 1.0 0.01
+#pragma parameter wp_red "Red Shift" 0.0 -1.0 1.0 0.01
+#pragma parameter wp_green "Green Shift" 0.0 -1.0 1.0 0.01
+#pragma parameter wp_blue "Blue Shift" 0.0 -1.0 1.0 0.01
 
 layout(std140, set = 0, binding = 0) uniform UBO
 {
@@ -75,7 +75,7 @@ vec3 wp_adjust(vec3 color){
     wp.rgb = clamp(wp.rgb, vec3(0.), vec3(1.));
 
     // R/G/B independent manual White Point adjustment
-    wp.rgb += vec3(params.red, params.green, params.blue);
+    wp.rgb += vec3(params.wp_red, params.wp_green, params.wp_blue);
 
     // Linear color input
     return color * wp;
