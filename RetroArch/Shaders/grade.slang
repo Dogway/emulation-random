@@ -271,7 +271,7 @@ float contrast_sigmoid_inv(float color, float cont, float pivot){
 void main()
 {
 
-//  Pure power was crushing blacks (eg. DKC2). You can mimic pow(c, 2.4) by raising the gamma_in value to 2.55
+//  Pure power was crushing blacks (eg. DKC2). You can mimic pow(c, 2.40) by raising the gamma_in value to 2.55
     vec3 imgColor = texture(Source, vTexCoord.xy).rgb;
     imgColor = (params.gamma_type == 1.0) ? moncurve_f_f3(imgColor, params.gamma_in + 0.15, 0.055) : pow(imgColor, vec3(params.gamma_in));
 
