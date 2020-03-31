@@ -1,8 +1,8 @@
 // Parameter lines go here:
 #pragma parameter LUT_Size1 "LUT 1 Size" 32.0 0.0 64.0 16.0
-#pragma parameter LUT1_toggle "LUT 1 Toggle" 1.0 0.0 1.0 1.0
+#pragma parameter LUT1_toggle "LUT 1 Toggle" 0.0 0.0 1.0 1.0
 #pragma parameter LUT_Size2 "LUT 2 Size" 64.0 0.0 64.0 16.0
-#pragma parameter LUT2_toggle "LUT 2 Toggle" 1.0 0.0 1.0 1.0
+#pragma parameter LUT2_toggle "LUT 2 Toggle" 0.0 0.0 1.0 1.0
 
 #if defined(VERTEX)
 
@@ -94,9 +94,9 @@ uniform COMPAT_PRECISION float LUT_Size2;
 uniform COMPAT_PRECISION float LUT2_toggle;
 #else
 #define LUT_Size1 32.0
-#define LUT1_toggle 1.0
+#define LUT1_toggle 0.0
 #define LUT_Size2 64.0
-#define LUT2_toggle 1.0
+#define LUT2_toggle 0.0
 #endif
 
 // This shouldn't be necessary but it seems some undefined values can
@@ -109,6 +109,7 @@ vec4 mixfix(vec4 a, vec4 b, float c)
 
 void main()
 {
+//  First LUT
 	vec4 imgColor = COMPAT_TEXTURE(Source, vTexCoord.xy);
 	float red = ( imgColor.r * (LUT_Size1 - 1.0) + 0.4999 ) / (LUT_Size1 * LUT_Size1);
 	float green = ( imgColor.g * (LUT_Size1 - 1.0) + 0.4999 ) / LUT_Size1;
@@ -119,6 +120,7 @@ void main()
 	vec4 color2 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue2, green ));
 	vec4 vcolor = (LUT1_toggle < 1.0) ? imgColor.rgba : mixfix(color1, color2, mixer);
 
+//  Second LUT
 	float red_2 = ( vcolor.r * (LUT_Size2 - 1.0) + 0.4999 ) / (LUT_Size2 * LUT_Size2);
 	float green_2 = ( vcolor.g * (LUT_Size2 - 1.0) + 0.4999 ) / LUT_Size2;
 	float blue1_2 = (floor( vcolor.b  * (LUT_Size2 - 1.0) ) / LUT_Size2) + red_2;
@@ -128,6 +130,5 @@ void main()
 	vec4 color2_2 = COMPAT_TEXTURE( SamplerLUT2, vec2( blue2_2, green_2 ));
 	FragColor = (LUT2_toggle < 1.0) ? vcolor.rgba : mixfix(color1_2, color2_2, mixer_2);
 
-
-} 
+}
 #endif

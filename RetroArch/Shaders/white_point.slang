@@ -3,7 +3,7 @@
 // White Point Mapping
 //          ported by Dogway
 //
-// From the first comment post (sRGB and linear light compensated)
+// From the first comment post (sRGB primaries and linear light compensated)
 //      http://www.zombieprototypes.com/?p=210#comment-4695029660
 // Based on the Neil Bartlett's blog update
 //      http://www.zombieprototypes.com/?p=210
