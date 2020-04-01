@@ -5,28 +5,28 @@ layout(push_constant) uniform Push
     float gamma_out;
     float gamma_in;
     float gamma_type;
-    float vignette;
-    float str;
-    float power;
+    float g_vignette;
+    float g_vstr;
+    float g_vpower;
     float LUT_Size1;
     float LUT1_toggle;
     float LUT_Size2;
     float LUT2_toggle;
-    float temperature;
-    float luma_preserve;
-    float sat;
-    float dulvibr;
-    float lum;
-    float size;
-    float cntrst;
-    float mid;
-    float black_level;
+    float wp_temperature;
+    float wp_luma_preserve;
+    float g_sat;
+    float g_vibr;
+    float g_hpfix;
+    float g_lum;
+    float g_cntrst;
+    float g_mid;
+    float g_lift;
     float blr;
     float blg;
     float blb;
-    float r;
-    float g;
-    float b;
+    float wlr;
+    float wlg;
+    float wlb;
     float rg;
     float rb;
     float gr;
@@ -37,8 +37,8 @@ layout(push_constant) uniform Push
 
 /*
    Grade
-   > Ubershader grouping some color related monolithic shaders like color-mangler, vignette, lut_x2,
-   > white_point, and the addition of vibrance, black level, sigmoidal contrast and proper gamma transforms.
+   > Ubershader grouping some color related monolithic shaders like color-mangler, vignette, lut_x2, white_point,
+   > and the addition of vibrance, black level, rolled gain, sigmoidal contrast and proper gamma transforms.
 
    Author: hunterk, Guest, Dr. Venom, Dogway
    License: Public domain
@@ -47,27 +47,28 @@ layout(push_constant) uniform Push
 #pragma parameter gamma_out "LCD Gamma" 2.20 0.0 3.0 0.05
 #pragma parameter gamma_in "CRT Gamma" 2.40 0.0 3.0 0.05
 #pragma parameter gamma_type "CRT Gamma (POW = 0, sRGB = 1)" 1.0 0.0 1.0 1.0
-#pragma parameter vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
-#pragma parameter str "Vignette Strength" 40.0 10.0 40.0 1.0
-#pragma parameter power "Vignette Power" 0.20 0.0 0.5 0.01
+#pragma parameter g_vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
+#pragma parameter g_vstr "Vignette Strength" 40.0 0.0 50.0 1.0
+#pragma parameter g_vpower "Vignette Power" 0.20 0.0 0.5 0.01
 #pragma parameter LUT_Size1 "LUT Size 1" 16.0 0.0 64.0 16.0
 #pragma parameter LUT1_toggle "LUT 1 Toggle" 0.0 0.0 1.0 1.0
 #pragma parameter LUT_Size2 "LUT Size 2" 64.0 0.0 64.0 16.0
 #pragma parameter LUT2_toggle "LUT 2 Toggle" 0.0 0.0 1.0 1.0
-#pragma parameter temperature "White Point" 9311.0 1031.0 12047.0 72.0
-#pragma parameter luma_preserve "WP Preserve Luminance" 1.0 0.0 1.0 1.0
-#pragma parameter sat "Saturation" 0.0 -1.0 2.0 0.02
-#pragma parameter dulvibr "Dullness/Vibrance" 0.0 -1.0 1.0 0.05
-#pragma parameter lum "Brightness" 1.0 0.0 2.0 0.01
-#pragma parameter cntrst "Contrast" 0.0 -1.0 1.0 0.05
-#pragma parameter mid "Contrast Pivot" 0.5 0.0 1.0 0.01
-#pragma parameter black_level "Black Level" 0.0 -0.5 0.5 0.01
+#pragma parameter wp_temperature "White Point" 9311.0 1031.0 12047.0 72.0
+#pragma parameter wp_luma_preserve "WP Preserve Luminance" 1.0 0.0 1.0 1.0
+#pragma parameter g_sat "Saturation" 0.0 -1.0 2.0 0.02
+#pragma parameter g_vibr "Dullness/Vibrance" 0.0 -1.0 1.0 0.05
+#pragma parameter g_hpfix "Hotspot Fix" 0.0 0.0 1.0 1.00
+#pragma parameter g_lum "Brightness" 0.0 -0.5 1.0 0.01
+#pragma parameter g_cntrst "Contrast" 0.0 -1.0 1.0 0.05
+#pragma parameter g_mid "Contrast Pivot" 0.5 0.0 1.0 0.01
+#pragma parameter g_lift "Black Level" 0.0 -0.5 0.5 0.01
 #pragma parameter blr "Black-Red Tint" 0.0 0.0 1.0 0.005
 #pragma parameter blg "Black-Green Tint" 0.0 0.0 1.0 0.005
 #pragma parameter blb "Black-Blue Tint" 0.0 0.0 1.0 0.005
-#pragma parameter r "White-Red Tint" 1.0 0.0 2.0 0.01
-#pragma parameter g "White-Green Tint" 1.0 0.0 2.0 0.01
-#pragma parameter b "White-Blue Tint" 1.0 0.0 2.0 0.01
+#pragma parameter wlr "White-Red Tint" 1.0 0.0 2.0 0.01
+#pragma parameter wlg "White-Green Tint" 1.0 0.0 2.0 0.01
+#pragma parameter wlb "White-Blue Tint" 1.0 0.0 2.0 0.01
 #pragma parameter rg "Red-Green Tint" 0.0 -1.0 1.0 0.005
 #pragma parameter rb "Red-Blue Tint" 0.0 -1.0 1.0 0.005
 #pragma parameter gr "Green-Red Tint" 0.0 -1.0 1.0 0.005
@@ -113,8 +114,8 @@ layout(set = 0, binding = 4) uniform sampler2D SamplerLUT2;
 
 vec3 wp_adjust(vec3 color){
 
-    float temp = params.temperature / 100.;
-    float k = params.temperature / 10000.;
+    float temp = params.wp_temperature / 100.;
+    float k = params.wp_temperature / 10000.;
     float lk = log(k);
 
     vec3 wp = vec3(1.);
@@ -267,6 +268,29 @@ float contrast_sigmoid_inv(float color, float cont, float pivot){
 }
 
 
+float rolled_gain(float color, float gain){
+
+    float gx = gain + 1.0;
+    float ax = (max(0.5 - (gx / 2.0), 0.5));
+    float cx = (gx > 0.0) ? (1.0 - gx + (gx / 2.0)) : abs(gx) / 2.0;
+
+    float gain_plus = ((color * gx) > ax) ? (ax + cx * tanh((color * gx - ax) / cx)) : (color * gx);
+    float ax_g = 1.0 - abs(gx);
+    float gain_minus = (color > ax_g) ? (ax_g + cx * tanh((color - ax_g) / cx)) : color;
+    color = (gx > 0.0) ? gain_plus : gain_minus;
+
+    return color;
+}
+
+vec4 rolled_gain_v4(vec4 color, float gain){
+
+    color.r = rolled_gain(color.r, gain);
+    color.g = rolled_gain(color.g, gain);
+    color.b = rolled_gain(color.b, gain);
+
+    return vec4(color.rgb, 1.0);
+}
+
 
 void main()
 {
@@ -289,42 +313,43 @@ void main()
 
 //  Saturation agnostic sigmoidal contrast
     vec3 Yxy = XYZtoYxy(sRGB_to_XYZ(vcolor));
-    float toLinear = moncurve_r(Yxy.r, 2.40, 0.055);
-    float sigmoid = (params.cntrst > 0.0) ? contrast_sigmoid(toLinear, params.cntrst, params.mid) : contrast_sigmoid_inv(toLinear, params.cntrst, params.mid);
+    float toGamma = moncurve_r(Yxy.r, 2.40, 0.055);
+    toGamma = (params.g_hpfix == 0.0) ? toGamma : ((Yxy.r > 0.5) ? contrast_sigmoid_inv(toGamma, 2.3, 0.5) : toGamma);
+    float sigmoid = (params.g_cntrst > 0.0) ? contrast_sigmoid(toGamma, params.g_cntrst, params.g_mid) : contrast_sigmoid_inv(toGamma, params.g_cntrst, params.g_mid);
     vec3 contrast = vec3(moncurve_f(sigmoid, 2.40, 0.055), Yxy.g, Yxy.b);
     vec3 XYZsrgb = clamp(XYZ_to_sRGB(YxytoXYZ(contrast)), 0.0, 1.0);
-    contrast = (params.cntrst == 0.0) ? vcolor : XYZsrgb;
+    contrast = (params.g_cntrst == 0.0) && (params.g_hpfix == 0.0) ? vcolor : ((params.g_cntrst != 0.0) || (params.g_hpfix != 0.0) ? XYZsrgb : vcolor);
 
 
 //  Vignetting & Black Level
     vec2 vpos = vTexCoord*(global.OriginalSize.xy/global.SourceSize.xy);
 
     vpos *= 1.0 - vpos.xy;
-    float vig = vpos.x*vpos.y * params.str;
-    vig = min(pow(vig, params.power), 1.0);
-    contrast *= (params.vignette == 1.0) ? vig : 1.0;
+    float vig = vpos.x * vpos.y * params.g_vstr;
+    vig = min(pow(vig, params.g_vpower), 1.0);
+    contrast *= (params.g_vignette == 1.0) ? vig : 1.0;
 
-    contrast += (params.black_level / 20.0) * (1.0 - contrast);
+    contrast += (params.g_lift / 20.0) * (1.0 - contrast);
 
 
 //  RGB related transforms
     vec4 screen = vec4(max(contrast, 0.0), 1.0);
-    float sat = params.sat + 1.0;
+    float sat = params.g_sat + 1.0;
 
                    //  r               g           b  alpha ; alpha does nothing for our purposes
-    mat4 color = mat4(params.r, params.rg,  params.rb,  0.0,  //red tint
-                     params.gr,  params.g,  params.gb,  0.0,  //green tint
-                     params.br, params.bg,   params.b,  0.0,  //blue tint
-                    params.blr, params.blg, params.blb, 0.0); //black tint
+    mat4 color = mat4(params.wlr, params.rg,  params.rb,   0.0,  //red tint
+                      params.gr,  params.wlg, params.gb,   0.0,  //green tint
+                      params.br,  params.bg,  params.wlb,  0.0,  //blue tint
+                      params.blr, params.blg, params.blb, 0.0);  //black tint
 
     mat4 adjust = mat4((1.0 - sat) * 0.2126 + sat, (1.0 - sat) * 0.2126, (1.0 - sat) * 0.2126, 1.0,
                        (1.0 - sat) * 0.7152, (1.0 - sat) * 0.7152 + sat, (1.0 - sat) * 0.7152, 1.0,
                        (1.0 - sat) * 0.0722, (1.0 - sat) * 0.0722, (1.0 - sat) * 0.0722 + sat, 1.0,
                         0.0, 0.0, 0.0, 1.0);
 
-    screen = clamp(screen * ((params.lum - 1.0) * 2.0 + 1.0), 0.0, 1.0);
+    screen = clamp(rolled_gain_v4(screen, params.g_lum * 2.0), 0.0, 1.0);
     screen = color * screen;
-    float sat_msk = (params.dulvibr > 0.0) ? clamp(1.0 - (SatMask(screen.r, screen.g, screen.b) * params.dulvibr), 0.0, 1.0) : clamp(1.0 - abs(SatMask(screen.r, screen.g, screen.b) - 1.0) * abs(params.dulvibr), 0.0, 1.0);
+    float sat_msk = (params.g_vibr > 0.0) ? clamp(1.0 - (SatMask(screen.r, screen.g, screen.b) * params.g_vibr), 0.0, 1.0) : clamp(1.0 - abs(SatMask(screen.r, screen.g, screen.b) - 1.0) * abs(params.g_vibr), 0.0, 1.0);
     screen = mixfix_v4(screen, adjust * screen, sat_msk);
 
 
@@ -332,7 +357,7 @@ void main()
     vec3 adjusted = wp_adjust(screen.rgb);
     vec3 base_luma = XYZtoYxy(sRGB_to_XYZ(screen.rgb));
     vec3 adjusted_luma = XYZtoYxy(sRGB_to_XYZ(adjusted));
-    adjusted = (params.luma_preserve == 1.0) ? adjusted_luma + (vec3(base_luma.r, 0.0, 0.0) - vec3(adjusted_luma.r, 0.0, 0.0)) : adjusted_luma;
+    adjusted = (params.wp_luma_preserve == 1.0) ? adjusted_luma + (vec3(base_luma.r, 0.0, 0.0) - vec3(adjusted_luma.r, 0.0, 0.0)) : adjusted_luma;
     adjusted = clamp(XYZ_to_sRGB(YxytoXYZ(adjusted)), 0.0, 1.0);
 
 
