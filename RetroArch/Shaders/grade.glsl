@@ -18,7 +18,6 @@
 #pragma parameter LUT_Size2 "LUT Size 2" 64.0 16.0 64.0 16.0
 #pragma parameter LUT2_toggle "LUT 2 Toggle" 0.0 0.0 1.0 1.0
 #pragma parameter wp_temperature "White Point" 9311.0 1031.0 12047.0 72.0
-#pragma parameter wp_luma_preserve "WP Preserve Luminance" 1.0 0.0 1.0 1.0
 #pragma parameter g_sat "Saturation" 0.0 -1.0 2.0 0.02
 #pragma parameter g_vibr "Dullness/Vibrance" 0.0 -1.0 1.0 0.05
 #pragma parameter g_hpfix "Hotspot Fix" 0.0 0.0 1.0 1.00
@@ -134,7 +133,6 @@ uniform COMPAT_PRECISION float LUT1_toggle;
 uniform COMPAT_PRECISION float LUT_Size2;
 uniform COMPAT_PRECISION float LUT2_toggle;
 uniform COMPAT_PRECISION float wp_temperature;
-uniform COMPAT_PRECISION float wp_luma_preserve;
 uniform COMPAT_PRECISION float g_sat;
 uniform COMPAT_PRECISION float g_vibr;
 uniform COMPAT_PRECISION float g_hpfix;
@@ -166,7 +164,6 @@ uniform COMPAT_PRECISION float bg;
 #define LUT_Size2 64.0
 #define LUT2_toggle 0.0
 #define wp_temperature 9311.0
-#define wp_luma_preserve 1.0
 #define g_sat 0.0
 #define g_vibr 0.0
 #define g_hpfix 0.0
@@ -442,7 +439,7 @@ void main()
     vec3 adjusted = wp_adjust(screen.rgb);
     vec3 base_luma = XYZtoYxy(sRGB_to_XYZ(screen.rgb));
     vec3 adjusted_luma = XYZtoYxy(sRGB_to_XYZ(adjusted));
-    adjusted = (wp_luma_preserve == 1.0) ? adjusted_luma + (vec3(base_luma.r, 0.0, 0.0) - vec3(adjusted_luma.r, 0.0, 0.0)) : adjusted_luma;
+    adjusted = adjusted_luma + (vec3(base_luma.r, 0.0, 0.0) - vec3(adjusted_luma.r, 0.0, 0.0));
     adjusted = clamp(XYZ_to_sRGB(YxytoXYZ(adjusted)), 0.0, 1.0);
 
 
