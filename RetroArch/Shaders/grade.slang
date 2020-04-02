@@ -50,9 +50,9 @@ layout(push_constant) uniform Push
 #pragma parameter g_vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
 #pragma parameter g_vstr "Vignette Strength" 40.0 0.0 50.0 1.0
 #pragma parameter g_vpower "Vignette Power" 0.20 0.0 0.5 0.01
-#pragma parameter LUT_Size1 "LUT Size 1" 16.0 0.0 64.0 16.0
+#pragma parameter LUT_Size1 "LUT Size 1" 16.0 8.0 64.0 16.0
 #pragma parameter LUT1_toggle "LUT 1 Toggle" 0.0 0.0 1.0 1.0
-#pragma parameter LUT_Size2 "LUT Size 2" 64.0 0.0 64.0 16.0
+#pragma parameter LUT_Size2 "LUT Size 2" 64.0 16.0 64.0 16.0
 #pragma parameter LUT2_toggle "LUT 2 Toggle" 0.0 0.0 1.0 1.0
 #pragma parameter wp_temperature "White Point" 9311.0 1031.0 12047.0 72.0
 #pragma parameter wp_luma_preserve "WP Preserve Luminance" 1.0 0.0 1.0 1.0
