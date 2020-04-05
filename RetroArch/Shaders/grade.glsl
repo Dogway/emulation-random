@@ -13,10 +13,8 @@
 #pragma parameter g_vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
 #pragma parameter g_vstr "Vignette Strength" 40.0 0.0 50.0 1.0
 #pragma parameter g_vpower "Vignette Power" 0.20 0.0 0.5 0.01
-#pragma parameter LUT_Size1 "LUT Size 1" 16.0 8.0 64.0 16.0
-#pragma parameter LUT1_toggle "LUT 1 Toggle" 0.0 0.0 1.0 1.0
-#pragma parameter LUT_Size2 "LUT Size 2" 64.0 16.0 64.0 16.0
-#pragma parameter LUT2_toggle "LUT 2 Toggle" 0.0 0.0 1.0 1.0
+#pragma parameter g_csize "Corner size" 0.0 0.0 0.07 0.01
+#pragma parameter g_bsize "Border smoothness" 600.0 100.0 600.0 25.0
 #pragma parameter wp_temperature "White Point" 9311.0 1031.0 12047.0 72.0
 #pragma parameter g_sat "Saturation" 0.0 -1.0 2.0 0.02
 #pragma parameter g_vibr "Dullness/Vibrance" 0.0 -1.0 1.0 0.05
@@ -37,6 +35,10 @@
 #pragma parameter gb "Green-Blue Tint" 0.0 -1.0 1.0 0.005
 #pragma parameter br "Blue-Red Tint" 0.0 -1.0 1.0 0.005
 #pragma parameter bg "Blue-Green Tint" 0.0 -1.0 1.0 0.005
+#pragma parameter LUT_Size1 "LUT Size 1" 16.0 8.0 64.0 16.0
+#pragma parameter LUT1_toggle "LUT 1 Toggle" 0.0 0.0 1.0 1.0
+#pragma parameter LUT_Size2 "LUT Size 2" 64.0 0.0 64.0 16.0
+#pragma parameter LUT2_toggle "LUT 2 Toggle" 0.0 0.0 1.0 1.0
 
 
 #if defined(VERTEX)
@@ -133,6 +135,8 @@ uniform COMPAT_PRECISION float LUT1_toggle;
 uniform COMPAT_PRECISION float LUT_Size2;
 uniform COMPAT_PRECISION float LUT2_toggle;
 uniform COMPAT_PRECISION float wp_temperature;
+uniform COMPAT_PRECISION float g_csize;
+uniform COMPAT_PRECISION float g_bsize;
 uniform COMPAT_PRECISION float g_sat;
 uniform COMPAT_PRECISION float g_vibr;
 uniform COMPAT_PRECISION float g_hpfix;
@@ -164,6 +168,8 @@ uniform COMPAT_PRECISION float bg;
 #define LUT_Size2 64.0
 #define LUT2_toggle 0.0
 #define wp_temperature 9311.0
+#define g_csize 0.0
+#define g_bsize 600.0
 #define g_sat 0.0
 #define g_vibr 0.0
 #define g_hpfix 0.0
@@ -375,6 +381,20 @@ vec4 rolled_gain_v4(vec4 color, float gain){
 }
 
 
+// Borrowed from cgwg's crt-geom, under GPL
+
+float corner(vec2 coord)
+{
+    coord *= SourceSize.xy / InputSize.xy;
+    coord = (coord - vec2(0.5)) * 1.0 + vec2(0.5);
+    coord = min(coord, vec2(1.0)-coord) * vec2(1.0, OutputSize.y/OutputSize.x);
+    vec2 cdist = vec2(max(g_csize, max((1.0-smoothstep(100.0,600.0,g_bsize))*0.01,0.002)));
+    coord = (cdist - min(coord,cdist));
+    float dist = sqrt(dot(coord,coord));
+    return clamp((cdist.x-dist)*g_bsize,0.0, 1.0);
+}
+
+
 void main()
 {
 
@@ -453,6 +473,10 @@ void main()
     vec3 color2_2 = COMPAT_TEXTURE( SamplerLUT2, vec2( blue2_2, green_2 )).rgb;
     vec3 LUT2_output = mixfix(color1_2, color2_2, mixer_2);
 
-    FragColor = (LUT2_toggle == 0.0) ? vec4(moncurve_r_f3(adjusted, gamma_out + 0.20, 0.055), 1.0) : vec4(moncurve_r_f3(LUT2_output, gamma_out + 0.20, 0.055), 1.0);
+    LUT2_output = (LUT2_toggle == 0.0) ? adjusted : LUT2_output;
+    LUT2_output = (gamma_out == 1.00) ? LUT2_output : moncurve_r_f3(LUT2_output, gamma_out + 0.20, 0.055);
+
+    vpos *= (InputSize.xy/TextureSize.xy);
+    FragColor = vec4(LUT2_output*corner(vpos), 1.0);
 }
 #endif
