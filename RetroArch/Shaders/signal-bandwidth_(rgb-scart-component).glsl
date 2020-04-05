@@ -13,6 +13,7 @@
 
 // signal resolution
 // higher = sharper
+#pragma parameter s_gamma_out "Signal LCD Gamma" 1.00 0.0 3.0 0.05
 #pragma parameter TOGGLE "Toggle Signal" 0.0 0.0 1.0 1.0
 #pragma parameter TVOUT_RESOLUTION "TVOut Signal Resolution" 256.0 0.0 1024.0 1.0 // default, minimum, maximum, optional step
 
@@ -114,10 +115,12 @@ precision mediump float;
 #ifdef PARAMETER_UNIFORM // If the shader implementation understands #pragma parameters, this is defined.
 uniform COMPAT_PRECISION float TVOUT_RESOLUTION;
 uniform COMPAT_PRECISION float TOGGLE;
+uniform COMPAT_PRECISION float s_gamma_out;
 #else
 // Fallbacks if parameters are not supported.
 #define TVOUT_RESOLUTION 256.0 // Default
 #define TOGGLE 0.0
+#define s_gamma_out 1.0
 #endif
 
 #define Source Texture
@@ -142,6 +145,26 @@ uniform COMPAT_PRECISION vec2 TextureSize;
 uniform COMPAT_PRECISION vec2 InputSize;
 uniform sampler2D Texture;
 COMPAT_VARYING vec4 TEX0;
+
+float moncurve_r( float color, float gamma, float offs)
+{
+    // Reverse monitor curve
+    color = clamp(color, 0.0, 1.0);
+    float yb = pow( offs * gamma / ( ( gamma - 1.0) * ( 1.0 + offs)), gamma);
+    float rs = pow( ( gamma - 1.0) / offs, gamma - 1.0) * pow( ( 1.0 + offs) / gamma, gamma);
+
+    color = ( color > yb) ? ( 1.0 + offs) * pow( color, 1.0 / gamma) - offs : color * rs;
+    return color;
+}
+
+
+vec3 moncurve_r_f3( vec3 color, float gamma, float offs)
+{
+    color.r = moncurve_r( color.r, gamma, offs);
+    color.g = moncurve_r( color.g, gamma, offs);
+    color.b = moncurve_r( color.b, gamma, offs);
+    return color.rgb;
+}
 
 void main()
 {
@@ -170,6 +193,7 @@ void main()
     GETC(c);
     VAL(tempColor);
 
-    FragColor = (TOGGLE == 1.0) ? vec4(tempColor, 1.0) : vec4(sourcetex, 1.0);
+    tempColor = (TOGGLE > 0.5) ? tempColor : sourcetex;
+    FragColor = (s_gamma_out == 1.00) ? vec4(tempColor, 1.0) : vec4(moncurve_r_f3(tempColor, s_gamma_out + 0.20, 0.055), 1.0);
 }
 #endif

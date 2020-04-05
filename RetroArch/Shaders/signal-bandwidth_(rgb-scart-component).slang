@@ -17,6 +17,7 @@ layout(push_constant) uniform Push
 	vec4 OriginalSize;
 	vec4 OutputSize;
 	uint FrameCount;
+	float s_gamma_out;
 	float TOGGLE;
 	float TVOUT_RESOLUTION;
 } params;
@@ -25,6 +26,7 @@ layout(push_constant) uniform Push
 
 // signal resolution
 // higher = sharper 
+#pragma parameter s_gamma_out "Signal LCD Gamma" 1.00 0.0 3.0 0.05
 #pragma parameter TOGGLE "Toggle Signal" 0.0 0.0 1.0 1.0
 #pragma parameter TVOUT_RESOLUTION "TVOut Signal Resolution" 256.0 0.0 1024.0 32.0 // default, minimum, maximum, optional step
 
@@ -94,6 +96,28 @@ layout(location = 0) in vec2 vTexCoord;
 layout(location = 0) out vec4 FragColor;
 layout(set = 0, binding = 2) uniform sampler2D Source;
 
+
+
+float moncurve_r( float color, float gamma, float offs)
+{
+    // Reverse monitor curve
+    color = clamp(color, 0.0, 1.0);
+    float yb = pow( offs * gamma / ( ( gamma - 1.0) * ( 1.0 + offs)), gamma);
+    float rs = pow( ( gamma - 1.0) / offs, gamma - 1.0) * pow( ( 1.0 + offs) / gamma, gamma);
+
+    color = ( color > yb) ? ( 1.0 + offs) * pow( color, 1.0 / gamma) - offs : color * rs;
+    return color;
+}
+
+
+vec3 moncurve_r_f3( vec3 color, float gamma, float offs)
+{
+    color.r = moncurve_r( color.r, gamma, offs);
+    color.g = moncurve_r( color.g, gamma, offs);
+    color.b = moncurve_r( color.b, gamma, offs);
+    return color.rgb;
+}
+
 void main()
 {
    vec3	sourcetex = texture(Source, vTexCoord.xy).rgb;
@@ -121,5 +145,6 @@ void main()
     GETC(c);
     VAL(tempColor);
 
-   FragColor = (params.TOGGLE > 0.5) ? vec4(tempColor, 1.0) : vec4(sourcetex, 1.0);
+   tempColor = (params.TOGGLE > 0.5) ? tempColor : sourcetex;
+   FragColor = (params.s_gamma_out == 1.00) ? vec4(tempColor, 1.0) : vec4(moncurve_r_f3(tempColor, params.s_gamma_out + 0.20, 0.055), 1.0);
 }
