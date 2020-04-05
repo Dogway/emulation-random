@@ -10,9 +10,16 @@
 // an emulator on a real CRT-TV @240p or @480i
 ////////////////////////////////////////////////////////
 // Basic settings:
+//
+//   signal resolution
+//   higher = sharper
+//
+//   SNES, Genesis 259
+//   NeoGeo 264
+//   CPS2 262
+//   CPS3 264
+//   Naomi 480
 
-// signal resolution
-// higher = sharper
 #pragma parameter s_gamma_out "Signal LCD Gamma" 1.00 0.0 3.0 0.05
 #pragma parameter TOGGLE "Toggle Signal" 0.0 0.0 1.0 1.0
 #pragma parameter TVOUT_RESOLUTION "TVOut Signal Resolution" 256.0 0.0 1024.0 1.0 // default, minimum, maximum, optional step
