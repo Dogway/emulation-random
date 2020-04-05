@@ -1,6 +1,6 @@
 
 ///////////////
-//	TV-out tweaks Linearized Multipass - Pass1
+//	TV-out tweaks
 //	Author: aliaspider and RiskyJumps
 //	License: GPLv3
 ////////////////////////////////////////////////////////
@@ -18,11 +18,11 @@
 #pragma parameter TVOUT_RESOLUTION "TVOut Signal Resolution" 256.0 0.0 1024.0 1.0 // default, minimum, maximum, optional step
 
 // simulate a composite connection instead of RGB
-//#pragma parameter TVOUT_COMPOSITE_CONNECTION "TVOut Composite Enable" 0.0 0.0 1.0 1.0
+// #pragma parameter TVOUT_COMPOSITE_CONNECTION "TVOut Composite Enable" 0.0 0.0 1.0 1.0
 
-//// use TV video color range (16-235)
-//// instead of PC full range (0-255)
-//#pragma parameter TVOUT_TV_COLOR_LEVELS "TVOut TV Color Levels Enable" 0.0 0.0 1.0 1.0
+// use TV video color range (16-235)
+// instead of PC full range (0-255)
+// #pragma parameter TVOUT_TV_COLOR_LEVELS "TVOut TV Color Levels Enable" 0.0 0.0 1.0 1.0
 ////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////
@@ -36,9 +36,9 @@
 // and will only simulate the low bandwidth anspect of
 // composite signal, not the crosstalk between luma and chroma
 // Y = 4MHz I=1.3MHz Q=0.4MHz
-//#pragma parameter TVOUT_RESOLUTION_Y "TVOut Luma (Y) Resolution" 256.0 0.0 1024.0 32.0
-//#pragma parameter TVOUT_RESOLUTION_I "TVOut Chroma (I) Resolution" 83.2 0.0 256.0 8.0
-//#pragma parameter TVOUT_RESOLUTION_Q "TVOut Chroma (Q) Resolution" 25.6 0.0 256.0 8.0
+// #pragma parameter TVOUT_RESOLUTION_Y "TVOut Luma (Y) Resolution" 256.0 0.0 1024.0 32.0
+// #pragma parameter TVOUT_RESOLUTION_I "TVOut Chroma (I) Resolution" 83.2 0.0 256.0 8.0
+// #pragma parameter TVOUT_RESOLUTION_Q "TVOut Chroma (Q) Resolution" 25.6 0.0 256.0 8.0
 
 // formula is MHz=resolution*15750Hz
 // 15750Hz being the horizontal Frequency of NTSC

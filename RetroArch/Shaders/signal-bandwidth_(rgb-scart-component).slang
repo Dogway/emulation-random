@@ -1,9 +1,9 @@
 #version 450
 
 ///////////////
-//	TV-out tweaks	
+//	TV-out tweaks
 //	Author: aliaspider - aliaspider@gmail.com
-//	License: GPLv3      
+//	License: GPLv3
 ////////////////////////////////////////////////////////
 
 
@@ -25,15 +25,15 @@ layout(push_constant) uniform Push
 // Basic settings:
 
 // signal resolution
-// higher = sharper 
+// higher = sharper
 #pragma parameter s_gamma_out "Signal LCD Gamma" 1.00 0.0 3.0 0.05
 #pragma parameter TOGGLE "Toggle Signal" 0.0 0.0 1.0 1.0
-#pragma parameter TVOUT_RESOLUTION "TVOut Signal Resolution" 256.0 0.0 1024.0 32.0 // default, minimum, maximum, optional step
+#pragma parameter TVOUT_RESOLUTION "TVOut Signal Resolution" 256.0 0.0 1024.0 1.0 // default, minimum, maximum, optional step
 
 // simulate a composite connection instead of RGB
 // #pragma parameter TVOUT_COMPOSITE_CONNECTION "TVOut Composite Enable" 0.0 0.0 1.0 1.0
 
-// use TV video color range (16-235) 
+// use TV video color range (16-235)
 // instead of PC full range (0-255)
 // #pragma parameter TVOUT_TV_COLOR_LEVELS "TVOut TV Color Levels Enable" 0.0 0.0 1.0 1.0
 ////////////////////////////////////////////////////////
@@ -41,7 +41,7 @@ layout(push_constant) uniform Push
 ////////////////////////////////////////////////////////
 // Advanced settings:
 //
-// these values will be used instead 
+// these values will be used instead
 // if COMPOSITE_CONNECTION is defined
 // to simulate different signal resolutions(bandwidth)
 // for luma (Y) and chroma ( I and Q )
@@ -63,7 +63,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 	mat4 MVP;
 } global;
 
-		 
+
 #define pi			3.14159265358
 #define a(x) abs(x)
 #define d(x,b) (pi*b*min(a(x)+0.5,1.0/b))

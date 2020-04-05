@@ -130,13 +130,9 @@ uniform COMPAT_PRECISION float gamma_type;
 uniform COMPAT_PRECISION float g_vignette;
 uniform COMPAT_PRECISION float g_vstr;
 uniform COMPAT_PRECISION float g_vpower;
-uniform COMPAT_PRECISION float LUT_Size1;
-uniform COMPAT_PRECISION float LUT1_toggle;
-uniform COMPAT_PRECISION float LUT_Size2;
-uniform COMPAT_PRECISION float LUT2_toggle;
-uniform COMPAT_PRECISION float wp_temperature;
 uniform COMPAT_PRECISION float g_csize;
 uniform COMPAT_PRECISION float g_bsize;
+uniform COMPAT_PRECISION float wp_temperature;
 uniform COMPAT_PRECISION float g_sat;
 uniform COMPAT_PRECISION float g_vibr;
 uniform COMPAT_PRECISION float g_hpfix;
@@ -156,6 +152,10 @@ uniform COMPAT_PRECISION float gr;
 uniform COMPAT_PRECISION float gb;
 uniform COMPAT_PRECISION float br;
 uniform COMPAT_PRECISION float bg;
+uniform COMPAT_PRECISION float LUT_Size1;
+uniform COMPAT_PRECISION float LUT1_toggle;
+uniform COMPAT_PRECISION float LUT_Size2;
+uniform COMPAT_PRECISION float LUT2_toggle;
 #else
 #define gamma_out 2.20
 #define gamma_in 2.40
@@ -163,13 +163,9 @@ uniform COMPAT_PRECISION float bg;
 #define g_vignette 1.0
 #define g_vstr 40.0
 #define g_vpower 0.2
-#define LUT_Size1 16.0
-#define LUT1_toggle 0.0
-#define LUT_Size2 64.0
-#define LUT2_toggle 0.0
-#define wp_temperature 9311.0
 #define g_csize 0.0
 #define g_bsize 600.0
+#define wp_temperature 9311.0
 #define g_sat 0.0
 #define g_vibr 0.0
 #define g_hpfix 0.0
@@ -189,6 +185,10 @@ uniform COMPAT_PRECISION float bg;
 #define gb 0.0
 #define br 0.0
 #define bg 0.0
+#define LUT_Size1 16.0
+#define LUT1_toggle 0.0
+#define LUT_Size2 64.0
+#define LUT2_toggle 0.0
 #endif
 
 

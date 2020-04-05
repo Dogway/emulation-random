@@ -212,6 +212,7 @@ float moncurve_f( float color, float gamma, float offs)
     return color;
 }
 
+
 vec3 moncurve_f_f3( vec3 color, float gamma, float offs)
 {
     color.r = moncurve_f( color.r, gamma, offs);
@@ -329,7 +330,7 @@ void main()
 
 //  Saturation agnostic sigmoidal contrast
     vec3 Yxy = XYZtoYxy(sRGB_to_XYZ(vcolor));
-    float toGamma = moncurve_r(Yxy.r, 2.40, 0.055);
+    float toGamma = clamp(moncurve_r(Yxy.r, 2.40, 0.055), 0.0, 1.0);
     toGamma = (params.g_hpfix == 0.0) ? toGamma : ((Yxy.r > 0.5) ? contrast_sigmoid_inv(toGamma, 2.3, 0.5) : toGamma);
     float sigmoid = (params.g_cntrst > 0.0) ? contrast_sigmoid(toGamma, params.g_cntrst, params.g_mid) : contrast_sigmoid_inv(toGamma, params.g_cntrst, params.g_mid);
     vec3 contrast = vec3(moncurve_f(sigmoid, 2.40, 0.055), Yxy.g, Yxy.b);
