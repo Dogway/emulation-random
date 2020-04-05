@@ -8,10 +8,8 @@ layout(push_constant) uniform Push
     float g_vignette;
     float g_vstr;
     float g_vpower;
-    float LUT_Size1;
-    float LUT1_toggle;
-    float LUT_Size2;
-    float LUT2_toggle;
+    float g_csize;
+    float g_bsize;
     float wp_temperature;
     float g_sat;
     float g_vibr;
@@ -32,6 +30,10 @@ layout(push_constant) uniform Push
     float gb;
     float br;
     float bg;
+    float LUT_Size1;
+    float LUT1_toggle;
+    float LUT_Size2;
+    float LUT2_toggle;
 } params;
 
 /*
@@ -49,10 +51,8 @@ layout(push_constant) uniform Push
 #pragma parameter g_vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
 #pragma parameter g_vstr "Vignette Strength" 40.0 0.0 50.0 1.0
 #pragma parameter g_vpower "Vignette Power" 0.20 0.0 0.5 0.01
-#pragma parameter LUT_Size1 "LUT Size 1" 16.0 8.0 64.0 16.0
-#pragma parameter LUT1_toggle "LUT 1 Toggle" 0.0 0.0 1.0 1.0
-#pragma parameter LUT_Size2 "LUT Size 2" 64.0 16.0 64.0 16.0
-#pragma parameter LUT2_toggle "LUT 2 Toggle" 0.0 0.0 1.0 1.0
+#pragma parameter g_csize "Corner size" 0.0 0.0 0.07 0.01
+#pragma parameter g_bsize "Border smoothness" 600.0 100.0 600.0 25.0
 #pragma parameter wp_temperature "White Point" 9311.0 1031.0 12047.0 72.0
 #pragma parameter g_sat "Saturation" 0.0 -1.0 2.0 0.02
 #pragma parameter g_vibr "Dullness/Vibrance" 0.0 -1.0 1.0 0.05
@@ -73,6 +73,10 @@ layout(push_constant) uniform Push
 #pragma parameter gb "Green-Blue Tint" 0.0 -1.0 1.0 0.005
 #pragma parameter br "Blue-Red Tint" 0.0 -1.0 1.0 0.005
 #pragma parameter bg "Blue-Green Tint" 0.0 -1.0 1.0 0.005
+#pragma parameter LUT_Size1 "LUT Size 1" 16.0 8.0 64.0 16.0
+#pragma parameter LUT1_toggle "LUT 1 Toggle" 0.0 0.0 1.0 1.0
+#pragma parameter LUT_Size2 "LUT Size 2" 64.0 0.0 64.0 16.0
+#pragma parameter LUT2_toggle "LUT 2 Toggle" 0.0 0.0 1.0 1.0
 
 layout(std140, set = 0, binding = 0) uniform UBO
 {
@@ -197,6 +201,26 @@ float SatMask(float color_r, float color_g, float color_b)
 }
 
 
+float moncurve_f( float color, float gamma, float offs)
+{
+    // Forward monitor curve
+    color = clamp(color, 0.0, 1.0);
+    float fs = (( gamma - 1.0) / offs) * pow( offs * gamma / ( ( gamma - 1.0) * ( 1.0 + offs)), gamma);
+    float xb = offs / ( gamma - 1.0);
+
+    color = ( color > xb) ? pow( ( color + offs) / ( 1.0 + offs), gamma) : color * fs;
+    return color;
+}
+
+vec3 moncurve_f_f3( vec3 color, float gamma, float offs)
+{
+    color.r = moncurve_f( color.r, gamma, offs);
+    color.g = moncurve_f( color.g, gamma, offs);
+    color.b = moncurve_f( color.b, gamma, offs);
+    return color.rgb;
+}
+
+
 float moncurve_r( float color, float gamma, float offs)
 {
     // Reverse monitor curve
@@ -214,26 +238,6 @@ vec3 moncurve_r_f3( vec3 color, float gamma, float offs)
     color.r = moncurve_r( color.r, gamma, offs);
     color.g = moncurve_r( color.g, gamma, offs);
     color.b = moncurve_r( color.b, gamma, offs);
-    return color.rgb;
-}
-
-
-float moncurve_f( float color, float gamma, float offs)
-{
-    // Forward monitor curve
-    color = clamp(color, 0.0, 1.0);
-    float fs = (( gamma - 1.0) / offs) * pow( offs * gamma / ( ( gamma - 1.0) * ( 1.0 + offs)), gamma);
-    float xb = offs / ( gamma - 1.0);
-
-    color = ( color > xb) ? pow( ( color + offs) / ( 1.0 + offs), gamma) : color * fs;
-    return color;
-}
-
-vec3 moncurve_f_f3( vec3 color, float gamma, float offs)
-{
-    color.r = moncurve_f( color.r, gamma, offs);
-    color.g = moncurve_f( color.g, gamma, offs);
-    color.b = moncurve_f( color.b, gamma, offs);
     return color.rgb;
 }
 
@@ -287,6 +291,20 @@ vec4 rolled_gain_v4(vec4 color, float gain){
     color.b = rolled_gain(color.b, gain);
 
     return vec4(color.rgb, 1.0);
+}
+
+
+// Borrowed from cgwg's crt-geom, under GPL
+
+float corner(vec2 coord)
+{
+    coord *= global.OriginalSize.xy / global.SourceSize.xy;
+    coord = (coord - vec2(0.5)) * 1.0 + vec2(0.5);
+    coord = min(coord, vec2(1.0)-coord) * vec2(1.0, global.OutputSize.y/global.OutputSize.x);
+    vec2 cdist = vec2(max(params.g_csize, max((1.0-smoothstep(100.0,600.0,params.g_bsize))*0.01,0.002)));
+    coord = (cdist - min(coord,cdist));
+    float dist = sqrt(dot(coord,coord));
+    return clamp((cdist.x-dist)*params.g_bsize,0.0, 1.0);
 }
 
 
@@ -369,5 +387,9 @@ void main()
     vec3 color2_2 = texture(SamplerLUT2, vec2(blue2_2, green_2)).rgb;
     vec3 LUT2_output = mixfix(color1_2, color2_2, mixer_2);
 
-    FragColor = (params.LUT2_toggle == 0.0) ? vec4(moncurve_r_f3(adjusted, params.gamma_out + 0.20, 0.055), 1.0) : vec4(moncurve_r_f3(LUT2_output, params.gamma_out + 0.20, 0.055), 1.0);
+    LUT2_output = (params.LUT2_toggle == 0.0) ? adjusted : LUT2_output;
+    LUT2_output = (params.gamma_out == 1.00) ? LUT2_output : moncurve_r_f3(LUT2_output, params.gamma_out + 0.20, 0.055);
+
+    vpos *= (global.SourceSize.xy/global.OriginalSize.xy);
+    FragColor = vec4(LUT2_output*corner(vpos), 1.0);
 }
