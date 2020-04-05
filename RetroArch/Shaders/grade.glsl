@@ -1,7 +1,7 @@
 /*
    Grade
    > Ubershader grouping some color related monolithic shaders like color-mangler, vignette, lut_x2, white_point,
-   > and the addition of vibrance, black level, rolled gain, sigmoidal contrast and proper gamma transforms.
+   > and the addition of vibrance, black level, corner size, rolled gain, sigmoidal contrast and proper gamma transforms.
 
    Author: hunterk, Guest, Dr. Venom, Dogway
    License: Public domain
