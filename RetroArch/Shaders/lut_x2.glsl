@@ -102,40 +102,42 @@ uniform COMPAT_PRECISION float LUT2_toggle;
 // This shouldn't be necessary but it seems some undefined values can
 // creep in and each GPU vendor handles that differently. This keeps
 // all values within a safe range
-vec4 mixfix(vec4 a, vec4 b, float c)
+vec3 mixfix(vec3 a, vec3 b, float c)
 {
-	return (a.z < 1.0) ? mix(a, b, c) : a;
+    return (a.z < 1.0) ? mix(a, b, c) : a;
 }
+
+
 
 void main()
 {
 
-	vec4 imgColor = COMPAT_TEXTURE(Source, vTexCoord.xy);
+	vec3 imgColor = COMPAT_TEXTURE(Source, vTexCoord.xy);
 
-//  First LUT
+//  Look LUT
 	float red = ( imgColor.r * (LUT_Size1 - 1.0) + 0.499999 ) / (LUT_Size1 * LUT_Size1);
 	float green = ( imgColor.g * (LUT_Size1 - 1.0) + 0.499999 ) / LUT_Size1;
 	float blue1 = (floor( imgColor.b  * (LUT_Size1 - 1.0) ) / LUT_Size1) + red;
 	float blue2 = (ceil( imgColor.b  * (LUT_Size1 - 1.0) ) / LUT_Size1) + red;
 	float mixer = clamp(max((imgColor.b - blue1) / (blue2 - blue1), 0.0), 0.0, 32.0);
-	vec4 color1 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue1, green ));
-	vec4 color2 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue2, green ));
-	vec4 res = mixfix(color1, color2, mixer);
-	float l = mix(length(imgColor.rgb), length(res.rgb), 0.4);
-	vec4 vcolor = (LUT1_toggle < 1.0) ? imgColor : vec4(clamp(normalize(res.rgb + 1e-10)*l, 0.0, 1.0), 1.0);
+	vec3 color1 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue1, green )).rgb;
+	vec3 color2 = COMPAT_TEXTURE( SamplerLUT1, vec2( blue2, green )).rgb;
+	vec3 res = mixfix(color1, color2, mixer);
+	float l = mix(length(imgColor), length(res.rgb), 0.4);
+	vec3 vcolor = (LUT1_toggle < 1.0) ? imgColor : clamp(normalize(res.rgb + 1e-10)*l, 0.0, 1.0);
 
-//  Second LUT
+//  Technical LUT
 	float red_2 = ( vcolor.r * (LUT_Size2 - 1.0) + 0.499999 ) / (LUT_Size2 * LUT_Size2);
 	float green_2 = ( vcolor.g * (LUT_Size2 - 1.0) + 0.499999 ) / LUT_Size2;
 	float blue1_2 = (floor( vcolor.b  * (LUT_Size2 - 1.0) ) / LUT_Size2) + red_2;
 	float blue2_2 = (ceil( vcolor.b  * (LUT_Size2 - 1.0) ) / LUT_Size2) + red_2;
 	float mixer_2 = clamp(max((vcolor.b - blue1_2) / (blue2_2 - blue1_2), 0.0), 0.0, 32.0);
-	vec4 color1_2 = COMPAT_TEXTURE( SamplerLUT2, vec2( blue1_2, green_2 ));
-	vec4 color2_2 = COMPAT_TEXTURE( SamplerLUT2, vec2( blue2_2, green_2 ));
-	vec4 res_2 = mixfix(color1_2, color2_2, mixer_2);
-	float l_2 = mix(length(vcolor.rgb), length(res_2.rgb), 0.4);
-	vec4 vcolor_2 = (LUT2_toggle < 1.0) ? vcolor : vec4(normalize(res_2.rgb + 1e-10)*l_2, 1.0);
+	vec3 color1_2 = COMPAT_TEXTURE( SamplerLUT2, vec2( blue1_2, green_2 )).rgb;
+	vec3 color2_2 = COMPAT_TEXTURE( SamplerLUT2, vec2( blue2_2, green_2 )).rgb;
+	vec3 res_2 = mixfix(color1_2, color2_2, mixer_2);
+	float l_2 = mix(length(vcolor), length(res_2.rgb), 0.4);
+	vec3 vcolor_2 = (LUT2_toggle < 1.0) ? vcolor : clamp(normalize(res_2.rgb + 1e-10)*l_2, 0.0, 1.0);
 
-	FragColor = (LUT2_toggle < 1.0) ? vcolor : clamp(vcolor_2, 0.0, 1.0);
+	FragColor = vec4(vcolor_2, 1.0);
 }
 #endif
