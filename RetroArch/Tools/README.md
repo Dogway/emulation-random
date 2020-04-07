@@ -1,1 +1,3 @@
 Will compute console system resolution output based on display resolution and correct geometry aspect ratio upon the discussion on this thread (improved since then): [Correct Geometry - Aspect Ratio for different systems](https://forums.libretro.com/t/correct-geometry-aspect-ratio-for-different-systems/1502)
+
+![](https://raw.githubusercontent.com/Dogway/emulation-random/master/RetroArch/Tools/RetroArch%20-%20Custom%20Resolution%20Calculator%20v2.0.png)
