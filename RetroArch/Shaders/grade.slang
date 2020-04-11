@@ -61,9 +61,9 @@ layout(push_constant) uniform Push
 #pragma parameter g_cntrst "Contrast" 0.0 -1.0 1.0 0.05
 #pragma parameter g_mid "Contrast Pivot" 0.5 0.0 1.0 0.01
 #pragma parameter g_lift "Black Level" 0.0 -0.5 0.5 0.01
-#pragma parameter blr "Black-Red Tint" 0.0 0.0 1.0 0.005
-#pragma parameter blg "Black-Green Tint" 0.0 0.0 1.0 0.005
-#pragma parameter blb "Black-Blue Tint" 0.0 0.0 1.0 0.005
+#pragma parameter blr "Black-Red Tint" 0.0 0.0 1.0 0.01
+#pragma parameter blg "Black-Green Tint" 0.0 0.0 1.0 0.01
+#pragma parameter blb "Black-Blue Tint" 0.0 0.0 1.0 0.01
 #pragma parameter wlr "White-Red Tint" 1.0 0.0 2.0 0.01
 #pragma parameter wlg "White-Green Tint" 1.0 0.0 2.0 0.01
 #pragma parameter wlb "White-Blue Tint" 1.0 0.0 2.0 0.01
@@ -357,7 +357,7 @@ void main()
     mat4 color = mat4(params.wlr, params.rg,  params.rb,   0.0,  //red tint
                       params.gr,  params.wlg, params.gb,   0.0,  //green tint
                       params.br,  params.bg,  params.wlb,  0.0,  //blue tint
-                      params.blr, params.blg, params.blb, 0.0);  //black tint
+                      params.blr/20., params.blg/20., params.blb/20., 0.0);  //black tint
 
     mat4 adjust = mat4((1.0 - sat) * 0.2126 + sat, (1.0 - sat) * 0.2126, (1.0 - sat) * 0.2126, 1.0,
                        (1.0 - sat) * 0.7152, (1.0 - sat) * 0.7152 + sat, (1.0 - sat) * 0.7152, 1.0,
