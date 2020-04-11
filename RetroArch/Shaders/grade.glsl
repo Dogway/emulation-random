@@ -264,9 +264,9 @@ vec3 YxytoXYZ(vec3 Yxy){
     return XYZ;
 }
 
-// This shouldn't be necessary but it seems some undefined values can
-// creep in and each GPU vendor handles that differently. This keeps
-// all values within a safe range
+//  This shouldn't be necessary but it seems some undefined values can
+//  creep in and each GPU vendor handles that differently. This keeps
+//  all values within a safe range
 vec3 mixfix(vec3 a, vec3 b, float c)
 {
     return (a.z < 1.0) ? mix(a, b, c) : a;
@@ -382,8 +382,7 @@ vec4 rolled_gain_v4(vec4 color, float gain){
 }
 
 
-// Borrowed from cgwg's crt-geom, under GPL
-
+//  Borrowed from cgwg's crt-geom, under GPL
 float corner(vec2 coord)
 {
     coord *= SourceSize.xy / InputSize.xy;
