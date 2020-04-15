@@ -4,11 +4,12 @@
 
 Copy: LI=L RI=R
 Channel: LI RI
+Delay: 13 ms
 Filter 1: ON HPQ Fc 120 Hz Q 0.541
 Filter 2: ON HPQ Fc 120 Hz Q 1.307
 Convolution: linear_phase_24bit_48khz_stereo_(90_LR_phase_-_L_invert).wav
 
-Copy: L=L R=R C=C LFE=LFE RL=RL RR=RR SL=RL+0.340*RI SR=RR+0.340*LI
+Copy: L=L R=R C=C LFE=LFE RL=RL RR=RR SL=RL+0.540*RI SR=RR+0.540*LI
 
 Channel: SL SR
 Filter 1: ON LPQ Fc 24000 Hz Q 0.541
