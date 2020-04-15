@@ -5,7 +5,7 @@
 
 Copy: LI=L RI=R
 Channel: LI RI
-Delay: 12 ms
+Delay: 13 ms
 
 Filter 1: ON HPQ Fc 100 Hz Q 0.541
 Filter 2: ON HPQ Fc 100 Hz Q 1.307
