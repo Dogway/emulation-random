@@ -106,7 +106,7 @@ Filter 13: ON IIR Order 2 Coefficients `aa` `ab` `ac` `ac` `ab` `aa`
 
 
 
-Copy: CX=0.3535*L+0.3535*R LX=-1.0*LI
+Copy: CX=0.353973*L+0.353973*R LX=-1.0*LI
 
 Copy: L=0.5*L R=0.5*R C=CX LFE=CX RL=0.4359*LX+0.2449*RI RR=0.4359*RI+0.2449*LX
 

@@ -8,11 +8,11 @@ Channel: LI RI
 Delay: 13 ms
 Filter 1: ON HPQ Fc 100 Hz Q 0.541
 Filter 2: ON HPQ Fc 100 Hz Q 1.307
-Convolution: linear_phase_24bit_48khz_stereo_(90_LR_phase_-_L_invert).wav
+Convolution: linear_phase_24bit_48khz_mono_(90_phase).wav
 
-Copy: CX=0.3535*L+0.3535*R
+Copy: CX=0.353973*L+0.353973*R
 
-Copy: L=0.5*L R=0.5*R C=CX LFE=CX RL=0.4359*LI+0.2449*RI RR=0.4359*RI+0.2449*LI
+Copy: L=0.5*L R=0.5*R C=CX LFE=CX RL=-0.4359*LI+0.2449*RI RR=0.4359*RI+-0.2449*LI
 
 Channel: RL RR
 Filter 1: ON LPQ Fc 24000 Hz Q 0.541

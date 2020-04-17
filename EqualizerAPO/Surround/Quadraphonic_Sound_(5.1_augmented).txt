@@ -2,7 +2,7 @@
 #    Jose Linares -Dogway-
 #        >> https://github.com/Dogway
 
-# ref: https://midimagic.sgc-hosting.com/quadrafon.htm
+# https://midimagic.sgc-hosting.com/quadrafon.htm
 
 
 Copy: LI=L RI=R
@@ -11,11 +11,11 @@ Delay: 13 ms
 Filter 1: ON HPQ Fc 100 Hz Q 0.541
 Filter 2: ON HPQ Fc 100 Hz Q 1.307
 
-Convolution: linear_phase_24bit_48khz_stereo_(90_LR_phase_-_L_invert).wav
+Convolution: linear_phase_24bit_48khz_mono_(90_phase).wav
 
 Copy: CX=0.25*L+0.25*R
 
-Copy: L=0.46*L+0.19*R R=0.46*R+0.19*L C=CX LFE=CX RL=0.46*LI+0.19*RI RR=0.46*RI+0.19*LI
+Copy: L=0.46*L+0.19*R R=0.46*R+0.19*L C=CX LFE=CX RL=-0.46*LI+0.19*RI RR=0.46*RI+-0.19*LI
 
 Channel: RL RR
 Filter 1: ON LPQ Fc 22050 Hz Q 0.541

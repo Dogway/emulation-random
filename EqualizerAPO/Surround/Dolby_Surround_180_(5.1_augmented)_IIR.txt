@@ -6,15 +6,15 @@
 # Originally 90º shift, but games mostly employed 180º phase shift for performance reasons
 Copy: MUP=-1.0*L+-1.0*R
 Channel: MUP
-Delay: 24 ms
-Filter 1: ON HP Fc 100 Hz Q 0.707
-Filter 2: ON HP Fc 100 Hz Q 0.707
-Filter 3: ON LP Fc 7000 Hz Q 0.707
-Filter 4: ON LP Fc 7000 Hz Q 0.707
+Delay: 23 ms
+Filter 1: ON HP Fc 100 Hz Q 0.707946
+Filter 2: ON HP Fc 100 Hz Q 0.707946
+Filter 3: ON LP Fc 7000 Hz Q 0.707946
+Filter 4: ON LP Fc 7000 Hz Q 0.707946
 
 Copy: CX=0.5*L+0.5*R
 
-Copy: L=L R=R C=0.707*CX LFE=CX RL=0.3535*MUP RR=0.3535*MUP
+Copy: L=L R=R C=0.707946*CX LFE=CX RL=0.353973*MUP RR=0.353973*MUP
 
 Channel: C
 Filter 1: ON HPQ Fc 70 Hz Q 0.541
@@ -24,5 +24,5 @@ Filter 4: ON LPQ Fc 20000 Hz Q 1.307
 
 Channel: LFE
 Preamp: -3.5 dB
-Filter 1: ON LPQ Fc 100 Hz Q 0.707
-Filter 2: ON LPQ Fc 100 Hz Q 0.707
+Filter 1: ON LPQ Fc 100 Hz Q 0.707946946
+Filter 2: ON LPQ Fc 100 Hz Q 0.707946946
