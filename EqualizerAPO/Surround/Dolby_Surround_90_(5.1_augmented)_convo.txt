@@ -6,10 +6,10 @@
 Copy: LI=L RI=R
 Channel: LI RI
 Delay: 13 ms
-Filter 1: ON HP Fc 100 Hz Q 0.707946
-Filter 2: ON HP Fc 100 Hz Q 0.707946
-Filter 3: ON LP Fc 7000 Hz Q 0.707946
-Filter 4: ON LP Fc 7000 Hz Q 0.707946
+Filter 1: ON HPQ Fc 100 Hz Q 0.707946
+Filter 2: ON HPQ Fc 100 Hz Q 0.707946
+Filter 3: ON LPQ Fc 7000 Hz Q 0.707946
+Filter 4: ON LPQ Fc 7000 Hz Q 0.707946
 Convolution: linear_phase_24bit_48khz_mono_(90_phase).wav
 
 Copy: CX=0.5*L+0.5*R
