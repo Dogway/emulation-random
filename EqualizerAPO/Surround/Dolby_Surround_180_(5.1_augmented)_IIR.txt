@@ -28,5 +28,5 @@ Filter 4: ON LPQ Fc 20000 Hz Q 1.307
 
 Channel: LFE
 Preamp: -3.5 dB
-Filter 1: ON LPQ Fc 100 Hz Q 0.707946946
-Filter 2: ON LPQ Fc 100 Hz Q 0.707946946
+Filter 1: ON LPQ Fc 100 Hz Q 0.707946
+Filter 2: ON LPQ Fc 100 Hz Q 0.707946
