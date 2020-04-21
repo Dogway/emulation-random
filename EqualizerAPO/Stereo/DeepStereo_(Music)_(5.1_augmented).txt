@@ -9,18 +9,18 @@ Copy: LX=L+-0.2*R RX=R+-0.2*L
 
 # Conform to 5.1 for HeSuVi
 
-Copy: LI=L RI=R LT=LX RT=RX
-Channel: LI RI LT RT
+Copy: LI=L RI=R
+Channel: LI RI
 Delay: 13 ms
 Filter 1: ON HPQ Fc 120 Hz Q 0.541
 Filter 2: ON HPQ Fc 120 Hz Q 1.307
-Convolution: linear_phase_24bit_48khz_mono_(90_phase).wav
+Convolution: minimum_phase_24bit_48khz_mono_(90_phase).wav
 
 Copy: CX=0.5*L+0.5*R
 
-Copy: L=0.707946*LT R=0.707946*LT C=0.353973*CX LFE=0.353973*CX RL=-0.4359*LI+0.2449*RI RR=0.4359*RI+-0.2449*LI
+Copy: L=0.707946*LX R=0.707946*RX C=0.353973*CX LFE=0.353973*CX RL=-0.4359*LI+0.2449*RI RR=0.4359*RI+-0.2449*LI
 
-Channel: L R RL RR
+Channel: RL RR
 Filter 1: ON LPQ Fc 24000 Hz Q 0.541
 Filter 2: ON LPQ Fc 24000 Hz Q 1.307
 
