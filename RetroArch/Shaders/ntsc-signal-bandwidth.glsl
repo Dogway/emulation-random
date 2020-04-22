@@ -227,7 +227,7 @@ void main()
     {
         float blank =   (PAL==1.0)     ? 12.0                      : 10.9;
         float scan_ms = (PAL==1.0)     ? 1000000.*(1./625.)*(1./25.)-blank : \
-                                         1000000.*(1./525.)*(1./30.)-blank;
+                                         1000000.*(1./525.)*(1./(30./1.001))-blank;
         float Ch_SubC = (PAL==1.0)     ? 390.15845                 : 315.0;
         float Y_Carr =  (PAL==1.0)     ? 440.0                     : 369.6;
         float Y_CUS =   (Y_RES != 4.2) ? Y_RES * 88.0          : Y_Carr;
