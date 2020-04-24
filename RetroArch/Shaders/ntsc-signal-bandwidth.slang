@@ -86,7 +86,7 @@ vec4 RGB_YIQ(vec4 col)
 
     col.rgb *= conv_mat;
 
-    return col;
+    return vec4(col.rgb, 1.0);
 }
 
 vec4 YIQ_RGB(vec4 col)
@@ -98,7 +98,7 @@ vec4 YIQ_RGB(vec4 col)
 
     col.rgb *= conv_mat;
 
-    return col;
+    return vec4(col.rgb, 1.0);
 }
 
 vec4 RGBtoYUV(vec4 RGB)
@@ -109,7 +109,7 @@ vec4 RGBtoYUV(vec4 RGB)
      0.615, -0.514991, -0.10001);
  
     RGB.rgb *= conv_mat;
-    return RGB;
+    return vec4(RGB.rgb, 1.0);
  }
 
 vec4 YUVtoRGB(vec4 YUV)
@@ -120,29 +120,29 @@ vec4 YUVtoRGB(vec4 YUV)
      1.000, 2.03211, 0.00000);
  
     YUV.rgb *= conv_mat;
-    return YUV;
+    return vec4(YUV.rgb, 1.0);
   }
 
 
 // to Studio Swing (in YIQ space) (for footroom and headroom)
 vec4 PCtoTV(vec4 col)
 {
-   col *= 255;
-   col.x = ((col.x * 219) / 255) + 16;
-   col.y = (((col.y - 128) * 224) / 255) + 112;
-   col.z = (((col.z - 128) * 224) / 255) + 112;
-   return vec4(col.xyz, 1.0) / 255;
+   col *= 255.;
+   col.x = ((col.x * 219.) / 255.) + 16.;
+   col.y = (((col.y - 128.) * 224.) / 255.) + 112.;
+   col.z = (((col.z - 128.) * 224.) / 255.) + 112.;
+   return vec4(col.xyz, 1.0) / 255.;
 }
 
 
 // to Full Swing (in YIQ space)
 vec4 TVtoPC(vec4 col)
 {
-   col *= 255;
-   float colx = ((col.x - 16) / 219) * 255;
-   float coly = (((col.y - 112) / 224) * 255) + 128;
-   float colz = (((col.z - 112) / 224) * 255) + 128;
-   return vec4(colx,coly,colz, 1.0) / 255;
+   col *= 255.;
+   float colx = ((col.x - 16.) / 219.) * 255.;
+   float coly = (((col.y - 112.) / 224.) * 255.) + 128.;
+   float colz = (((col.z - 112.) / 224.) * 255.) + 128.;
+   return vec4(colx,coly,colz, 1.0) / 255.;
 }
 
 

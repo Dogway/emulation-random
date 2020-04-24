@@ -152,7 +152,7 @@ vec4 RGB_YIQ(vec4 col)
 
     col.rgb *= conv_mat;
 
-    return vec4(col, 1.0);
+    return vec4(col.rgb, 1.0);
 }
 
 vec4 YIQ_RGB(vec4 col)
@@ -164,7 +164,7 @@ vec4 YIQ_RGB(vec4 col)
 
     col.rgb *= conv_mat;
 
-    return vec4(col, 1.0);
+    return vec4(col.rgb, 1.0);
 }
 
 vec4 RGBtoYUV(vec4 RGB)
@@ -175,7 +175,7 @@ vec4 RGBtoYUV(vec4 RGB)
      0.615, -0.514991, -0.10001);
  
     RGB.rgb *= conv_mat;
-    return vec4(RGB, 1.0);
+    return vec4(RGB.rgb, 1.0);
  }
 
 vec4 YUVtoRGB(vec4 YUV)
@@ -186,29 +186,29 @@ vec4 YUVtoRGB(vec4 YUV)
      1.000, 2.03211, 0.00000);
  
     YUV.rgb *= conv_mat;
-    return vec4(YUV, 1.0);
+    return vec4(YUV.rgb, 1.0);
   }
 
 
 // to Studio Swing (in YIQ space) (for footroom and headroom)
 vec4 PCtoTV(vec4 col)
 {
-   col *= 255;
-   col.x = ((col.x * 219) / 255) + 16;
-   col.y = (((col.y - 128) * 224) / 255) + 112;
-   col.z = (((col.z - 128) * 224) / 255) + 112;
-   return vec4(col.xyz, 1.0) / 255;
+   col *= 255.;
+   col.x = ((col.x * 219.) / 255.) + 16.;
+   col.y = (((col.y - 128.) * 224.) / 255.) + 112.;
+   col.z = (((col.z - 128.) * 224.) / 255.) + 112.;
+   return vec4(col.xyz, 1.0) / 255.;
 }
 
 
 // to Full Swing (in YIQ space)
 vec4 TVtoPC(vec4 col)
 {
-   col *= 255;
-   float colx = ((col.x - 16) / 219) * 255;
-   float coly = (((col.y - 112) / 224) * 255) + 128;
-   float colz = (((col.z - 112) / 224) * 255) + 128;
-   return vec4(colx,coly,colz, 1.0) / 255;
+   col *= 255.;
+   float colx = ((col.x - 16.) / 219.) * 255.;
+   float coly = (((col.y - 112.) / 224.) * 255.) + 128.;
+   float colz = (((col.z - 112.) / 224.) * 255.) + 128.;
+   return vec4(colx,coly,colz, 1.0) / 255.;
 }
 
 
@@ -267,9 +267,9 @@ void main()
         max_lum_res = 52.6 ms * 369.6/88.0 MHz;
     }
 
-    const int viewport_col_resy = int(ceil((OutputSize.x / TextureSize.x) * (TextureSize.x / max_col_res_I)));
-    const int viewport_col_resz = int(ceil((OutputSize.x / TextureSize.x) * (TextureSize.x / max_col_res_Q)));
-    const int viewport_lum_res =  int(ceil((OutputSize.x / TextureSize.x) * (TextureSize.x / max_lum_res)));
+    int viewport_col_resy = int(ceil((OutputSize.x / TextureSize.x) * (TextureSize.x / max_col_res_I)));
+    int viewport_col_resz = int(ceil((OutputSize.x / TextureSize.x) * (TextureSize.x / max_col_res_Q)));
+    int viewport_lum_res =  int(ceil((OutputSize.x / TextureSize.x) * (TextureSize.x / max_lum_res)));
 
     if(vTexCoord.x - SPLIT - 1.0 > 0.0 || vTexCoord.x - SPLIT < 0.0)
     {
@@ -285,15 +285,15 @@ void main()
 
             for(int i = 1; i < viewport_col_resy; i++)
             {
-                col.y += RGB_YIQ(COMPAT_TEXTURE(Source, vTexCoord - vec2((i - viewport_col_resy/2) * OutputSize.z, 0.0))).y;
+                col.y += RGB_YIQ(COMPAT_TEXTURE(Source, vTexCoord - vec2(float(i - viewport_col_resy/2) * OutSize.z, 0.0))).y;
             }
             for(int i = 1; i < viewport_col_resz; i++)
             {
-                col.z += RGB_YIQ(COMPAT_TEXTURE(Source, vTexCoord - vec2((i - viewport_col_resz/2) * OutputSize.z, 0.0))).z;
+                col.z += RGB_YIQ(COMPAT_TEXTURE(Source, vTexCoord - vec2(float(i - viewport_col_resz/2) * OutSize.z, 0.0))).z;
             }
             for(int i = 1; i < viewport_lum_res; i++)
             {
-                col.x += RGB_YIQ(COMPAT_TEXTURE(Source, vTexCoord - vec2((i - viewport_col_resy/2) * OutputSize.z, 0.0))).x;
+                col.x += RGB_YIQ(COMPAT_TEXTURE(Source, vTexCoord - vec2(float(i - viewport_col_resy/2) * OutSize.z, 0.0))).x;
             }
         }
         else
@@ -302,22 +302,22 @@ void main()
 
             for(int i = 1; i < viewport_col_resy; i++)
             {
-                col.y += RGBtoYUV(COMPAT_TEXTURE(Source, vTexCoord - vec2((i - viewport_col_resy/2) * OutputSize.z, 0.0))).y;
+                col.y += RGBtoYUV(COMPAT_TEXTURE(Source, vTexCoord - vec2(float(i - viewport_col_resy/2) * OutSize.z, 0.0))).y;
             }
             for(int i = 1; i < viewport_col_resz; i++)
             {
-                col.z += RGBtoYUV(COMPAT_TEXTURE(Source, vTexCoord - vec2((i - viewport_col_resz/2) * OutputSize.z, 0.0))).z;
+                col.z += RGBtoYUV(COMPAT_TEXTURE(Source, vTexCoord - vec2(float(i - viewport_col_resz/2) * OutSize.z, 0.0))).z;
             }
             for(int i = 1; i < viewport_lum_res; i++)
             {
-                col.x += RGBtoYUV(COMPAT_TEXTURE(Source, vTexCoord - vec2((i - viewport_col_resy/2) * OutputSize.z, 0.0))).x;
+                col.x += RGBtoYUV(COMPAT_TEXTURE(Source, vTexCoord - vec2(float(i - viewport_col_resy/2) * OutSize.z, 0.0))).x;
             }
         }
 
 
-        col.y /= viewport_col_resy;
-        col.z /= viewport_col_resz;
-        col.x /= viewport_lum_res;
+        col.y /= float(viewport_col_resy);
+        col.z /= float(viewport_col_resz);
+        col.x /= float(viewport_lum_res);
         col = PCtoTV(col);
 
 
