@@ -20,9 +20,9 @@ If: ((sizeof(regexSearch(device, tolower(deviceGuid))) > 0) and (sizeof(regexSea
       Stage: pre-mix
       Include: incc.txt
       If: fakeChannelCount == 2
-        Include: Dolby_ProLogic_IIx_(7.1_upmix)_convo.txt
+        Include: ..\Surround\Dolby_ProLogic_IIx_(7.1_upmix)_convo.txt
       ElseIf: fakeChannelCount == 6
-        Include: Dolby_Digital_5.1_(7.1_augmented).txt
+        Include: ..\Surround\Dolby_Digital_5.1_(7.1_augmented).txt
       EndIf:
       Stage: post-mix
     EndIf:
