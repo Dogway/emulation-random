@@ -1,0 +1,43 @@
+#2.0.0.1
+# HeSuVi config: HQ automatic input upmix: 2.0, 5.1 and 7.1 -passthrough-
+#    Jose Linares -Dogway-
+#        >> https://github.com/Dogway
+
+Include: prelude.txt
+
+Include: devna.txt
+If: ((sizeof(regexSearch(device, tolower(deviceGuid))) > 0) and (sizeof(regexSearch("capture", stage)) == 0)) or (sizeof(regexSearch("Benchmark", deviceName)) > 0)
+  Stage: post-mix
+  If: outputChannelCount == 8
+  ElseIf: outputChannelCount == 2
+    Copy: C=0.0 SUB=0.0 RL=0.0 RR=0.0 SL=0.0 SR=0.0
+  EndIf:
+
+  Include: deact.txt
+  Include: eocc.txt
+  If: active and enough and (sampleRate == 96000 or sampleRate == 48000 or sampleRate == 44100)
+    If: outputChannelCount == 8
+      Stage: pre-mix
+      Include: incc.txt
+      If: fakeChannelCount == 2
+        Include: Dolby_ProLogic_IIx_(7.1_upmix)_convo.txt
+      ElseIf: fakeChannelCount == 6
+        Include: Dolby_Digital_5.1_(7.1_augmented).txt
+      EndIf:
+      Stage: post-mix
+    EndIf:
+    Include: move.txt
+    Include: lfc.txt
+    Copy: L0=LVI R1=LVI SL0=SLVI SR1=SLVI RL0=RLVI RR1=RLVI C0=CVI R0=RVI L1=RVI SR0=SRVI SL1=SRVI RR0=RRVI RL1=RRVI C1=CVI
+    Channel: L0 R1 SL0 SR1 RL0 RR1 C0 R0 L1 SR0 SL1 RR0 RL1 C1
+    Include: conv.txt
+    Include: mix.txt
+    Include: master.txt
+  EndIf:
+
+  Copy: L=LVI R=RVI SL=0.0 SR=0.0 C=0.0 SUB=0.0 RL=0.0 RR=0.0
+  Copy: L=L+C+RL+SL R=R+SUB+RR+SR
+
+EndIf:
+
+Include: postlude.txt
