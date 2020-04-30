@@ -2,9 +2,9 @@
 
 layout(push_constant) uniform Push
 {
-    float gamma_out;
-    float gamma_in;
-    float gamma_type;
+    float g_gamma_out;
+    float g_gamma_in;
+    float g_gamma_type;
     float g_vignette;
     float g_vstr;
     float g_vpower;
@@ -45,9 +45,9 @@ layout(push_constant) uniform Push
    License: Public domain
 */
 
-#pragma parameter gamma_out "LCD Gamma" 2.20 0.0 3.0 0.05
-#pragma parameter gamma_in "CRT Gamma" 2.40 0.0 3.0 0.05
-#pragma parameter gamma_type "CRT Gamma (POW = 0, sRGB = 1)" 1.0 0.0 1.0 1.0
+#pragma parameter g_gamma_out "LCD Gamma" 2.20 0.0 3.0 0.05
+#pragma parameter g_gamma_in "CRT Gamma" 2.40 0.0 3.0 0.05
+#pragma parameter g_gamma_type "CRT Gamma (POW = 0, sRGB = 1)" 1.0 0.0 1.0 1.0
 #pragma parameter g_vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
 #pragma parameter g_vstr "Vignette Strength" 40.0 0.0 50.0 1.0
 #pragma parameter g_vpower "Vignette Power" 0.20 0.0 0.5 0.01
@@ -311,9 +311,9 @@ float corner(vec2 coord)
 void main()
 {
 
-//  Pure power was crushing blacks (eg. DKC2). You can mimic pow(c, 2.40) by raising the gamma_in value to 2.55
+//  Pure power was crushing blacks (eg. DKC2). You can mimic pow(c, 2.40) by raising the g_gamma_in value to 2.55
     vec3 imgColor = texture(Source, vTexCoord.xy).rgb;
-    imgColor = (params.gamma_type == 1.0) ? moncurve_f_f3(imgColor, params.gamma_in + 0.15, 0.055) : pow(imgColor, vec3(params.gamma_in));
+    imgColor = (params.g_gamma_type == 1.0) ? moncurve_f_f3(imgColor, params.g_gamma_in + 0.15, 0.055) : pow(imgColor, vec3(params.g_gamma_in));
 
 
 //  Look LUT
@@ -388,7 +388,7 @@ void main()
     vec3 LUT2_output = mixfix(color1_2, color2_2, mixer_2);
 
     LUT2_output = (params.LUT2_toggle == 0.0) ? adjusted : LUT2_output;
-    LUT2_output = (params.gamma_out == 1.00) ? LUT2_output : moncurve_r_f3(LUT2_output, params.gamma_out + 0.20, 0.055);
+    LUT2_output = (params.g_gamma_out == 1.00) ? LUT2_output : moncurve_r_f3(LUT2_output, params.g_gamma_out + 0.20, 0.055);
 
     vpos *= (global.SourceSize.xy/global.OriginalSize.xy);
     FragColor = vec4(LUT2_output*corner(vpos), 1.0);
