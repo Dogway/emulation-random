@@ -1,10 +1,12 @@
-﻿; by Jose Linares -Dogway- (2020)
+﻿; HeSuVi Cycle Profiles.ahk
+;    Jose Linares -Dogway- (2020)
+;        >> https://github.com/Dogway
 
-; Script to Cycle through HeSuVi profiles with hotkeys
-; AND raise or lower master volume.
+; Script to Cycle through HeSuVi profiles with hotkeys...
+; ...AND raise or lower master volume.
 
 ; Notification is in audio file format (place them inside HeSuVi\hrir folder)...
-; ...so it doesn't interrupt with fullscreen applications in Exclusive mode
+; ...so it doesn't interrupt with fullscreen applications in Exclusive mode.
 
 #NoEnv
 
@@ -66,9 +68,10 @@ Return
 	SoundPlay, %HeSuVi_exe%\hrir\Audio\%num%.wav, Wait
 Return
 
-; These are my personal selection:
-; Typically cmss_game for games
+; Out of my personal selection:
+; cmss_game for games
 ; dh++ for movies
+; dts_hpx for music
 ; stereo (renamed from "none") for comparison
 Cycle(num)
 {
