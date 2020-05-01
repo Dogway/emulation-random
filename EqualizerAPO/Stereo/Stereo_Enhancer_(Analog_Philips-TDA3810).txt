@@ -7,7 +7,7 @@ Copy: LX=L RX=R
 Channel: LX RX
 Filter: ON BP Fc 3500 Hz BW Oct 0.533
 
-Copy: L=-0.5*LX+0.5*L R=-0.5*RX+0.5*R
+Copy: L=-0.50*LX+0.50*L R=-0.50*RX+0.50*R
 
 Channel: L R
 Preamp: +6.0 dB

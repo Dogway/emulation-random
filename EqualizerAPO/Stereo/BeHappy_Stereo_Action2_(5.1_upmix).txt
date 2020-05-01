@@ -22,7 +22,7 @@ Filter 2: ON HPQ Fc 20 Hz Q 0.707
 Filter 3: ON LPQ Fc 20000 Hz Q 0.707
 Filter 4: ON LPQ Fc 20000 Hz Q 0.707
 
-Copy: LFEX=0.5*L+0.5*R
+Copy: LFEX=0.50*L+0.50*R
 Copy: LC=0.668*LI+-0.668*RI RC=0.668*RI+-0.668*LI
 
 Copy: CX=LI+-1.0*LC+RI+-1.0*RC

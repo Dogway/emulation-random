@@ -11,4 +11,4 @@ Copy: RX=L
 Channel: RX
 Delay: 0.011345 ms
 
-Copy: L=0.7*LX+0.3*RX R=0.3*LX+0.7*RX
+Copy: L=0.70*LX+0.30*RX R=0.30*LX+0.70*RX
