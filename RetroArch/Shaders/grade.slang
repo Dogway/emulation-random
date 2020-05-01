@@ -377,7 +377,7 @@ void main()
     adjusted = clamp(XYZ_to_sRGB(YxytoXYZ(adjusted)), 0.0, 1.0);
 
 
-//  Technical LUT
+//  Technical LUT - if using RGB phosphors, disable this and add through a LUT.slang at bottom stack
     float red_2 = (adjusted.r * (params.LUT_Size2 - 1.0) + 0.4999) / (params.LUT_Size2 * params.LUT_Size2);
     float green_2 = (adjusted.g * (params.LUT_Size2 - 1.0) + 0.4999) / params.LUT_Size2;
     float blue1_2 = (floor(adjusted.b * (params.LUT_Size2 - 1.0)) / params.LUT_Size2) + red_2;
