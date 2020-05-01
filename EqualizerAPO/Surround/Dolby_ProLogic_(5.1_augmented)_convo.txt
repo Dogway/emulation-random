@@ -1,4 +1,4 @@
-# Dolby ProLogic upmix to 5.1
+# Dolby Surround/ProLogic is 4.0 in Stereo (2.0), here augmented to Dolby 5.1
 #    Jose Linares -Dogway-
 #        >> https://github.com/Dogway
 
@@ -13,9 +13,9 @@ Filter 4: ON LPQ Fc 7000 Hz Q 1.307
 Convolution: minimum_phase_24bit_48khz_mono_(90_phase).wav
 
 
-Copy: CX=0.353973*L+0.353973*R
+Copy: CX=0.353553*L+0.353553*R
 
-Copy: L=0.8*L+0.2*CX R=0.8*R+0.2*CX C=0.75*CX LFE=0.9*CX RL=-0.353973*LI+0.353973*RI RR=-0.353973*LI+0.353973*RI
+Copy: L=0.50*L R=0.50*R C=CX LFE=CX RL=-0.353553*LI+0.353553*RI RR=-0.353553*LI+0.353553*RI
 
 Channel: RL RR
 Filter 1: ON LPQ Fc 24000 Hz Q 0.541

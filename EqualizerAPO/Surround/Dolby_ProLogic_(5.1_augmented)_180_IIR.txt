@@ -1,0 +1,32 @@
+# Dolby Surround/ProLogic is 4.0 in Stereo (2.0), here augmented to Dolby 5.1
+#    Jose Linares -Dogway-
+#        >> https://github.com/Dogway
+
+
+# Originally 90º shift, but games mostly employed 180º phase shift for performance reasons
+Copy: LI=-1.00*L RI=-1.00*R
+Channel: LI RI
+Delay: 23 ms
+Filter 1: ON HPQ Fc 100 Hz Q 0.707107
+Filter 2: ON HPQ Fc 100 Hz Q 0.707107
+Filter 3: ON LPQ Fc 7000 Hz Q 0.707107
+Filter 4: ON LPQ Fc 7000 Hz Q 0.707107
+
+
+Copy: CX=0.353553*L+0.353553*R
+
+Copy: L=0.50*L R=0.50*R C=CX LFE=CX RL=-0.353553*LI+0.353553*RI RR=-0.353553*LI+0.353553*RI
+
+Channel: RL RR
+Filter 1: ON LPQ Fc 22050 Hz Q 0.707107
+Filter 2: ON LPQ Fc 22050 Hz Q 0.707107
+
+Channel: C
+Filter 1: ON HPQ Fc 70 Hz Q 0.707107
+Filter 2: ON HPQ Fc 70 Hz Q 0.707107
+Filter 3: ON LPQ Fc 20000 Hz Q 0.707107
+Filter 4: ON LPQ Fc 20000 Hz Q 0.707107
+
+Channel: LFE
+Filter 1: ON LPQ Fc 100 Hz Q 0.707107
+Filter 2: ON LPQ Fc 100 Hz Q 0.707107
