@@ -8,19 +8,19 @@ Copy: LB=L RB=R
 Channel: LB RB
 Delay: 20 ms
 
-Filter 1: ON HPQ Fc 100 Hz Q 0.707
-Filter 2: ON HPQ Fc 100 Hz Q 0.707
-Filter 3: ON LPQ Fc 7000 Hz Q 0.707
-Filter 4: ON LPQ Fc 7000 Hz Q 0.707
+Filter 1: ON HPQ Fc 100 Hz Q 0.707107
+Filter 2: ON HPQ Fc 100 Hz Q 0.707107
+Filter 3: ON LPQ Fc 7000 Hz Q 0.707107
+Filter 4: ON LPQ Fc 7000 Hz Q 0.707107
 
 # Front
 Copy: LI=L RI=R
 Channel: LI RI
 
-Filter 1: ON HPQ Fc 20 Hz Q 0.707
-Filter 2: ON HPQ Fc 20 Hz Q 0.707
-Filter 3: ON LPQ Fc 20000 Hz Q 0.707
-Filter 4: ON LPQ Fc 20000 Hz Q 0.707
+Filter 1: ON HPQ Fc 20 Hz Q 0.707107
+Filter 2: ON HPQ Fc 20 Hz Q 0.707107
+Filter 3: ON LPQ Fc 20000 Hz Q 0.707107
+Filter 4: ON LPQ Fc 20000 Hz Q 0.707107
 
 Copy: LFEX=0.50*L+0.50*R
 Copy: LCA=0.50*LI+0.50*RI LCB=0.50*LI+-0.50*RI
