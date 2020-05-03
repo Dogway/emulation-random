@@ -9,16 +9,16 @@
 
 #pragma parameter g_gamma_out "LCD Gamma" 2.20 0.0 3.0 0.05
 #pragma parameter g_gamma_in "CRT Gamma" 2.40 0.0 3.0 0.05
-#pragma parameter g_gamma_type "CRT Gamma (POW = 0, sRGB = 1)" 1.0 0.0 1.0 1.0
+#pragma parameter g_gamma_type "CRT Gamma (POW:0, sRGB:1, SMPTE-C:2)" 2.0 0.0 2.0 1.0
 #pragma parameter g_vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
 #pragma parameter g_vstr "Vignette Strength" 40.0 0.0 50.0 1.0
 #pragma parameter g_vpower "Vignette Power" 0.20 0.0 0.5 0.01
 #pragma parameter g_csize "Corner size" 0.0 0.0 0.07 0.01
 #pragma parameter g_bsize "Border smoothness" 600.0 100.0 600.0 25.0
+#pragma parameter g_crtgamut "CRT gamut" 1.0 0.0 1.0 1.0
 #pragma parameter wp_temperature "White Point" 9311.0 1031.0 12047.0 72.0
-#pragma parameter g_sat "Saturation" 0.0 -1.0 2.0 0.02
+#pragma parameter g_sat "Saturation" 0.0 -1.0 1.0 0.01
 #pragma parameter g_vibr "Dullness/Vibrance" 0.0 -1.0 1.0 0.05
-#pragma parameter g_hpfix "Hotspot Fix" 0.0 0.0 1.0 1.00
 #pragma parameter g_lum "Brightness" 0.0 -0.5 1.0 0.01
 #pragma parameter g_cntrst "Contrast" 0.0 -1.0 1.0 0.05
 #pragma parameter g_mid "Contrast Pivot" 0.5 0.0 1.0 0.01
@@ -132,10 +132,10 @@ uniform COMPAT_PRECISION float g_vstr;
 uniform COMPAT_PRECISION float g_vpower;
 uniform COMPAT_PRECISION float g_csize;
 uniform COMPAT_PRECISION float g_bsize;
+uniform COMPAT_PRECISION float g_crtgamut;
 uniform COMPAT_PRECISION float wp_temperature;
 uniform COMPAT_PRECISION float g_sat;
 uniform COMPAT_PRECISION float g_vibr;
-uniform COMPAT_PRECISION float g_hpfix;
 uniform COMPAT_PRECISION float g_lum;
 uniform COMPAT_PRECISION float g_cntrst;
 uniform COMPAT_PRECISION float g_mid;
@@ -165,10 +165,10 @@ uniform COMPAT_PRECISION float LUT2_toggle;
 #define g_vpower 0.2
 #define g_csize 0.0
 #define g_bsize 600.0
+#define g_crtgamut 1.0
 #define wp_temperature 9311.0
 #define g_sat 0.0
 #define g_vibr 0.0
-#define g_hpfix 0.0
 #define g_lum 0.0
 #define g_cntrst 0.0
 #define g_mid 0.5
@@ -200,6 +200,9 @@ uniform COMPAT_PRECISION float LUT2_toggle;
 //      http://www.zombieprototypes.com/?p=210
 // Inspired itself by Tanner Helland's work
 //      http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
+
+// NTSC-J: D93  NTSC-U: C	 PAL: D65
+// NTSC-J: 9311 NTSC-U: 6774 PAL: 6504
 
 vec3 wp_adjust(vec3 color){
 
@@ -253,6 +256,27 @@ vec3 XYZ_to_sRGB(vec3 XYZ){
    -0.9692660,  1.8760108,  0.0415560,
     0.0556434, -0.2040259,  1.0572252);
     return XYZ * m;
+}
+
+
+// from crt-guest-dr-venom color-profiles shader
+// P22-RGB phosphors (linear light)
+vec3 sRGB_to_P22(vec3 RGB){
+
+    const mat3x3 m = mat3x3(
+    0.396686,  0.210299,  0.006131,
+    0.372504,  0.713766,  0.115356,
+    0.181266,  0.075936,  0.967571);
+    return m * RGB;
+}
+
+vec3 XYZP22_to_sRGB(vec3 XYZ){
+
+    const mat3x3 m = mat3x3(
+    3.240970, -0.969244,  0.055630,
+   -1.537383,  1.875968, -0.203977,
+   -0.498611,  0.041555,  1.056972);
+    return m * XYZ;
 }
 
 
@@ -417,11 +441,11 @@ void main()
 //  Saturation agnostic sigmoidal contrast
     vec3 Yxy = XYZtoYxy(sRGB_to_XYZ(vcolor));
     float toGamma = clamp(moncurve_r(Yxy.r, 2.40, 0.055), 0.0, 1.0);
-    toGamma = (g_hpfix == 0.0) ? toGamma : ((Yxy.r > 0.5) ? contrast_sigmoid_inv(toGamma, 2.3, 0.5) : toGamma);
+    toGamma = (Yxy.r > 0.5) ? contrast_sigmoid_inv(toGamma, 2.3, 0.5) : toGamma;
     float sigmoid = (g_cntrst > 0.0) ? contrast_sigmoid(toGamma, g_cntrst, g_mid) : contrast_sigmoid_inv(toGamma, g_cntrst, g_mid);
     vec3 contrast = vec3(moncurve_f(sigmoid, 2.40, 0.055), Yxy.g, Yxy.b);
     vec3 XYZsrgb = clamp(XYZ_to_sRGB(YxytoXYZ(contrast)), 0.0, 1.0);
-    contrast = (g_cntrst == 0.0) && (g_hpfix == 0.0) ? vcolor : ((g_cntrst != 0.0) || (g_hpfix != 0.0) ? XYZsrgb : vcolor);
+    contrast = (g_cntrst == 0.0) ? vcolor : XYZsrgb;
 
 
 //  Vignetting & Black Level
@@ -461,9 +485,11 @@ void main()
     vec3 adjusted_luma = XYZtoYxy(sRGB_to_XYZ(adjusted));
     adjusted = adjusted_luma + (vec3(base_luma.r, 0.0, 0.0) - vec3(adjusted_luma.r, 0.0, 0.0));
     adjusted = clamp(XYZ_to_sRGB(YxytoXYZ(adjusted)), 0.0, 1.0);
+    
+//  CRT Phosphor gamut
+    adjusted = (g_crtgamut == 1.0) ? XYZP22_to_sRGB(sRGB_to_P22(adjusted)) : adjusted;
 
-
-//  Technical LUT - if using RGB phosphors, disable this and add through a LUT.glsl at bottom stack
+//  Technical LUT
     float red_2 = ( adjusted.r * (LUT_Size2 - 1.0) + 0.4999 ) / (LUT_Size2 * LUT_Size2);
     float green_2 = ( adjusted.g * (LUT_Size2 - 1.0) + 0.4999 ) / LUT_Size2;
     float blue1_2 = (floor( adjusted.b * (LUT_Size2 - 1.0) ) / LUT_Size2) + red_2;
