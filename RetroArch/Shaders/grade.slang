@@ -176,19 +176,10 @@ vec3 XYZ_to_sRGB(vec3 XYZ){
 vec3 sRGB_to_P22(vec3 RGB){
 
     const mat3x3 m = mat3x3(
-    0.396686,  0.210299,  0.006131,
-    0.372504,  0.713766,  0.115356,
-    0.181266,  0.075936,  0.967571);
-    return m * RGB;
-}
-
-vec3 XYZP22_to_sRGB(vec3 XYZ){
-
-    const mat3x3 m = mat3x3(
-    3.240970, -0.969244,  0.055630,
-   -1.537383,  1.875968, -0.203977,
-   -0.498611,  0.041555,  1.056972);
-    return m * XYZ;
+	0.396686, 0.372504, 0.181266,
+	0.210299, 0.713766, 0.075936,
+	0.006131, 0.115356, 0.967571);
+    return RGB * m;
 }
 
 
@@ -400,7 +391,7 @@ void main()
     adjusted = clamp(XYZ_to_sRGB(YxytoXYZ(adjusted)), 0.0, 1.0);
     
 //  CRT Phosphor gamut
-    adjusted = (params.g_crtgamut == 1.0) ? XYZP22_to_sRGB(sRGB_to_P22(adjusted)) : adjusted;
+    adjusted = (params.g_crtgamut == 1.0) ? XYZ_to_sRGB(sRGB_to_P22(adjusted)) : adjusted;
 
 //  Technical LUT
     float red_2 = (adjusted.r * (params.LUT_Size2 - 1.0) + 0.4999) / (params.LUT_Size2 * params.LUT_Size2);
