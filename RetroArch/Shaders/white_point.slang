@@ -10,6 +10,9 @@
 // Inspired itself by Tanner Helland's work
 //      http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
 
+// NTSC-J: D93  NTSC-U: C	 PAL: D65
+// NTSC-J: 9311 NTSC-U: 6774 PAL: 6504
+
 layout(push_constant) uniform Push
 {
     vec4 SourceSize;

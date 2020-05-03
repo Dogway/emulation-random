@@ -8,6 +8,8 @@
 // Inspired itself by Tanner Helland's work
 //      http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
 
+// NTSC-J: D93  NTSC-U: C	 PAL: D65
+// NTSC-J: 9311 NTSC-U: 6774 PAL: 6504
 
 #pragma parameter temperature "White Point" 9311.0 1031.0 12047.0 72.0
 #pragma parameter luma_preserve "Preserve Luminance" 1.0 0.0 1.0 1.0
