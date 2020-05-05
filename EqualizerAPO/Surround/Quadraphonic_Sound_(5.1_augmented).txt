@@ -10,8 +10,7 @@ Channel: LI RI
 Delay: 13 ms
 Filter 1: ON HPQ Fc 100 Hz Q 0.541
 Filter 2: ON HPQ Fc 100 Hz Q 1.307
-
-Convolution: minimum_phase_24bit_48khz_mono_(90_phase).wav
+Convolution: Surround\minimum_phase_24bit_48khz_mono_(90_phase).wav
 
 Copy: CX=0.25*L+0.25*R
 
