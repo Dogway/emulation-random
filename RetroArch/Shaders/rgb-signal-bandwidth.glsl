@@ -1,5 +1,5 @@
 
-///////////////
+////////////////
 //	TV-out tweaks
 //	Author: aliaspider and RiskyJumps
 //	License: GPLv3
