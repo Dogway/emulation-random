@@ -116,6 +116,7 @@ layout(set = 0, binding = 4) uniform sampler2D SamplerLUT2;
 
 // NTSC-J: D93  NTSC-U: C	 PAL: D65
 // NTSC-J: 9311 NTSC-U: 6774 PAL: 6504
+
 vec3 wp_adjust(vec3 color){
 
     float temp = params.wp_temperature / 100.;

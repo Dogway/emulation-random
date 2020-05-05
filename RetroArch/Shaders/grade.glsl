@@ -415,7 +415,7 @@ void main()
 
 //  Pure power was crushing blacks (eg. DKC2). You can mimic pow(c, 2.40) by raising the g_gamma_in value to 2.55
     vec3 imgColor = COMPAT_TEXTURE(Source, vTexCoord).rgb;
-    imgColor = (g_gamma_type == 1.0) ? moncurve_f_f3(imgColor, g_gamma_in + 0.15, 0.055) : pow(imgColor, vec3(g_gamma_in));
+    imgColor = (g_gamma_type == 2.0) ? moncurve_f_f3(imgColor, g_gamma_in - 0.18, 0.1115) : (g_gamma_type == 1.0) ? moncurve_f_f3(imgColor, g_gamma_in, 0.055) : pow(imgColor, vec3(g_gamma_in));
 
 
 //  Look LUT
