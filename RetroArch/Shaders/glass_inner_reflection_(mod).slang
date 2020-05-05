@@ -29,8 +29,8 @@ layout(push_constant) uniform Push
 
 #pragma parameter togglereflection "Toggle Reflection" 1.0 0.0 1.0 1.00
 #pragma parameter reflectionBrightness "Reflection brightness" 0.07 0.0 1.0 0.01
-#pragma parameter reflectionDistanceX "Reflection Distance X" 0.0 -1.0 1.0 0.005
-#pragma parameter reflectionDistanceY "Reflection Distance Y" 0.025 -1.0 1.0 0.005
+#pragma parameter reflectionDistanceX "Reflection Distance X" 0.0 -1.0 1.0 0.01
+#pragma parameter reflectionDistanceY "Reflection Distance Y" 0.1 -1.0 1.0 0.01
 
 #pragma stage vertex
 layout(location = 0) in vec4 Position;
@@ -55,6 +55,6 @@ void main()
 
 	vec4 color = texture(Source, vTexCoord);
 
-	vec4 reflection = texture(Source, vTexCoord - reflectionDistance);
+	vec4 reflection = texture(Source, vTexCoord - (reflectionDistance / 10.));
 	FragColor = (params.togglereflection == 0.0) ? color : vec4(1. - (1. - color.rgb) * (1. - reflection * params.reflectionBrightness), 1.0);
 }

@@ -11,8 +11,8 @@
 
 #pragma parameter togglereflection "Toggle Reflection" 1.0 0.0 1.0 1.00
 #pragma parameter reflectionBrightness "Reflection brightness" 0.07 0.0 1.0 0.01
-#pragma parameter reflectionDistanceX "Reflection Distance X" 0.0 -1.0 1.0 0.005
-#pragma parameter reflectionDistanceY "Reflection Distance Y" 0.025 -1.0 1.0 0.005
+#pragma parameter reflectionDistanceX "Reflection Distance X" 0.0 -1.0 1.0 0.01
+#pragma parameter reflectionDistanceY "Reflection Distance Y" 0.1 -1.0 1.0 0.01
 
 #if defined(VERTEX)
 
@@ -103,7 +103,7 @@ uniform COMPAT_PRECISION float reflectionDistanceY;
 #define togglereflection 1.00
 #define reflectionBrightness 0.07
 #define reflectionDistanceX 0.0
-#define reflectionDistanceY 0.025
+#define reflectionDistanceY 0.1
 #endif
 
 
@@ -113,7 +113,7 @@ void main()
 
 	vec4 color = COMPAT_TEXTURE(Source, vTexCoord);
 
-	vec4 reflection = COMPAT_TEXTURE(Source, vTexCoord - reflectionDistance);
+	vec4 reflection = COMPAT_TEXTURE(Source, vTexCoord - (reflectionDistance / 10.));
 	FragColor = (togglereflection == 0.0) ? color : vec4(1. - (1. - color.rgb) * (1. - reflection * reflectionBrightness), 1.0);
 
 }
