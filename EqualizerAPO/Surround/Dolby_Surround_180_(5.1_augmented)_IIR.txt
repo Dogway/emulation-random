@@ -2,8 +2,8 @@
 #    Jose Linares -Dogway-
 #        >> https://github.com/Dogway
 
-
-# Originally 90º shift, but games mostly employed 180º phase shift for performance reasons
+# Surround and ProLogic is the encoder/decoder respectively.
+# This upmix refers to the early cheap ProLogic implementations in games coined as "Surround".
 Copy: LI=-1.00*L RI=-1.00*R
 Channel: LI RI
 Delay: 23 ms
@@ -13,9 +13,9 @@ Filter 3: ON LPQ Fc 7000 Hz Q 0.707107
 Filter 4: ON LPQ Fc 7000 Hz Q 0.707107
 
 
-Copy: CX=0.353553*L+0.353553*R
+Copy: CX=0.50*L+0.50*R
 
-Copy: L=0.50*L R=0.50*R C=CX LFE=CX RL=-0.353553*LI+0.353553*RI RR=-0.353553*LI+0.353553*RI
+Copy: L=L R=R C=CX LFE=CX RL=-0.353553*LI+0.353553*RI RR=-0.353553*LI+0.353553*RI
 
 Channel: RL RR
 Filter 1: ON LPQ Fc 22050 Hz Q 0.707107
