@@ -128,19 +128,19 @@ uniform COMPAT_PRECISION float goyb;
 void main()
 {
 
-	vec4 color = COMPAT_TEXTURE(Source, vTexCoord);
-	vec2 c_dist = (vec2(0.5) * InputSize) / TextureSize;
+    vec4 color = COMPAT_TEXTURE(Source, vTexCoord);
+    vec2 c_dist = (vec2(0.5) * InputSize) / TextureSize;
 
-	vec2 coordsr = vec2(goxr, goyr);
-	vec2 coordsg = vec2(goxg, goyg);
-	vec2 coordsb = vec2(goxb, goyb);
+    vec2 coordsr = vec2(goxr, goyr);
+    vec2 coordsg = vec2(goxg, goyg);
+    vec2 coordsb = vec2(goxb, goyb);
     float imgColorr = COMPAT_TEXTURE(Source, (vTexCoord - c_dist) / gzr + c_dist + coordsr).r;
     float imgColorg = COMPAT_TEXTURE(Source, (vTexCoord - c_dist) / gzg + c_dist + coordsg).g;
     float imgColorb = COMPAT_TEXTURE(Source, (vTexCoord - c_dist) / gzb + c_dist + coordsb).b;
 
     vec3 imgColor = vec3(imgColorr, imgColorg, imgColorb);
 
-	vec4 reflection = vec4((1. - (1. - color.rgb ) * (1. - imgColor.rgb * g_reflstr)) / (1. + g_reflstr / 3.), 1.0);
-	FragColor = (g_refltog == 0.0) ? color : reflection;
+    vec4 reflection = vec4((1. - (1. - color.rgb ) * (1. - imgColor.rgb * g_reflstr)) / (1. + g_reflstr / 3.), 1.0);
+    FragColor = (g_refltog == 0.0) ? color : reflection;
 }
 #endif
