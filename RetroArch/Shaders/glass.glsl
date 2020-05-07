@@ -153,12 +153,10 @@ void main()
     float vert_msk = pow(abs(1. - vert), 1.);
     float center_msk = pow(abs(1. - (vTexCoord.x + 0.1) * SourceSize.x / InputSize.x - c_dist.x), 1.);
     float horiz_msk = max(center_msk - 0.2, 0.0) + 0.1;
-    float refl_glass = horiz_msk * vert_msk;
 
     vpos *= 1. - vpos.xy;
     float vig = vpos.x * vpos.y * 10.;
-    float vig_msk = abs(1. - smoothstep(0.0, 0.6, vig));
-    vig_msk = abs(1. - vig) * (center_msk * 2. + 0.3);
+    float vig_msk = abs(1. - vig) * (center_msk * 2. + 0.3);
     vig = abs(1. - min(pow(vig, 0.1), 1.)) * vert_msk * (center_msk * 2. + 0.3);
 
     vec3 imgColor = vig_msk * vec3(imgColorr, imgColorg, imgColorb);
