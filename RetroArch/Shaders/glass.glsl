@@ -7,17 +7,17 @@
 */
 
 #pragma parameter g_refltog "Toggle Reflection" 1.0 0.0 1.0 1.00
-#pragma parameter g_reflstr "Reflection brightness" 0.07 0.0 1.0 0.01
-#pragma parameter gz "Zoom" 1.0 1.0 1.5 0.01
+#pragma parameter g_reflstr "Reflection brightness" 0.20 0.0 1.0 0.01
+#pragma parameter gz "Zoom" 1.2 1.0 1.5 0.01
 #pragma parameter gx "Shift-X" 0.0 -1.0 1.0 0.01
-#pragma parameter gy "Shift-Y" 0.0 -1.0 1.0 0.01
-#pragma parameter gzr "Zoom Red" 1.0 1.0 1.5 0.01
-#pragma parameter gzg "Zoom Green" 1.0 1.0 1.5 0.01
+#pragma parameter gy "Shift-Y" -0.01 -1.0 1.0 0.01
+#pragma parameter gzr "Zoom Red" 1.03 1.0 1.5 0.01
+#pragma parameter gzg "Zoom Green" 1.01 1.0 1.5 0.01
 #pragma parameter gzb "Zoom Blue" 1.0 1.0 1.5 0.01
 #pragma parameter goxr "Shift-X Red" 0.0 -1.0 1.0 0.01
-#pragma parameter goyr "Shift-Y Red" 0.0 -1.0 1.0 0.01
+#pragma parameter goyr "Shift-Y Red" -0.01 -1.0 1.0 0.01
 #pragma parameter goxg "Shift-X Green" 0.0 -1.0 1.0 0.01
-#pragma parameter goyg "Shift-Y Green" 0.0 -1.0 1.0 0.01
+#pragma parameter goyg "Shift-Y Green" -0.01 -1.0 1.0 0.01
 #pragma parameter goxb "Shift-X Blue" 0.0 -1.0 1.0 0.01
 #pragma parameter goyb "Shift-Y Blue" 0.0 -1.0 1.0 0.01
 
