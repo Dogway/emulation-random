@@ -4,13 +4,16 @@
 
    Author: Dogway
    License: Public domain
-/*
+*/
 
 #pragma parameter g_refltog "Toggle Reflection" 1.0 0.0 1.0 1.00
 #pragma parameter g_reflstr "Reflection brightness" 0.07 0.0 1.0 0.01
-#pragma parameter gzr "Zoom Red" 1.0 -0.5 1.5 0.001
-#pragma parameter gzg "Zoom Green" 1.0 -0.5 1.5 0.001
-#pragma parameter gzb "Zoom Blue" 1.0 -0.5 1.5 0.001
+#pragma parameter gz "Zoom" 1.0 1.0 1.5 0.01
+#pragma parameter gx "Shift-X" 0.0 -1.0 1.0 0.01
+#pragma parameter gy "Shift-Y" 0.0 -1.0 1.0 0.01
+#pragma parameter gzr "Zoom Red" 1.0 1.0 1.5 0.01
+#pragma parameter gzg "Zoom Green" 1.0 1.0 1.5 0.01
+#pragma parameter gzb "Zoom Blue" 1.0 1.0 1.5 0.01
 #pragma parameter goxr "Shift-X Red" 0.0 -1.0 1.0 0.01
 #pragma parameter goyr "Shift-Y Red" 0.0 -1.0 1.0 0.01
 #pragma parameter goxg "Shift-X Green" 0.0 -1.0 1.0 0.01
@@ -56,8 +59,8 @@ uniform COMPAT_PRECISION vec2 InputSize;
 
 void main()
 {
-	gl_Position = MVPMatrix * VertexCoord;
-	TEX0.xy = TexCoord.xy;
+    gl_Position = MVPMatrix * VertexCoord;
+    TEX0.xy = TexCoord.xy;
 }
 
 #elif defined(FRAGMENT)
@@ -101,6 +104,9 @@ COMPAT_VARYING vec4 TEX0;
 #ifdef PARAMETER_UNIFORM
 uniform COMPAT_PRECISION float g_refltog;
 uniform COMPAT_PRECISION float g_reflstr;
+uniform COMPAT_PRECISION float gz;
+uniform COMPAT_PRECISION float gx;
+uniform COMPAT_PRECISION float gy;
 uniform COMPAT_PRECISION float gzr;
 uniform COMPAT_PRECISION float gzg;
 uniform COMPAT_PRECISION float gzb;
@@ -113,6 +119,9 @@ uniform COMPAT_PRECISION float goyb;
 #else
 #define g_refltog 1.00
 #define g_reflstr 0.07
+#define gz 1.0
+#define gx 0.0
+#define gy 0.0
 #define gzr 1.0
 #define gzg 1.0
 #define gzb 1.0
@@ -127,20 +136,36 @@ uniform COMPAT_PRECISION float goyb;
 
 void main()
 {
-
     vec4 color = COMPAT_TEXTURE(Source, vTexCoord);
     vec2 c_dist = (vec2(0.5) * InputSize) / TextureSize;
+    vec2 vpos = vTexCoord * (TextureSize.xy / InputSize.xy);
 
+    float zoom   = fract(gz)/10.;
+    vec2 coords  = vec2(gx, gy);
     vec2 coordsr = vec2(goxr, goyr);
     vec2 coordsg = vec2(goxg, goyg);
     vec2 coordsb = vec2(goxb, goyb);
-    float imgColorr = COMPAT_TEXTURE(Source, (vTexCoord - c_dist) / gzr + c_dist + coordsr).r;
-    float imgColorg = COMPAT_TEXTURE(Source, (vTexCoord - c_dist) / gzg + c_dist + coordsg).g;
-    float imgColorb = COMPAT_TEXTURE(Source, (vTexCoord - c_dist) / gzb + c_dist + coordsb).b;
+    float imgColorr = COMPAT_TEXTURE(Source, (vTexCoord - c_dist) / (fract(gzr)/10. + zoom + 1.) + c_dist + (coordsr + coords)/20.).r;
+    float imgColorg = COMPAT_TEXTURE(Source, (vTexCoord - c_dist) / (fract(gzg)/10. + zoom + 1.) + c_dist + (coordsg + coords)/20.).g;
+    float imgColorb = COMPAT_TEXTURE(Source, (vTexCoord - c_dist) / (fract(gzb)/10. + zoom + 1.) + c_dist + (coordsb + coords)/20.).b;
 
-    vec3 imgColor = vec3(imgColorr, imgColorg, imgColorb);
+    float vert = vpos.y;
+    float vert_msk = pow(abs(1. - vert), 1.);
+    float center_msk = pow(abs(1. - (vTexCoord.x + 0.1) * SourceSize.x / InputSize.x - c_dist.x), 1.);
+    float horiz_msk = max(center_msk - 0.2, 0.0) + 0.1;
+    float refl_glass = horiz_msk * vert_msk;
 
-    vec4 reflection = vec4((1. - (1. - color.rgb ) * (1. - imgColor.rgb * g_reflstr)) / (1. + g_reflstr / 3.), 1.0);
+    vpos *= 1. - vpos.xy;
+    float vig = vpos.x * vpos.y * 10.;
+    float vig_msk = abs(1. - smoothstep(0.0, 0.6, vig));
+    vig_msk = abs(1. - vig) * (center_msk * 2. + 0.3);
+    vig = abs(1. - min(pow(vig, 0.1), 1.)) * vert_msk * (center_msk * 2. + 0.3);
+
+    vec3 imgColor = vig_msk * vec3(imgColorr, imgColorg, imgColorb);
+    vec4 reflection = vec4((1. - (1. - color.rgb ) * (1. - imgColor.rgb * g_reflstr)) / (1. + g_reflstr / 3.), 1.);
+    reflection = vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig / 3.)), 1.);
+
+
     FragColor = (g_refltog == 0.0) ? color : reflection;
 }
 #endif
