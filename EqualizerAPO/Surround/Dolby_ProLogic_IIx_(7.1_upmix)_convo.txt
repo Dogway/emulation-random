@@ -1,4 +1,4 @@
-# Dolby ProLogic IIx upmix to 7.1 (backwards compatible up to Dolby Surround)
+# Dolby ProLogic IIx upmix to 7.1 (backward compliant up to Dolby Surround)
 #    Jose Linares -Dogway-
 #        >> https://github.com/Dogway
 
