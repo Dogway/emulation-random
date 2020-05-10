@@ -9,7 +9,8 @@
 
 #pragma parameter g_refltog "Toggle Reflection" 1.0 0.0 1.0 1.00
 #pragma parameter g_reflstr "Reflection brightness" 0.25 0.0 1.0 0.01
-#pragma parameter g_reflblur "Reflection blur" 1.6 1.0 2.0 0.01
+#pragma parameter g_fresnel "Fresnel Reflection" 1.0 0.0 1.0 0.10
+#pragma parameter g_reflblur "Reflection blur" 0.6 0.0 1.0 0.01
 #pragma parameter gz "Zoom" 1.2 1.0 1.5 0.01
 #pragma parameter gx "Shift-X" 0.0 -1.0 1.0 0.01
 #pragma parameter gy "Shift-Y" -0.01 -1.0 1.0 0.01
@@ -49,7 +50,6 @@ COMPAT_VARYING vec4 TEX0;
 COMPAT_VARYING vec4 t1;
 COMPAT_VARYING vec4 t2;
 COMPAT_VARYING vec4 t3;
-COMPAT_VARYING float g_reflblur;
 
 uniform mat4 MVPMatrix;
 uniform COMPAT_PRECISION int FrameDirection;
@@ -57,18 +57,20 @@ uniform COMPAT_PRECISION int FrameCount;
 uniform COMPAT_PRECISION vec2 OutputSize;
 uniform COMPAT_PRECISION vec2 TextureSize;
 uniform COMPAT_PRECISION vec2 InputSize;
+uniform COMPAT_PRECISION float g_reflblur;
 
 // compatibility #defines
 #define vTexCoord TEX0.xy
 #define SourceSize vec4(TextureSize, 1.0 / TextureSize) //either TextureSize or InputSize
 #define OutSize vec4(OutputSize, 1.0 / OutputSize)
-#define g_reflblur 1.5
+#define reflblur g_reflblur
 
 void main()
 {
     gl_Position = MVPMatrix * VertexCoord;
     TEX0.xy = TexCoord.xy;
-    vec2 ps = vec2(1.0/TextureSize.x, 1.0/TextureSize.y) / g_reflblur;
+    float blur = abs(1. - reflblur) + 1.;
+    vec2 ps = vec2(1.0/TextureSize.x, 1.0/TextureSize.y) / blur;
     float dx = ps.x;
     float dy = ps.y;
 
@@ -121,6 +123,7 @@ COMPAT_VARYING vec4 t3;
 #ifdef PARAMETER_UNIFORM
 uniform COMPAT_PRECISION float g_refltog;
 uniform COMPAT_PRECISION float g_reflstr;
+uniform COMPAT_PRECISION float g_fresnel;
 uniform COMPAT_PRECISION float g_reflblur;
 uniform COMPAT_PRECISION float gz;
 uniform COMPAT_PRECISION float gx;
@@ -137,7 +140,8 @@ uniform COMPAT_PRECISION float goyb;
 #else
 #define g_refltog 1.00
 #define g_reflstr 0.00
-#define g_reflblur 1.00
+#define g_fresnel 1.00
+#define g_reflblur 0.6
 #define gz 1.0
 #define gx 0.0
 #define gy 0.0
@@ -201,7 +205,6 @@ void main()
     float bH = COMPAT_TEXTURE(Source, (t3.yw - c_dist) / (fract(gzb)/10. + zoom + 1.) + c_dist + (coordsb + coords)/20.).z;
     float bI = COMPAT_TEXTURE(Source, (t3.zw - c_dist) / (fract(gzb)/10. + zoom + 1.) + c_dist + (coordsb + coords)/20.).z;
 
-
     vec3 sumA = vec3(rA, gA, bA);
     vec3 sumB = vec3(rB, gB, bB);
     vec3 sumC = vec3(rC, gC, bC);
@@ -224,9 +227,12 @@ void main()
     float vig_msk = abs(1. - vig) * (center_msk * 2. + 0.3);
     vig = abs(1. - pow(vig, 0.1)) * vert_msk * (center_msk * 2. + 0.3);
 
-    blurred = vig_msk * blurred;
+    blurred = min((vig_msk + (1. - g_fresnel)), 1.0) * blurred;
+    vig = clamp(vig * g_fresnel, 0.0, 1.0);
+    vec3 vig_c = vec3(vig-0.15,vig-0.07,vig);
+
     vec4 reflection = vec4((1. - (1. - color.rgb ) * (1. - blurred.rgb * g_reflstr)) / (1. + g_reflstr / 3.), 1.);
-    reflection = vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig / 3.)), 1.);
+    reflection = vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 3.)), 1.);
 
 
     FragColor = (g_refltog == 0.0) ? COMPAT_TEXTURE(Source, vTexCoord) : reflection;
