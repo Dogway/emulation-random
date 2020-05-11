@@ -147,9 +147,9 @@ vec3 wp_adjust(vec3 color){
 vec3 sRGB_to_XYZ(vec3 RGB){
 
     const mat3x3 m = mat3x3(
-    0.4124564, 0.3575761, 0.1804375,
-    0.2126729, 0.7151522, 0.0721750,
-    0.0193339, 0.1191920, 0.9503041);
+    0.412390799, 0.357584339, 0.180480788,
+    0.212639006, 0.715168679, 0.072192315,
+    0.019330819, 0.11919478,  0.950532152);
     return RGB * m;
 }
 
@@ -175,9 +175,10 @@ vec3 YxytoXYZ(vec3 Yxy){
 vec3 XYZ_to_sRGB(vec3 XYZ){
 
     const mat3x3 m = mat3x3(
-    3.2404542, -1.5371385, -0.4985314,
-   -0.9692660,  1.8760108,  0.0415560,
-    0.0556434, -0.2040259,  1.0572252);
+    3.240969942, -1.537383178, -0.49861076,
+   -0.969243636,  1.875967502,  0.041555057,
+    0.055630080, -0.203976959,  1.056971514);
+
     return XYZ * m;
 }
 
@@ -374,81 +375,45 @@ vec3 TVtoPC(vec3 col)
    return vec3(colx,coly,colz) / 255.;
 }
 
-
-const mat3 C_D65_Brad = 
-mat3(
- 0.9904476, -0.0071683, -0.0116156,
--0.0123712,  1.0155950, -0.0029282,
--0.0035635,  0.0067697,  0.9181569);
-
-const mat3 D65_D93_Brad = 
-mat3(
- 0.9515, -0.0030, -0.0528,
--0.0085,  0.9983, -0.0155,
--0.0087,  0.0162,  1.0899);
-
-const mat3 D93_D65_Brad = 
-mat3(
- 1.0515,  0.0023, 0.0510,
- 0.0091,  1.0015, 0.0147,
- 0.0083, -0.0149, 0.9177);
-
 // This is from the PDF
 const mat3 P22_Identity = 
 mat3(
- 0.640, 0.352, 0.008,
- 0.282, 0.620, 0.098,
- 0.146, 0.061, 0.793);
+ 0.4665, 0.2566, 0.0058,
+ 0.3039, 0.6682, 0.1056,
+ 0.1800, 0.0752, 0.9776);
 
-// Illuminant C
+// Use with Illuminant C
 const mat3 NTSC_FCC_Identity = 
 mat3(
- 0.670, 0.330, 0.000,
- 0.210, 0.710, 0.080,
- 0.140, 0.080, 0.780);
+ 0.5881, 0.2897, 0.0000,
+ 0.1791, 0.6056, 0.0682,
+ 0.1832, 0.1047, 1.0208);
 
 const mat3 SMPTE_Identity = 
 mat3(
- 0.630, 0.340, 0.030,
- 0.310, 0.595, 0.095,
- 0.155, 0.070, 0.775);
-
-// from Japanese PDF
+ 0.3935, 0.2124, 0.0187,
+ 0.3653, 0.7011, 0.1119,
+ 0.1917, 0.0866, 0.9584);
+// Use with D93
 const mat3 NTSC_J_Identity = 
 mat3(
- 0.618, 0.350, 0.032,
- 0.280, 0.605, 0.115,
- 0.152, 0.063, 0.785);
+ 0.4617, 0.2615, 0.0239,
+ 0.3069, 0.6631, 0.1261,
+ 0.1818, 0.0754, 0.9391);
 
 const mat3 EBU_Identity = 
 mat3(
- 0.640, 0.330, 0.030,
- 0.290, 0.600, 0.110,
- 0.150, 0.060, 0.790);
+ 0.4306, 0.2220, 0.0202,
+ 0.3415, 0.7067, 0.1296,
+ 0.1784, 0.0713, 0.9393);
 
+// Sony Trinitron KV-20M20
 const mat3 Sony20_20_Identity = 
 mat3(
- 0.625, 0.340, 0.035,
- 0.280, 0.595, 0.135,
- 0.155, 0.070, 0.775);
+ 0.4521, 0.2459, 0.0253,
+ 0.3161, 0.6718, 0.1524,
+ 0.1823, 0.0823, 0.9113);
 
-const mat3 Hitachi_Identity = 
-mat3(
- 0.595, 0.354, 0.051,
- 0.308, 0.585, 0.117,
- 0.160, 0.084, 0.766);
-
-const mat3 Barco_Identity = 
-mat3(
- 0.618, 0.350, 0.032,
- 0.280, 0.605, 0.115,
- 0.152, 0.063, 0.785);
-
-const mat3 Tektronics_Identity = 
-mat3(
- 0.610, 0.340, 0.050,
- 0.280, 0.590, 0.130,
- 0.152, 0.063, 0.785);
 
 
 void main()
@@ -530,7 +495,7 @@ void main()
 
 
 //  CRT Phosphor gamut
-    mat3 m_in = Identity;
+    mat3 m_in;
 
     if (params.g_crtgamut == 1.0) { m_in = P22_Identity;                } else
     if (params.g_crtgamut == 2.0) { m_in = NTSC_FCC_Identity;           } else
@@ -542,13 +507,11 @@ void main()
     if (params.g_crtgamut == 8.0) { m_in = Barco_Identity;              } else
     if (params.g_crtgamut == 9.0) { m_in = Tektronics_Identity;         }
 
-    vec3 gamut = (params.g_crtgamut == 0.0) ? sRGB_to_XYZ(screen.rgb)                   : \
-                 (params.g_crtgamut == 2.0) ? sRGB_to_XYZ(screen.rgb*C_D65_Brad)*m_in   : \
-                 (params.g_crtgamut == 4.0) ? sRGB_to_XYZ(screen.rgb*D93_D65_Brad)*m_in : \
-                                              sRGB_to_XYZ(screen.rgb)*m_in;
+    vec3 gamut = (params.g_crtgamut == 0.0) ? sRGB_to_XYZ(screen.rgb)  : \
+                                              m_in*screen.rgb ;
 
 //  Color Temperature
-    vec3 adjusted = wp_adjust(XYZ_to_sRGB(gamut));
+    vec3 adjusted = (params.g_crtgamut == 0.0) ? wp_adjust(screen.rgb) : wp_adjust(XYZ_to_sRGB(gamut));
     vec3 base_luma = XYZtoYxy(gamut);
     vec3 adjusted_luma = XYZtoYxy(sRGB_to_XYZ(adjusted));
     adjusted = adjusted_luma + (vec3(base_luma.r, 0.0, 0.0) - vec3(adjusted_luma.r, 0.0, 0.0));
