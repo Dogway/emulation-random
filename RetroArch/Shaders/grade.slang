@@ -2,23 +2,29 @@
 
 layout(push_constant) uniform Push
 {
+    float g_gamma_out;
     float g_gamma_in;
     float g_gamma_type;
     float g_vignette;
     float g_vstr;
     float g_vpower;
+    float g_csize;
+    float g_bsize;
     float g_crtgamut;
+    float hue_degrees;
     float I_SHIFT;
     float Q_SHIFT;
     float I_MUL;
     float Q_MUL;
-    float wp_temperature;
     float g_sat;
     float g_vibr;
     float g_lum;
     float g_cntrst;
     float g_mid;
     float g_lift;
+    float blr;
+    float blg;
+    float blb;
     float wlr;
     float wlg;
     float wlb;
@@ -28,12 +34,6 @@ layout(push_constant) uniform Push
     float gb;
     float br;
     float bg;
-    float g_csize;
-    float g_bsize;
-    float LUT_Size1;
-    float LUT1_toggle;
-    float LUT_Size2;
-    float LUT2_toggle;
 } params;
 
 /*
@@ -45,12 +45,16 @@ layout(push_constant) uniform Push
    License: Public domain
 */
 
+#pragma parameter g_gamma_out "LCD Gamma" 2.20 0.0 3.0 0.05
 #pragma parameter g_gamma_in "CRT Gamma" 2.40 0.0 3.0 0.05
-#pragma parameter g_gamma_type "CRT Gamma (POW:0, sRGB:1, SMPTE-C:2)" 2.0 0.0 2.0 1.0
+#pragma parameter g_gamma_type "CRT Gamma (POW:0, sRGB:1, SMPTE-C:2)" 1.0 0.0 2.0 1.0
 #pragma parameter g_vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
 #pragma parameter g_vstr "Vignette Strength" 40.0 0.0 50.0 1.0
 #pragma parameter g_vpower "Vignette Power" 0.20 0.0 0.5 0.01
-#pragma parameter g_crtgamut "CRT gamut" 0.0 0.0 6.0 1.0
+#pragma parameter g_csize "Corner size" 0.0 0.0 0.07 0.01
+#pragma parameter g_bsize "Border smoothness" 600.0 100.0 600.0 25.0
+#pragma parameter g_crtgamut "CRT gamut" 1.0 0.0 9.0 1.0
+#pragma parameter hue_degrees "Hue" 0.0 -360.0 360.0 1.0
 #pragma parameter I_SHIFT "I/U Shift" 0.0 -1.0 1.0 0.02
 #pragma parameter Q_SHIFT "Q/V Shift" 0.0 -1.0 1.0 0.02
 #pragma parameter I_MUL "I/U Multiplier" 1.0 0.0 2.0 0.1
@@ -62,6 +66,9 @@ layout(push_constant) uniform Push
 #pragma parameter g_cntrst "Contrast" 0.0 -1.0 1.0 0.05
 #pragma parameter g_mid "Contrast Pivot" 0.5 0.0 1.0 0.01
 #pragma parameter g_lift "Black Level" 0.0 -0.5 0.5 0.01
+#pragma parameter blr "Black-Red Tint" 0.0 0.0 1.0 0.01
+#pragma parameter blg "Black-Green Tint" 0.0 0.0 1.0 0.01
+#pragma parameter blb "Black-Blue Tint" 0.0 0.0 1.0 0.01
 #pragma parameter wlr "White-Red Tint" 1.0 0.0 2.0 0.01
 #pragma parameter wlg "White-Green Tint" 1.0 0.0 2.0 0.01
 #pragma parameter wlb "White-Blue Tint" 1.0 0.0 2.0 0.01
@@ -71,8 +78,6 @@ layout(push_constant) uniform Push
 #pragma parameter gb "Green-Blue Tint" 0.0 -1.0 1.0 0.005
 #pragma parameter br "Blue-Red Tint" 0.0 -1.0 1.0 0.005
 #pragma parameter bg "Blue-Green Tint" 0.0 -1.0 1.0 0.005
-#pragma parameter g_csize "Corner size" 0.0 0.0 0.07 0.01
-#pragma parameter g_bsize "Border smoothness" 600.0 100.0 600.0 25.0
 #pragma parameter LUT_Size1 "LUT Size 1" 16.0 8.0 64.0 16.0
 #pragma parameter LUT1_toggle "LUT 1 Toggle" 0.0 0.0 1.0 1.0
 #pragma parameter LUT_Size2 "LUT Size 2" 64.0 0.0 64.0 16.0
@@ -84,6 +89,11 @@ layout(std140, set = 0, binding = 0) uniform UBO
     vec4 SourceSize;
     vec4 OriginalSize;
     vec4 OutputSize;
+    float wp_temperature;
+    float LUT_Size1;
+    float LUT1_toggle;
+    float LUT_Size2;
+    float LUT2_toggle;
 } global;
 
 #pragma stage vertex
@@ -120,8 +130,8 @@ layout(set = 0, binding = 4) uniform sampler2D SamplerLUT2;
 
 vec3 wp_adjust(vec3 color){
 
-    float temp = params.wp_temperature / 100.;
-    float k = params.wp_temperature / 10000.;
+    float temp = global.wp_temperature / 100.;
+    float k = global.wp_temperature / 10000.;
     float lk = log(k);
 
     vec3 wp = vec3(1.);
@@ -375,32 +385,13 @@ vec3 TVtoPC(vec3 col)
 }
 
 
-const mat3 C_D65_Brad = 
-mat3(
- 0.9904476, -0.0071683, -0.0116156,
--0.0123712,  1.0155950, -0.0029282,
--0.0035635,  0.0067697,  0.9181569);
-
-const mat3 D65_D93_Brad = 
-mat3(
- 0.9515, -0.0030, -0.0528,
--0.0085,  0.9983, -0.0155,
--0.0087,  0.0162,  1.0899);
-
-const mat3 D93_D65_Brad = 
-mat3(
- 1.0515,  0.0023, 0.0510,
- 0.0091,  1.0015, 0.0147,
- 0.0083, -0.0149, 0.9177);
-
-// This is from the PDF
 const mat3 P22_Identity = 
 mat3(
  0.4665, 0.2566, 0.0058,
  0.3039, 0.6682, 0.1056,
  0.1800, 0.0752, 0.9776);
 
-// Illuminant C
+// use with Illuminant C white point
 const mat3 NTSC_FCC_Identity = 
 mat3(
  0.5881, 0.2897, 0.0000,
@@ -413,7 +404,7 @@ mat3(
  0.3653, 0.7011, 0.1119,
  0.1917, 0.0866, 0.9584);
 
-// from Japanese PDF
+// use with D93 white point
 const mat3 NTSC_J_Identity = 
 mat3(
  0.4617, 0.2615, 0.0239,
@@ -438,12 +429,12 @@ void main()
 
 //  Analogue color knobs
     vec3 source = texture(Source, vTexCoord.xy).rgb;
-    vec3 col = (params.g_crtgamut == 5.0) ? RGB_YUV(source) : (params.g_crtgamut == 2.0) || (params.g_crtgamut == 3.0) ? PCtoTV(RGB_YIQ(source)) : RGB_YIQ(source);
+    vec3 col = (params.g_crtgamut == 5.0) ? RGB_YUV(source) : (params.g_crtgamut > 0.0) && (params.g_crtgamut < 4.0) ? PCtoTV(RGB_YIQ(source)) : RGB_YIQ(source);
 
-//    float hue_radians = params.hue_degrees * (3.14159 / 180.0);
-//    float hue = atan(col.z, col.y) + hue_radians;
-//    float chroma = sqrt(col.z * col.z + col.y * col.y);
-//    col = vec3(col.x, chroma * cos(hue), chroma * sin(hue));
+    float hue_radians = params.hue_degrees * (3.14159 / 180.0);
+    float hue = atan(col.z, col.y) + hue_radians;
+    float chroma = sqrt(col.z * col.z + col.y * col.y);
+    col = vec3(col.x, chroma * cos(hue), chroma * sin(hue));
 
     col.y = mod((col.y + 1.0) + params.I_SHIFT, 2.0) - 1.0;
     col.z = mod((col.z + 1.0) + params.Q_SHIFT, 2.0) - 1.0;
@@ -452,21 +443,21 @@ void main()
     col.y *= params.I_MUL;
 
     col = (params.g_crtgamut == 5.0) ? clamp(col.xyz,vec3(0.0627,0.0627-0.5,0.0627-0.5),vec3(0.92157,0.94118-0.5,0.94118-0.5)) : clamp(col.xyz,vec3(0.0627,-0.5957,-0.5226),vec3(0.92157,0.5957,0.5226));
-    col = (params.g_crtgamut == 0.0) ? source : (params.g_crtgamut == 5.0) ? YUV_RGB(col) : (params.g_crtgamut == 2.0) || (params.g_crtgamut == 3.0) ? YIQ_RGB(TVtoPC(col)) : YIQ_RGB(col);
+    col = (params.g_crtgamut == 0.0) ? source : (params.g_crtgamut == 5.0) ? YUV_RGB(col) : (params.g_crtgamut > 0.0) && (params.g_crtgamut < 4.0) ? YIQ_RGB(TVtoPC(col)) : YIQ_RGB(col);
 
 //  Pure power was crushing blacks (eg. DKC2). You can mimic pow(c, 2.40) by raising the g_gamma_in value to 2.55
     vec3 imgColor = (params.g_gamma_type == 2.0) ? moncurve_f_f3(col, params.g_gamma_in - 0.18, 0.1115) : (params.g_gamma_type == 1.0) ? moncurve_f_f3(col, params.g_gamma_in, 0.055) : pow(col, vec3(params.g_gamma_in));
 
 
 //  Look LUT
-    float red = (imgColor.r * (params.LUT_Size1 - 1.0) + 0.4999) / (params.LUT_Size1 * params.LUT_Size1);
-    float green = (imgColor.g * (params.LUT_Size1 - 1.0) + 0.4999) / params.LUT_Size1;
-    float blue1 = (floor(imgColor.b * (params.LUT_Size1 - 1.0)) / params.LUT_Size1) + red;
-    float blue2 = (ceil(imgColor.b * (params.LUT_Size1 - 1.0)) / params.LUT_Size1) + red;
+    float red = (imgColor.r * (global.LUT_Size1 - 1.0) + 0.4999) / (global.LUT_Size1 * global.LUT_Size1);
+    float green = (imgColor.g * (global.LUT_Size1 - 1.0) + 0.4999) / global.LUT_Size1;
+    float blue1 = (floor(imgColor.b * (global.LUT_Size1 - 1.0)) / global.LUT_Size1) + red;
+    float blue2 = (ceil(imgColor.b * (global.LUT_Size1 - 1.0)) / global.LUT_Size1) + red;
     float mixer = clamp(max((imgColor.b - blue1) / (blue2 - blue1), 0.0), 0.0, 32.0);
     vec3 color1 = texture(SamplerLUT1, vec2(blue1, green)).rgb;
     vec3 color2 = texture(SamplerLUT1, vec2(blue2, green)).rgb;
-    vec3 vcolor = (params.LUT1_toggle == 0.0) ? imgColor : mixfix(color1, color2, mixer);
+    vec3 vcolor = (global.LUT1_toggle == 0.0) ? imgColor : mixfix(color1, color2, mixer);
 
 
 //  Saturation agnostic sigmoidal contrast
@@ -498,7 +489,7 @@ void main()
     mat4 color = mat4(params.wlr, params.rg,  params.rb,   0.0,  //red tint
                       params.gr,  params.wlg, params.gb,   0.0,  //green tint
                       params.br,  params.bg,  params.wlb,  0.0,  //blue tint
-                      0.0, 0.0, 0.0, 0.0);  //black tint
+                      params.blr/20., params.blg/20., params.blb/20., 0.0);  //black tint
 
     mat4 adjust = mat4((1.0 - sat) * 0.2126 + sat, (1.0 - sat) * 0.2126, (1.0 - sat) * 0.2126, 1.0,
                        (1.0 - sat) * 0.7152, (1.0 - sat) * 0.7152 + sat, (1.0 - sat) * 0.7152, 1.0,
@@ -514,8 +505,8 @@ void main()
 //  CRT Phosphor gamut
     mat3 m_in;
 
-    if (params.g_crtgamut == 1.0) { m_in = P22_Identity;                } else
-    if (params.g_crtgamut == 2.0) { m_in = NTSC_FCC_Identity;           } else
+    if (params.g_crtgamut == 1.0) { m_in = NTSC_FCC_Identity;           } else
+    if (params.g_crtgamut == 2.0) { m_in = P22_Identity;                } else
     if (params.g_crtgamut == 3.0) { m_in = SMPTE_Identity;              } else
     if (params.g_crtgamut == 4.0) { m_in = NTSC_J_Identity;             } else
     if (params.g_crtgamut == 5.0) { m_in = EBU_Identity;                } else
@@ -532,17 +523,17 @@ void main()
 
 
 //  Technical LUT
-    float red_2 = (adjusted.r * (params.LUT_Size2 - 1.0) + 0.4999) / (params.LUT_Size2 * params.LUT_Size2);
-    float green_2 = (adjusted.g * (params.LUT_Size2 - 1.0) + 0.4999) / params.LUT_Size2;
-    float blue1_2 = (floor(adjusted.b * (params.LUT_Size2 - 1.0)) / params.LUT_Size2) + red_2;
-    float blue2_2 = (ceil(adjusted.b * (params.LUT_Size2 - 1.0)) / params.LUT_Size2) + red_2;
+    float red_2 = (adjusted.r * (global.LUT_Size2 - 1.0) + 0.4999) / (global.LUT_Size2 * global.LUT_Size2);
+    float green_2 = (adjusted.g * (global.LUT_Size2 - 1.0) + 0.4999) / global.LUT_Size2;
+    float blue1_2 = (floor(adjusted.b * (global.LUT_Size2 - 1.0)) / global.LUT_Size2) + red_2;
+    float blue2_2 = (ceil(adjusted.b * (global.LUT_Size2 - 1.0)) / global.LUT_Size2) + red_2;
     float mixer_2 = clamp(max((adjusted.b - blue1_2) / (blue2_2 - blue1_2), 0.0), 0.0, 32.0);
     vec3 color1_2 = texture(SamplerLUT2, vec2(blue1_2, green_2)).rgb;
     vec3 color2_2 = texture(SamplerLUT2, vec2(blue2_2, green_2)).rgb;
     vec3 LUT2_output = mixfix(color1_2, color2_2, mixer_2);
 
-    LUT2_output = (params.LUT2_toggle == 0.0) ? adjusted : LUT2_output;
-    LUT2_output = moncurve_r_f3(LUT2_output, 2.20 + 0.20, 0.055);
+    LUT2_output = (global.LUT2_toggle == 0.0) ? adjusted : LUT2_output;
+    LUT2_output = (params.g_gamma_out == 1.00) ? LUT2_output : moncurve_r_f3(LUT2_output, params.g_gamma_out + 0.20, 0.055);
 
     vpos *= (global.SourceSize.xy/global.OriginalSize.xy);
     FragColor = vec4(LUT2_output*corner(vpos), 1.0);
