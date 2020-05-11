@@ -11,11 +11,11 @@ layout(push_constant) uniform Push
     float g_csize;
     float g_bsize;
     float g_crtgamut;
-    float hue_degrees;
-    float I_SHIFT;
-    float Q_SHIFT;
-    float I_MUL;
-    float Q_MUL;
+    float g_hue_degrees;
+    float g_I_SHIFT;
+    float g_Q_SHIFT;
+    float g_I_MUL;
+    float g_Q_MUL;
     float g_sat;
     float g_vibr;
     float g_lum;
@@ -53,12 +53,12 @@ layout(push_constant) uniform Push
 #pragma parameter g_vpower "Vignette Power" 0.20 0.0 0.5 0.01
 #pragma parameter g_csize "Corner size" 0.0 0.0 0.07 0.01
 #pragma parameter g_bsize "Border smoothness" 600.0 100.0 600.0 25.0
-#pragma parameter g_crtgamut "CRT gamut" 1.0 0.0 9.0 1.0
-#pragma parameter hue_degrees "Hue" 0.0 -360.0 360.0 1.0
-#pragma parameter I_SHIFT "I/U Shift" 0.0 -1.0 1.0 0.02
-#pragma parameter Q_SHIFT "Q/V Shift" 0.0 -1.0 1.0 0.02
-#pragma parameter I_MUL "I/U Multiplier" 1.0 0.0 2.0 0.1
-#pragma parameter Q_MUL "Q/V Multiplier" 1.0 0.0 2.0 0.1
+#pragma parameter g_crtgamut "CRT gamut" 2.0 0.0 9.0 1.0
+#pragma parameter g_hue_degrees "Hue" 0.0 -360.0 360.0 1.0
+#pragma parameter g_I_SHIFT "I/U Shift" 0.0 -1.0 1.0 0.02
+#pragma parameter g_Q_SHIFT "Q/V Shift" 0.0 -1.0 1.0 0.02
+#pragma parameter g_I_MUL "I/U Multiplier" 1.0 0.0 2.0 0.1
+#pragma parameter g_Q_MUL "Q/V Multiplier" 1.0 0.0 2.0 0.1
 #pragma parameter wp_temperature "White Point" 9305.0 1621.0 12055.0 50.0
 #pragma parameter g_sat "Saturation" 0.0 -1.0 2.0 0.02
 #pragma parameter g_vibr "Dullness/Vibrance" 0.0 -1.0 1.0 0.05
@@ -431,16 +431,16 @@ void main()
     vec3 source = texture(Source, vTexCoord.xy).rgb;
     vec3 col = (params.g_crtgamut == 5.0) ? RGB_YUV(source) : (params.g_crtgamut > 0.0) && (params.g_crtgamut < 4.0) ? PCtoTV(RGB_YIQ(source)) : RGB_YIQ(source);
 
-    float hue_radians = params.hue_degrees * (3.14159 / 180.0);
+    float hue_radians = params.g_hue_degrees * (3.14159 / 180.0);
     float hue = atan(col.z, col.y) + hue_radians;
     float chroma = sqrt(col.z * col.z + col.y * col.y);
     col = vec3(col.x, chroma * cos(hue), chroma * sin(hue));
 
-    col.y = mod((col.y + 1.0) + params.I_SHIFT, 2.0) - 1.0;
-    col.z = mod((col.z + 1.0) + params.Q_SHIFT, 2.0) - 1.0;
+    col.y = mod((col.y + 1.0) + params.g_I_SHIFT, 2.0) - 1.0;
+    col.z = mod((col.z + 1.0) + params.g_Q_SHIFT, 2.0) - 1.0;
 
-    col.z *= params.Q_MUL;
-    col.y *= params.I_MUL;
+    col.z *= params.g_Q_MUL;
+    col.y *= params.g_I_MUL;
 
     col = (params.g_crtgamut == 5.0) ? clamp(col.xyz,vec3(0.0627,0.0627-0.5,0.0627-0.5),vec3(0.92157,0.94118-0.5,0.94118-0.5)) : clamp(col.xyz,vec3(0.0627,-0.5957,-0.5226),vec3(0.92157,0.5957,0.5226));
     col = (params.g_crtgamut == 0.0) ? source : (params.g_crtgamut == 5.0) ? YUV_RGB(col) : (params.g_crtgamut > 0.0) && (params.g_crtgamut < 4.0) ? YIQ_RGB(TVtoPC(col)) : YIQ_RGB(col);
