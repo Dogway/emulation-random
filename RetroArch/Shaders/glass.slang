@@ -2,21 +2,22 @@
 
 layout(push_constant) uniform Push
 {
-	float g_refltog;
-	float g_reflstr;
-	float g_reflblur;
-	float gz;
-	float gx;
-	float gy;
-	float gzr;
-	float gzg;
-	float gzb;
-	float goxr;
-	float goyr;
-	float goxg;
-	float goyg;
-	float goxb;
-	float goyb;
+    float g_refltog;
+    float g_reflstr;
+    float g_reflblur;
+    float g_fresnel;
+    float gz;
+    float gx;
+    float gy;
+    float gzr;
+    float gzg;
+    float gzb;
+    float goxr;
+    float goyr;
+    float goxg;
+    float goyg;
+    float goxb;
+    float goyb;
 }params;
 
 
@@ -31,7 +32,8 @@ layout(push_constant) uniform Push
 
 #pragma parameter g_refltog "Toggle Reflection" 1.0 0.0 1.0 1.00
 #pragma parameter g_reflstr "Reflection brightness" 0.25 0.0 1.0 0.01
-#pragma parameter g_reflblur "Reflection blur" 1.6 1.0 2.0 0.01
+#pragma parameter g_fresnel "Fresnel Reflection" 1.0 0.0 1.0 0.10
+#pragma parameter g_reflblur "Reflection blur" 0.6 0.0 1.0 0.01
 #pragma parameter gz "Zoom" 1.2 1.0 1.5 0.01
 #pragma parameter gx "Shift-X" 0.0 -1.0 1.0 0.01
 #pragma parameter gy "Shift-Y" -0.01 -1.0 1.0 0.01
@@ -45,12 +47,14 @@ layout(push_constant) uniform Push
 #pragma parameter goxb "Shift-X Blue" 0.0 -1.0 1.0 0.01
 #pragma parameter goyb "Shift-Y Blue" 0.0 -1.0 1.0 0.01
 
+#define reflblur params.g_reflblur
+
 layout(std140, set = 0, binding = 0) uniform UBO
 {
-	mat4 MVP;
-	vec4 OutputSize;
-	vec4 OriginalSize;
-	vec4 SourceSize;
+    mat4 MVP;
+    vec4 OutputSize;
+    vec4 OriginalSize;
+    vec4 SourceSize;
 } global;
 
 #pragma stage vertex
@@ -63,15 +67,17 @@ layout(location = 3) out vec4 t3;
 
 void main()
 {
-	gl_Position = global.MVP * Position;
-	vTexCoord = TexCoord;
-	float dx = params.SourceSize.z / params.g_reflblur;
-	float dy = params.SourceSize.w / params.g_reflblur;
+    gl_Position = global.MVP * Position;
+    vTexCoord = TexCoord;
+    float blur = abs(1. - reflblur) + 1.;
+    float dx = global.SourceSize.z / blur;
+    float dy = global.SourceSize.w / blur;
 
-	t1 = vTexCoord.xxxy + vec4(	-dx,	0.0,	dx,	-dy);
-	t2 = vTexCoord.xxxy + vec4(	-dx,	0.0,	dx,	0.0);
-	t3 = vTexCoord.xxxy + vec4( -dx,	0.0,	dx,	dy);
+    t1 = vTexCoord.xxxy + vec4( -dx,    0.0,    dx, -dy);
+    t2 = vTexCoord.xxxy + vec4( -dx,    0.0,    dx, 0.0);
+    t3 = vTexCoord.xxxy + vec4( -dx,    0.0,    dx, dy);
 }
+
 
 #pragma stage fragment
 layout(location = 0) in vec2 vTexCoord;
@@ -85,8 +91,8 @@ layout(set = 0, binding = 2) uniform sampler2D Source;
 void main()
 {
 
-    vec2 c_dist = (vec2(0.5) * InputSize) / TextureSize;
-    vec2 vpos = vTexCoord * (TextureSize.xy / InputSize.xy);
+    vec2 c_dist = (vec2(0.5) * global.SourceSize.xy) / global.OriginalSize.xy;
+    vec2 vpos = vTexCoord * (global.OriginalSize.xy / global.SourceSize.xy);
 
     float zoom   = fract(params.gz)/10.;
     vec2 coords  = vec2(params.gx, params.gy);
@@ -94,9 +100,9 @@ void main()
     vec2 coordsg = vec2(params.goxg, params.goyg);
     vec2 coordsb = vec2(params.goxb, params.goyb);
 
-    float cr = texture(Source, (vTexCoord - c_dist) / (fract(gzr)/20. + 1.) + c_dist + coordsr/40.).r;
-    float cg = texture(Source, (vTexCoord - c_dist) / (fract(gzg)/20. + 1.) + c_dist + coordsg/40.).g;
-    float cb = texture(Source, (vTexCoord - c_dist) / (fract(gzb)/20. + 1.) + c_dist + coordsb/40.).b;
+    float cr = texture(Source, (vTexCoord.xy - c_dist) / (fract(gzr)/20. + 1.) + c_dist + coordsr/40.).r;
+    float cg = texture(Source, (vTexCoord.xy - c_dist) / (fract(gzg)/20. + 1.) + c_dist + coordsg/40.).g;
+    float cb = texture(Source, (vTexCoord.xy - c_dist) / (fract(gzb)/20. + 1.) + c_dist + coordsb/40.).b;
     vec4 color = vec4(cr,cg,cb,1.0);
 
 
@@ -145,7 +151,7 @@ void main()
 
     float vert = vpos.y;
     float vert_msk = abs(1. - vert);
-    float center_msk = abs(1. - (vTexCoord.x + 0.1) * SourceSize.x / InputSize.x - c_dist.x);
+    float center_msk = abs(1. - (vTexCoord.x + 0.1) * global.SourceSize.x / global.OriginalSize.x - c_dist.x);
     float horiz_msk = max(center_msk - 0.2, 0.0) + 0.1;
 
     vpos *= 1. - vpos.xy;
@@ -153,10 +159,12 @@ void main()
     float vig_msk = abs(1. - vig) * (center_msk * 2. + 0.3);
     vig = abs(1. - pow(vig, 0.1)) * vert_msk * (center_msk * 2. + 0.3);
 
-    blurred = vig_msk * blurred;
+    blurred = min((vig_msk + (1. - params.g_fresnel)), 1.0) * blurred;
+    vig = clamp(vig * params.g_fresnel, 0.0, 1.0);
+    vec3 vig_c = vec3(vig-0.15,vig-0.07,vig);
+
     vec4 reflection = vec4((1. - (1. - color.rgb ) * (1. - blurred.rgb * params.g_reflstr)) / (1. + params.g_reflstr / 3.), 1.);
-    reflection = vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig / 3.)), 1.);
+    reflection = vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 3.)), 1.);
 
-
-    FragColor = (params.g_refltog == 0.0) ? texture(Source, vTexCoord) : reflection;
+    FragColor = (params.g_refltog == 0.0) ? texture(Source, vTexCoord.xy) : reflection;
 }
