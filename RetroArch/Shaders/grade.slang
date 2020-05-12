@@ -55,7 +55,7 @@ layout(push_constant) uniform Push
     ###      NTSC-U                                                                        ###
     ###          Gamut: SMPTE-C (#3, #7) (or a NTSC based CRT gamut)                       ###
     ###          WP: D65 (6504K)                                                           ###
-    ###          TRC: SMPTE-C Gamma                                                        ###
+    ###          TRC: 2.22 SMPTE-C Gamma                                                   ###
     ###                                                                                    ###
     ###      NTSC-J (Default)                                                              ###
     ###          Gamut: NTSC-J (#4) (or a NTSC-J based CRT gamut)                          ###
