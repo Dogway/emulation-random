@@ -248,8 +248,8 @@ void main()
     vig = abs(1. - pow(vig, 0.1)) * vert_msk * (center_msk * 2. + 0.3);
 
     blurred = min((vig_msk + (1. - g_fresnel)), 1.0) * blurred;
-    vig = clamp(vig * g_fresnel, 0.0, 1.0);
-    vec3 vig_c = vec3(vig-0.15,vig-0.07,vig);
+    vig = clamp(vig * g_fresnel, 0.001, 1.0);
+    vec3 vig_c = vec3(vig) * vec3(0.75, 0.93, 1.0);
 
     vec4 reflection = vec4((1. - (1. - color.rgb ) * (1. - blurred.rgb * g_reflstr)) / (1. + g_reflstr / 3.), 1.);
     reflection = vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 3.)), 1.);
