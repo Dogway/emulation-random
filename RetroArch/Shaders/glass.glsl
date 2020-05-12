@@ -251,8 +251,10 @@ void main()
     vig = clamp(vig * g_fresnel, 0.001, 1.0);
     vec3 vig_c = vec3(vig) * vec3(0.75, 0.93, 1.0);
 
-    vec4 reflection = vec4((1. - (1. - color.rgb ) * (1. - blurred.rgb * g_reflstr)) / (1. + g_reflstr / 3.), 1.);
-    reflection = vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 3.)), 1.);
+// Reflection in
+    vec4 reflection = clamp(vec4((1. - (1. - color.rgb ) * (1. - blurred.rgb * g_reflstr)) / (1. + g_reflstr / 3.), 1.), 0.0, 1.0);
+// Reflection out
+    reflection = clamp(vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 3.)), 1.), 0.0, 1.0);
 
     vpos *= (InputSize.xy/TextureSize.xy);
 

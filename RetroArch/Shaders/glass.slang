@@ -182,9 +182,9 @@ void main()
     vec3 vig_c = vec3(vig) * vec3(0.75, 0.93, 1.0);
 
 // Reflection in
-    vec4 reflection = clamp(vec4((1. - (1. - color.rgb ) * (1. - blurred.rgb * params.g_reflstr)) / (1. + params.g_reflstr / 3.), 1.),0.0,1.0);
+    vec4 reflection = clamp(vec4((1. - (1. - color.rgb ) * (1. - blurred.rgb * params.g_reflstr)) / (1. + params.g_reflstr / 3.), 1.), 0.0, 1.0);
 // Reflection out
-    reflection = clamp(vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 3.)), 1.),0.0,1.0);
+    reflection = clamp(vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 3.)), 1.), 0.0, 1.0);
 
     vpos *= (global.SourceSize.xy/global.OutputSize.xy);
     FragColor = (params.g_refltog == 0.0) ? texture(Source, vTexCoord.xy)*corner(vpos) : reflection*corner(vpos);
