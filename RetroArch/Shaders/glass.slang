@@ -109,8 +109,8 @@ float corner(vec2 coord)
 void main()
 {
 
-    vec2 c_dist = (vec2(0.5) * global.SourceSize.xy) / global.OriginalSize.xy;
-    vec2 vpos = vTexCoord * (global.OriginalSize.xy / global.SourceSize.xy);
+    vec2 c_dist = (vec2(0.5) * global.SourceSize.xy) / global.OutputSize.xy;
+    vec2 vpos = vTexCoord * (global.OutputSize.xy / global.SourceSize.xy);
 
     float zoom   = fract(params.gz)/10.;
     vec2 coords  = vec2(params.gx, params.gy);
@@ -169,7 +169,7 @@ void main()
 
     float vert = vpos.y;
     float vert_msk = abs(1. - vert);
-    float center_msk = abs(1. - (vTexCoord.x + 0.1) * global.SourceSize.x / global.OriginalSize.x - c_dist.x);
+    float center_msk = abs(1. - (vTexCoord.x + 0.1) * global.SourceSize.x / global.OutputSize.x - c_dist.x);
     float horiz_msk = max(center_msk - 0.2, 0.0) + 0.1;
 
     vpos *= 1. - vpos.xy;
@@ -181,9 +181,11 @@ void main()
     vig = clamp(vig * params.g_fresnel, 0.001, 1.0);
     vec3 vig_c = vec3(vig) * vec3(0.75, 0.93, 1.0);
 
-    vec4 reflection = vec4((1. - (1. - color.rgb ) * (1. - blurred.rgb * params.g_reflstr)) / (1. + params.g_reflstr / 3.), 1.);
-    reflection = vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 3.)), 1.);
+// Reflection in
+    vec4 reflection = clamp(vec4((1. - (1. - color.rgb ) * (1. - blurred.rgb * params.g_reflstr)) / (1. + params.g_reflstr / 3.), 1.),0.0,1.0);
+// Reflection out
+    reflection = clamp(vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 3.)), 1.),0.0,1.0);
 
-    vpos *= (global.SourceSize.xy/global.OriginalSize.xy);
+    vpos *= (global.SourceSize.xy/global.OutputSize.xy);
     FragColor = (params.g_refltog == 0.0) ? texture(Source, vTexCoord.xy)*corner(vpos) : reflection*corner(vpos);
 }
