@@ -2,10 +2,12 @@
 
 layout(push_constant) uniform Push
 {
+    float g_csize;
+    float g_bsize;
     float g_refltog;
     float g_reflstr;
-    float g_reflblur;
     float g_fresnel;
+    float g_reflblur;
     float gz;
     float gx;
     float gy;
@@ -30,10 +32,12 @@ layout(push_constant) uniform Push
    License: Public domain
 */
 
-#pragma parameter g_refltog "Toggle Reflection" 1.0 0.0 1.0 1.00
-#pragma parameter g_reflstr "Reflection brightness" 0.25 0.0 1.0 0.01
-#pragma parameter g_fresnel "Fresnel Reflection" 1.0 0.0 1.0 0.10
-#pragma parameter g_reflblur "Reflection blur" 0.6 0.0 1.0 0.01
+#pragma parameter g_csize "Corner size" 0.0 0.0 0.07 0.01
+#pragma parameter g_bsize "Border smoothness" 600.0 100.0 600.0 25.0
+#pragma parameter g_refltog "Reflection Toggle" 1.0 0.0 1.0 1.00
+#pragma parameter g_reflstr "Refl. Brightness" 0.25 0.0 1.0 0.01
+#pragma parameter g_fresnel "Refl. Fresnel" 1.0 0.0 1.0 0.10
+#pragma parameter g_reflblur "Refl. Blur" 0.6 0.0 1.0 0.01
 #pragma parameter gz "Zoom" 1.2 1.0 1.5 0.01
 #pragma parameter gx "Shift-X" 0.0 -1.0 1.0 0.01
 #pragma parameter gy "Shift-Y" -0.01 -1.0 1.0 0.01
@@ -88,6 +92,20 @@ layout(location = 0) out vec4 FragColor;
 layout(set = 0, binding = 2) uniform sampler2D Source;
 
 
+
+//  Borrowed from cgwg's crt-geom, under GPL
+float corner(vec2 coord)
+{
+    coord *= global.OriginalSize.xy / global.SourceSize.xy;
+    coord = (coord - vec2(0.5)) * 1.0 + vec2(0.5);
+    coord = min(coord, vec2(1.0)-coord) * vec2(1.0, global.OutputSize.y/global.OutputSize.x);
+    vec2 cdist = vec2(max(params.g_csize, max((1.0-smoothstep(100.0,600.0,params.g_bsize))*0.01,0.002)));
+    coord = (cdist - min(coord,cdist));
+    float dist = sqrt(dot(coord,coord));
+    return clamp((cdist.x-dist)*params.g_bsize,0.0, 1.0);
+}
+
+
 void main()
 {
 
@@ -100,9 +118,9 @@ void main()
     vec2 coordsg = vec2(params.goxg, params.goyg);
     vec2 coordsb = vec2(params.goxb, params.goyb);
 
-    float cr = texture(Source, (vTexCoord.xy - c_dist) / (fract(gzr)/20. + 1.) + c_dist + coordsr/40.).r;
-    float cg = texture(Source, (vTexCoord.xy - c_dist) / (fract(gzg)/20. + 1.) + c_dist + coordsg/40.).g;
-    float cb = texture(Source, (vTexCoord.xy - c_dist) / (fract(gzb)/20. + 1.) + c_dist + coordsb/40.).b;
+    float cr = texture(Source, (vTexCoord.xy - c_dist) / (fract(params.gzr)/20. + 1.) + c_dist + coordsr/40.).r;
+    float cg = texture(Source, (vTexCoord.xy - c_dist) / (fract(params.gzg)/20. + 1.) + c_dist + coordsg/40.).g;
+    float cb = texture(Source, (vTexCoord.xy - c_dist) / (fract(params.gzb)/20. + 1.) + c_dist + coordsb/40.).b;
     vec4 color = vec4(cr,cg,cb,1.0);
 
 
@@ -166,5 +184,6 @@ void main()
     vec4 reflection = vec4((1. - (1. - color.rgb ) * (1. - blurred.rgb * params.g_reflstr)) / (1. + params.g_reflstr / 3.), 1.);
     reflection = vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 3.)), 1.);
 
-    FragColor = (params.g_refltog == 0.0) ? texture(Source, vTexCoord.xy) : reflection;
+    vpos *= (global.SourceSize.xy/global.OriginalSize.xy);
+    FragColor = (params.g_refltog == 0.0) ? texture(Source, vTexCoord.xy)*corner(vpos) : reflection*corner(vpos);
 }
