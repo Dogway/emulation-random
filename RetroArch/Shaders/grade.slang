@@ -8,8 +8,6 @@ layout(push_constant) uniform Push
     float g_vignette;
     float g_vstr;
     float g_vpower;
-    float g_csize;
-    float g_bsize;
     float g_crtgamut;
     float g_hue_degrees;
     float g_I_SHIFT;
@@ -38,8 +36,8 @@ layout(push_constant) uniform Push
 
 /*
    Grade
-   > Ubershader grouping some color related monolithic shaders like color-mangler, lut_x2, white_point, and the addition of...
-   > ...vibrance, crt-gamut, vignette, black level, corner size, rolled gain, sigmoidal contrast and proper gamma transforms.
+   > Ubershader grouping some color related monolithic shaders like color-mangler, lut_x2, white_point, and the addition of:
+		>> vibrance, crt-gamut, vignette, black level, rolled gain, sigmoidal contrast and proper gamma transforms.
 
    Author: hunterk, Guest, Dr. Venom, Dogway
    License: Public domain
@@ -51,10 +49,7 @@ layout(push_constant) uniform Push
 #pragma parameter g_vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
 #pragma parameter g_vstr "Vignette Strength" 40.0 0.0 50.0 1.0
 #pragma parameter g_vpower "Vignette Power" 0.20 0.0 0.5 0.01
-#pragma parameter g_csize "Corner size" 0.0 0.0 0.07 0.01
-#pragma parameter g_bsize "Border smoothness" 600.0 100.0 600.0 25.0
 #pragma parameter g_crtgamut "Gamut (3:NTSC-U 4:NTSC-J 5:PAL)" 4.0 0.0 7.0 1.0
-#pragma parameter g_display "Display Matrix" 0.0 0.0 1.0 1.0
 #pragma parameter g_hue_degrees "Hue" 0.0 -360.0 360.0 1.0
 #pragma parameter g_I_SHIFT "I/U Shift" 0.0 -1.0 1.0 0.02
 #pragma parameter g_Q_SHIFT "Q/V Shift" 0.0 -1.0 1.0 0.02
@@ -91,8 +86,6 @@ layout(push_constant) uniform Push
 #define vignette        params.g_vignette
 #define vstr            params.g_vstr
 #define vpower          params.g_vpower
-#define csize           params.g_csize
-#define bsize           params.g_bsize
 #define crtgamut        params.g_crtgamut
 #define hue_degrees     params.g_hue_degrees
 #define I_SHIFT         params.g_I_SHIFT
@@ -159,7 +152,6 @@ layout(set = 0, binding = 4) uniform sampler2D SamplerLUT2;
 // Inspired itself by Tanner Helland's work
 //      http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
 
-// https://en.wikipedia.org/wiki/Standard_illuminant#White_points_of_standard_illuminants
 // PAL: ~D65 NTSC-U: D65  NTSC-J: D93  NTSC-FCC: C
 // PAL: 6489 NTSC-U: 6504 NTSC-J: 9305 NTSC-FCC: 6774 *correlated
 
@@ -344,18 +336,6 @@ vec4 rolled_gain_v4(vec4 color, float gain){
     return vec4(color.rgb, 1.0);
 }
 
-
-//  Borrowed from cgwg's crt-geom, under GPL
-float corner(vec2 coord)
-{
-    coord *= global.OriginalSize.xy / global.SourceSize.xy;
-    coord = (coord - vec2(0.5)) * 1.0 + vec2(0.5);
-    coord = min(coord, vec2(1.0)-coord) * vec2(1.0, global.OutputSize.y/global.OutputSize.x);
-    vec2 cdist = vec2(max(params.g_csize, max((1.0-smoothstep(100.0,600.0,params.g_bsize))*0.01,0.002)));
-    coord = (cdist - min(coord,cdist));
-    float dist = sqrt(dot(coord,coord));
-    return clamp((cdist.x-dist)*params.g_bsize,0.0, 1.0);
-}
 
 
 vec3 RGB_YIQ(vec3 col)
@@ -621,6 +601,6 @@ void main()
     LUT2_output = (global.LUT2_toggle == 0.0) ? adjusted : LUT2_output;
     LUT2_output = (gamma_out == 1.00) ? LUT2_output : moncurve_r_f3(LUT2_output, gamma_out + 0.20, 0.055);
 
-    vpos *= (global.SourceSize.xy/global.OriginalSize.xy);
-    FragColor = vec4(LUT2_output*corner(vpos), 1.0);
+
+    FragColor = vec4(LUT2_output, 1.0);
 }

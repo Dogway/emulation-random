@@ -7,10 +7,12 @@
    License: Public domain
 */
 
-#pragma parameter g_refltog "Toggle Reflection" 1.0 0.0 1.0 1.00
-#pragma parameter g_reflstr "Reflection brightness" 0.25 0.0 1.0 0.01
-#pragma parameter g_fresnel "Fresnel Reflection" 1.0 0.0 1.0 0.10
-#pragma parameter g_reflblur "Reflection blur" 0.6 0.0 1.0 0.01
+#pragma parameter g_csize "Corner size" 0.0 0.0 0.07 0.01
+#pragma parameter g_bsize "Border smoothness" 600.0 100.0 600.0 25.0
+#pragma parameter g_refltog "Reflection Toggle" 1.0 0.0 1.0 1.00
+#pragma parameter g_reflstr "Refl. Brightness" 0.25 0.0 1.0 0.01
+#pragma parameter g_fresnel "Refl. Fresnel" 1.0 0.0 1.0 0.10
+#pragma parameter g_reflblur "Refl. Blur" 0.6 0.0 1.0 0.01
 #pragma parameter gz "Zoom" 1.2 1.0 1.5 0.01
 #pragma parameter gx "Shift-X" 0.0 -1.0 1.0 0.01
 #pragma parameter gy "Shift-Y" -0.01 -1.0 1.0 0.01
@@ -121,6 +123,8 @@ COMPAT_VARYING vec4 t3;
 #define OutSize vec4(OutputSize, 1.0 / OutputSize)
 
 #ifdef PARAMETER_UNIFORM
+uniform COMPAT_PRECISION float g_csize;
+uniform COMPAT_PRECISION float g_bsize;
 uniform COMPAT_PRECISION float g_refltog;
 uniform COMPAT_PRECISION float g_reflstr;
 uniform COMPAT_PRECISION float g_fresnel;
@@ -138,6 +142,8 @@ uniform COMPAT_PRECISION float goyg;
 uniform COMPAT_PRECISION float goxb;
 uniform COMPAT_PRECISION float goyb;
 #else
+#define g_csize 0.00
+#define g_bsize 600.00
 #define g_refltog 1.00
 #define g_reflstr 0.00
 #define g_fresnel 1.00
@@ -155,6 +161,20 @@ uniform COMPAT_PRECISION float goyb;
 #define goxb 0.0
 #define goyb 0.0
 #endif
+
+
+
+//  Borrowed from cgwg's crt-geom, under GPL
+float corner(vec2 coord)
+{
+    coord *= SourceSize.xy / InputSize.xy;
+    coord = (coord - vec2(0.5)) * 1.0 + vec2(0.5);
+    coord = min(coord, vec2(1.0)-coord) * vec2(1.0, OutputSize.y/OutputSize.x);
+    vec2 cdist = vec2(max(g_csize, max((1.0-smoothstep(100.0,600.0,g_bsize))*0.01,0.002)));
+    coord = (cdist - min(coord,cdist));
+    float dist = sqrt(dot(coord,coord));
+    return clamp((cdist.x-dist)*g_bsize,0.0, 1.0);
+}
 
 
 void main()
@@ -234,7 +254,8 @@ void main()
     vec4 reflection = vec4((1. - (1. - color.rgb ) * (1. - blurred.rgb * g_reflstr)) / (1. + g_reflstr / 3.), 1.);
     reflection = vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 3.)), 1.);
 
+    vpos *= (InputSize.xy/TextureSize.xy);
 
-    FragColor = (g_refltog == 0.0) ? COMPAT_TEXTURE(Source, vTexCoord) : reflection;
+    FragColor = (g_refltog == 0.0) ? COMPAT_TEXTURE(Source, vTexCoord)*corner(vpos) : reflection*corner(vpos);
 }
 #endif

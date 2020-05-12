@@ -1,7 +1,7 @@
 /*
    Grade
-   > Ubershader grouping some color related monolithic shaders like color-mangler, vignette, lut_x2, white_point,
-   > and the addition of vibrance, black level, corner size, rolled gain, sigmoidal contrast and proper gamma transforms.
+   > Ubershader grouping some color related monolithic shaders like color-mangler, lut_x2, white_point, and the addition of:
+		>> vibrance, crt-gamut, vignette, black level, rolled gain, sigmoidal contrast and proper gamma transforms.
 
    Author: hunterk, Guest, Dr. Venom, Dogway
    License: Public domain
@@ -9,15 +9,18 @@
 
 #pragma parameter g_gamma_out "LCD Gamma" 2.20 0.0 3.0 0.05
 #pragma parameter g_gamma_in "CRT Gamma" 2.40 0.0 3.0 0.05
-#pragma parameter g_gamma_type "CRT Gamma (POW:0, sRGB:1, SMPTE-C:2)" 2.0 0.0 2.0 1.0
+#pragma parameter g_gamma_type "CRT Gamma (POW:0, sRGB:1, SMPTE-C:2)" 1.0 0.0 2.0 1.0
 #pragma parameter g_vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
 #pragma parameter g_vstr "Vignette Strength" 40.0 0.0 50.0 1.0
 #pragma parameter g_vpower "Vignette Power" 0.20 0.0 0.5 0.01
-#pragma parameter g_csize "Corner size" 0.0 0.0 0.07 0.01
-#pragma parameter g_bsize "Border smoothness" 600.0 100.0 600.0 25.0
-#pragma parameter g_crtgamut "CRT gamut" 1.0 0.0 1.0 1.0
-#pragma parameter wp_temperature "White Point" 9311.0 1031.0 12047.0 72.0
-#pragma parameter g_sat "Saturation" 0.0 -1.0 1.0 0.01
+#pragma parameter g_crtgamut "Gamut (3:NTSC-U 4:NTSC-J 5:PAL)" 4.0 0.0 7.0 1.0
+#pragma parameter g_hue_degrees "Hue" 0.0 -360.0 360.0 1.0
+#pragma parameter g_I_SHIFT "I/U Shift" 0.0 -1.0 1.0 0.02
+#pragma parameter g_Q_SHIFT "Q/V Shift" 0.0 -1.0 1.0 0.02
+#pragma parameter g_I_MUL "I/U Multiplier" 1.0 0.0 2.0 0.1
+#pragma parameter g_Q_MUL "Q/V Multiplier" 1.0 0.0 2.0 0.1
+#pragma parameter wp_temperature "White Point" 9305.0 1621.0 12055.0 50.0
+#pragma parameter g_sat "Saturation" 0.0 -1.0 2.0 0.02
 #pragma parameter g_vibr "Dullness/Vibrance" 0.0 -1.0 1.0 0.05
 #pragma parameter g_lum "Brightness" 0.0 -0.5 1.0 0.01
 #pragma parameter g_cntrst "Contrast" 0.0 -1.0 1.0 0.05
@@ -130,9 +133,12 @@ uniform COMPAT_PRECISION float g_gamma_type;
 uniform COMPAT_PRECISION float g_vignette;
 uniform COMPAT_PRECISION float g_vstr;
 uniform COMPAT_PRECISION float g_vpower;
-uniform COMPAT_PRECISION float g_csize;
-uniform COMPAT_PRECISION float g_bsize;
 uniform COMPAT_PRECISION float g_crtgamut;
+uniform COMPAT_PRECISION float g_hue_degrees;
+uniform COMPAT_PRECISION float g_I_SHIFT;
+uniform COMPAT_PRECISION float g_Q_SHIFT;
+uniform COMPAT_PRECISION float g_I_MUL;
+uniform COMPAT_PRECISION float g_Q_MUL;
 uniform COMPAT_PRECISION float wp_temperature;
 uniform COMPAT_PRECISION float g_sat;
 uniform COMPAT_PRECISION float g_vibr;
@@ -163,9 +169,12 @@ uniform COMPAT_PRECISION float LUT2_toggle;
 #define g_vignette 1.0
 #define g_vstr 40.0
 #define g_vpower 0.2
-#define g_csize 0.0
-#define g_bsize 600.0
-#define g_crtgamut 1.0
+#define g_crtgamut 4.0
+#define g_hue_degrees 0.0
+#define g_I_SHIFT 0.0
+#define g_Q_SHIFT 0.0
+#define g_I_MUL 1.0
+#define g_Q_MUL 1.0
 #define wp_temperature 9311.0
 #define g_sat 0.0
 #define g_vibr 0.0
@@ -201,8 +210,8 @@ uniform COMPAT_PRECISION float LUT2_toggle;
 // Inspired itself by Tanner Helland's work
 //      http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
 
-// NTSC-J: D93  NTSC-U: C	 PAL: D65
-// NTSC-J: 9311 NTSC-U: 6774 PAL: 6504
+// PAL: ~D65 NTSC-U: D65  NTSC-J: D93  NTSC-FCC: C
+// PAL: 6489 NTSC-U: 6504 NTSC-J: 9305 NTSC-FCC: 6774 *correlated
 
 vec3 wp_adjust(vec3 color){
 
@@ -233,9 +242,9 @@ vec3 wp_adjust(vec3 color){
 vec3 sRGB_to_XYZ(vec3 RGB){
 
     const mat3x3 m = mat3x3(
-    0.4124564, 0.3575761, 0.1804375,
-    0.2126729, 0.7151522, 0.0721750,
-    0.0193339, 0.1191920, 0.9503041);
+    0.412390799, 0.357584339, 0.180480788,
+    0.212639006, 0.715168679, 0.072192315,
+    0.019330819, 0.11919478,  0.950532152);
     return RGB * m;
 }
 
@@ -249,28 +258,6 @@ vec3 XYZtoYxy(vec3 XYZ){
 }
 
 
-vec3 XYZ_to_sRGB(vec3 XYZ){
-
-    const mat3x3 m = mat3x3(
-    3.2404542, -1.5371385, -0.4985314,
-   -0.9692660,  1.8760108,  0.0415560,
-    0.0556434, -0.2040259,  1.0572252);
-    return XYZ * m;
-}
-
-
-// from crt-guest-dr-venom color-profiles shader
-// P22-RGB phosphors (linear light)
-vec3 sRGB_to_P22(vec3 RGB){
-
-    const mat3x3 m = mat3x3(
-	0.396686, 0.372504, 0.181266,
-	0.210299, 0.713766, 0.075936,
-	0.006131, 0.115356, 0.967571);
-    return RGB * m;
-}
-
-
 vec3 YxytoXYZ(vec3 Yxy){
 
     float Xs = Yxy.r * (Yxy.g/Yxy.b);
@@ -278,6 +265,17 @@ vec3 YxytoXYZ(vec3 Yxy){
     vec3 XYZ = vec3(Xsz,Xsz,Xsz) * vec3(Xs, Yxy.r, (Xs/Yxy.g)-Xs-Yxy.r);
     return XYZ;
 }
+
+
+vec3 XYZ_to_sRGB(vec3 XYZ){
+
+    const mat3x3 m = mat3x3(
+    3.240969942, -1.537383178, -0.49861076,
+   -0.969243636,  1.875967502,  0.041555057,
+    0.055630080, -0.203976959,  1.056971514);
+   return XYZ * m;
+}
+
 
 //  This shouldn't be necessary but it seems some undefined values can
 //  creep in and each GPU vendor handles that differently. This keeps
@@ -397,25 +395,177 @@ vec4 rolled_gain_v4(vec4 color, float gain){
 }
 
 
-//  Borrowed from cgwg's crt-geom, under GPL
-float corner(vec2 coord)
+
+vec3 RGB_YIQ(vec3 col)
+ {
+    mat3 conv_mat = mat3(
+    0.299996928307425,  0.590001575542717,  0.110001496149858,
+    0.599002392519453, -0.277301256521204, -0.321701135998249,
+    0.213001700342824, -0.52510120528935,  0.312099504946526);
+
+    return col.rgb *= conv_mat;
+ }
+
+vec3 YIQ_RGB(vec3 col)
+ {
+    mat3 conv_mat = mat3(
+    1.0,  0.946882217090069,  0.623556581986143,
+    1.0, -0.274787646298978, -0.635691079187380,
+    1.0, -1.108545034642030,  1.709006928406470);
+
+    return col.rgb *= conv_mat;
+ }
+
+vec3 RGB_YUV(vec3 RGB)
+ {
+     mat3 conv_mat = mat3(
+     0.299,    0.587,   0.114,
+    -0.14713,-0.28886,  0.436,
+     0.615, -0.514991, -0.10001);
+
+    return RGB.rgb *= conv_mat;
+ }
+
+vec3 YUV_RGB(vec3 YUV)
+ {
+     mat3 conv_mat = mat3(
+     1.000, 0.000,   1.13983,
+     1.000,-0.39465,-0.58060,
+     1.000, 2.03211, 0.00000);
+
+    return YUV.rgb *= conv_mat;
+ }
+
+
+// to Studio Swing or SMPTE legal (in YIQ space) (for footroom and headroom)
+vec3 PCtoTV(vec3 col)
 {
-    coord *= SourceSize.xy / InputSize.xy;
-    coord = (coord - vec2(0.5)) * 1.0 + vec2(0.5);
-    coord = min(coord, vec2(1.0)-coord) * vec2(1.0, OutputSize.y/OutputSize.x);
-    vec2 cdist = vec2(max(g_csize, max((1.0-smoothstep(100.0,600.0,g_bsize))*0.01,0.002)));
-    coord = (cdist - min(coord,cdist));
-    float dist = sqrt(dot(coord,coord));
-    return clamp((cdist.x-dist)*g_bsize,0.0, 1.0);
+   col *= 255.;
+   col.x = ((col.x * 219.) / 255.) + 16.;
+   col.y = (((col.y - 128.) * 224.) / 255.) + 112.;
+   col.z = (((col.z - 128.) * 224.) / 255.) + 112.;
+   return col.xyz / 255.;
 }
+
+
+// to Full Swing (in YIQ space)
+vec3 TVtoPC(vec3 col)
+{
+   col *= 255.;
+   float colx = ((col.x - 16.) / 219.) * 255.;
+   float coly = (((col.y - 112.) / 224.) * 255.) + 128.;
+   float colz = (((col.z - 112.) / 224.) * 255.) + 128.;
+   return vec3(colx,coly,colz) / 255.;
+}
+
+
+// in XYZ space
+const mat3 C_D65_Brad = 
+mat3(
+ 1.0063, 0.0029, -0.0071,
+ 0.0036, 0.9992, -0.0024,
+-0.0013, 0.0022,  0.9645);
+
+// in XYZ space
+const mat3 D93_D65_Brad = 
+mat3(
+ 1.0472, 0.0198, -0.0476,
+ 0.0250, 0.9988, -0.0160,
+-0.0090, 0.0148,  0.7659);
+
+// in XYZ space
+const mat3 PAL_D65_Brad = 
+mat3(
+ 0.9992, -0.0005, 0.0003,
+-0.0007,  1.0005, 0.0001,
+ 0.0000, -0.0000, 1.0008);
+
+
+// Generic CRT NTSC Standard Phosphor
+const mat3 P22_transform = 
+mat3(
+ 0.4665, 0.2566, 0.0058,
+ 0.3039, 0.6682, 0.1056,
+ 0.1800, 0.0752, 0.9776);
+
+// use with Illuminant C white point
+const mat3 NTSC_FCC_transform = 
+mat3(
+ 0.5803, 0.2858, 0.0000,
+ 0.1791, 0.6055, 0.0682,
+ 0.1902, 0.1087, 1.0599);
+
+// Conrac phosphor gamut
+const mat3 SMPTE_transform = 
+mat3(
+ 0.3935, 0.2124, 0.0187,
+ 0.3653, 0.7011, 0.1119,
+ 0.1917, 0.0866, 0.9584);
+
+// SMPTE compliant Conrad 7211N19 CRT
+const mat3 Conrad_transform = 
+mat3(
+ 0.5584, 0.2858, 0.0352,
+ 0.2061, 0.6371, 0.0937,
+ 0.1859, 0.0771, 0.9602);
+
+// use with D93 white point
+const mat3 NTSC_J_transform = 
+mat3(
+ 0.3960, 0.2243, 0.0205,
+ 0.3120, 0.6742, 0.1281,
+ 0.2450, 0.1015, 1.2651);
+
+// PAL phosphor gamut
+const mat3 EBU_transform = 
+mat3(
+ 0.4319, 0.2227, 0.0202,
+ 0.3412, 0.7060, 0.1294,
+ 0.1782, 0.0713, 0.9385);
+
+// Sony Trinitron KV-20M20 (D93 assumed)
+const mat3 Sony20_20_transform = 
+mat3(
+ 0.3863, 0.2101, 0.0216,
+ 0.3191, 0.6780, 0.1538,
+ 0.2477, 0.1118, 1.2383);
+
 
 
 void main()
 {
 
-//  Pure power was crushing blacks (eg. DKC2). You can mimic pow(c, 2.40) by raising the g_gamma_in value to 2.55
+//  Analogue Color Knobs
     vec3 imgColor = COMPAT_TEXTURE(Source, vTexCoord).rgb;
-    imgColor = (g_gamma_type == 2.0) ? moncurve_f_f3(imgColor, g_gamma_in - 0.18, 0.1115) : (g_gamma_type == 1.0) ? moncurve_f_f3(imgColor, g_gamma_in, 0.055) : pow(imgColor, vec3(g_gamma_in));
+    vec3 col = (g_crtgamut == 5.0) ? RGB_YUV(source) : \
+               (g_crtgamut == 4.0) ? RGB_YIQ(source) : \
+                                     PCtoTV(RGB_YIQ(source));
+
+    float hue_radians = g_hue_degrees * (M_PI / 180.0);
+    float hue = atan(col.z, col.y) + hue_radians;
+    float chroma = sqrt(col.z * col.z + col.y * col.y);
+    col = vec3(col.x, chroma * cos(hue), chroma * sin(hue));
+
+    col.y = mod((col.y + 1.0) + g_I_SHIFT, 2.0) - 1.0;
+    col.z = mod((col.z + 1.0) + g_Q_SHIFT, 2.0) - 1.0;
+
+    col.z *= g_Q_MUL;
+    col.y *= g_I_MUL;
+
+    float TV_lvl = (g_crtgamut == 5.0) ? 0.0627  : \
+                   (g_crtgamut == 4.0) ? 0.0627  : \
+                                         0.0;
+
+    col = (g_crtgamut == 5.0) ? clamp(col.xyz,vec3(0.0627-TV_lvl,0.0627-0.5-TV_lvl,0.0627-0.5-TV_lvl),vec3(0.92157,0.94118-0.5,0.94118-0.5)) : \
+							    clamp(col.xyz,vec3(0.0627-TV_lvl,-0.5957-TV_lvl,  -0.5226-TV_lvl),    vec3(0.92157,0.5957,0.5226));
+
+    col = (g_crtgamut == 0.0) ? source       : \
+          (g_crtgamut == 5.0) ? YUV_RGB(col) : \
+          (g_crtgamut == 4.0) ? YIQ_RGB(col) : \
+                                YIQ_RGB(TVtoPC(col));
+
+//  OETF - Opto-Electronic Transfer Function
+    vec3 imgColor = (g_gamma_type == 2.0) ? moncurve_f_f3(col, g_gamma_in - 0.18, 0.1115) : (g_gamma_type == 1.0) ? moncurve_f_f3(col, g_gamma_in, 0.055) : pow(col, vec3(g_gamma_in));
 
 
 //  Look LUT
@@ -449,15 +599,15 @@ void main()
     contrast += (g_lift / 20.0) * (1.0 - contrast);
 
 
-//  RGB related transforms
+//  RGB Related Transforms
     vec4 screen = vec4(max(contrast, 0.0), 1.0);
     float sat = g_sat + 1.0;
 
-                      //  r    g    b  alpha ; alpha does nothing for our purposes
-    mat4 color = mat4(  wlr,  rg,  rb, 0.0,  //red tint
-                         gr, wlg,  gb, 0.0,  //green tint
-                         br,  bg, wlb, 0.0,  //blue tint
-                        blr/20., blg/20., blb/20., 0.0); //black tint
+                   //  r    g    b  alpha ; alpha does nothing for our purposes
+    mat4 color = mat4(wlr, rg,  rb,   0.0,              //red tint
+                      gr,  wlg, gb,   0.0,              //green tint
+                      br,  bg,  wlb,  0.0,              //blue tint
+                      blr/20., blg/20., blb/20., 0.0);  //black tint
 
     mat4 adjust = mat4((1.0 - sat) * 0.2126 + sat, (1.0 - sat) * 0.2126, (1.0 - sat) * 0.2126, 1.0,
                        (1.0 - sat) * 0.7152, (1.0 - sat) * 0.7152 + sat, (1.0 - sat) * 0.7152, 1.0,
@@ -470,15 +620,30 @@ void main()
     screen = mixfix_v4(screen, adjust * screen, sat_msk);
 
 
+//  CRT Phosphor Gamut
+    mat3 m_in;
+
+    if (g_crtgamut == 1.0) { m_in = NTSC_FCC_transform;           } else
+    if (g_crtgamut == 2.0) { m_in = P22_transform;                } else
+    if (g_crtgamut == 3.0) { m_in = SMPTE_transform;              } else
+    if (g_crtgamut == 4.0) { m_in = NTSC_J_transform;             } else
+    if (g_crtgamut == 5.0) { m_in = EBU_transform;                } else
+    if (g_crtgamut == 6.0) { m_in = Sony20_20_transform;          } else
+    if (g_crtgamut == 7.0) { m_in = Conrad_transform;             }
+
+    vec3 gamut = (g_crtgamut == 1.0) ? (m_in*screen.rgb)*C_D65_Brad    : \
+                 (g_crtgamut == 4.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
+                 (g_crtgamut == 5.0) ? (m_in*screen.rgb)*PAL_D65_Brad  : \
+                 (g_crtgamut == 6.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
+                                        m_in*screen.rgb;
+
 //  Color Temperature
-    vec3 adjusted = wp_adjust(screen.rgb);
-    vec3 base_luma = XYZtoYxy(sRGB_to_XYZ(screen.rgb));
+    vec3 adjusted = (g_crtgamut == 0.0) ? wp_adjust(screen.rgb) : wp_adjust(XYZ_to_sRGB(gamut));
+    vec3 base_luma = XYZtoYxy(gamut);
     vec3 adjusted_luma = XYZtoYxy(sRGB_to_XYZ(adjusted));
     adjusted = adjusted_luma + (vec3(base_luma.r, 0.0, 0.0) - vec3(adjusted_luma.r, 0.0, 0.0));
     adjusted = clamp(XYZ_to_sRGB(YxytoXYZ(adjusted)), 0.0, 1.0);
-    
-//  CRT Phosphor gamut
-    adjusted = (g_crtgamut == 1.0) ? XYZ_to_sRGB(sRGB_to_P22(adjusted)) : adjusted;
+
 
 //  Technical LUT
     float red_2 = ( adjusted.r * (LUT_Size2 - 1.0) + 0.4999 ) / (LUT_Size2 * LUT_Size2);
@@ -493,7 +658,7 @@ void main()
     LUT2_output = (LUT2_toggle == 0.0) ? adjusted : LUT2_output;
     LUT2_output = (g_gamma_out == 1.00) ? LUT2_output : moncurve_r_f3(LUT2_output, g_gamma_out + 0.20, 0.055);
 
-    vpos *= (InputSize.xy/TextureSize.xy);
-    FragColor = vec4(LUT2_output*corner(vpos), 1.0);
+
+    FragColor = vec4(LUT2_output, 1.0);
 }
 #endif
