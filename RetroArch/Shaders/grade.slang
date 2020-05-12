@@ -37,11 +37,39 @@ layout(push_constant) uniform Push
 /*
    Grade
    > Ubershader grouping some color related monolithic shaders like color-mangler, lut_x2, white_point, and the addition of:
-		>> vibrance, crt-gamut, vignette, black level, rolled gain, sigmoidal contrast and proper gamma transforms.
+        >> vibrance, crt-gamut, vignette, black level, rolled gain, sigmoidal contrast and proper gamma transforms.
 
    Author: hunterk, Guest, Dr. Venom, Dogway
    License: Public domain
 */
+
+    #####################################···PRESETS···########################################
+    ##########################################################################################
+    ###                                                                                    ###
+    ###      PAL                                                                           ###
+    ###          Gamut: EBU (#5) (or an EBU based CRT gamut)                               ###
+    ###          WP: ~D65 (6489K)                                                          ###
+    ###          TRC: 2.8 Gamma (POW or sRGB)*                                             ###
+    ###          Saturation: -0.05 (until I finish ntsc-signal-bandwidth shader)           ###
+    ###                                                                                    ###
+    ###      NTSC-U                                                                        ###
+    ###          Gamut: SMPTE-C (#3, #7) (or a NTSC based CRT gamut)                       ###
+    ###          WP: D65 (6504K)                                                           ###
+    ###          TRC: SMPTE-C Gamma                                                        ###
+    ###                                                                                    ###
+    ###      NTSC-J (Default)                                                              ###
+    ###          Gamut: NTSC-J (#4) (or a NTSC-J based CRT gamut)                          ###
+    ###          WP: D93 (9305K)                                                           ###
+    ###          TRC: 2.4 Gamma(?) (POW or sRGB)*                                          ###
+    ###                                                                                    ###
+    ###      *POW has some clipping issues so a good approximation to "pow(c, 2.4)"...     ###
+    ###       ...is to use sRGB with a value of 2.55 in crt_gamma                          ###
+    ###                                                                                    ###
+    ###                                                                                    ###
+    ##########################################################################################
+    ##########################################################################################
+
+
 
 #pragma parameter g_gamma_out "LCD Gamma" 2.20 0.0 3.0 0.05
 #pragma parameter g_gamma_in "CRT Gamma" 2.40 0.0 3.0 0.05
@@ -423,13 +451,6 @@ mat3(
  0.0000, -0.0000, 1.0008);
 
 
-// Generic CRT NTSC Standard Phosphor
-const mat3 P22_transform = 
-mat3(
- 0.4665, 0.2566, 0.0058,
- 0.3039, 0.6682, 0.1056,
- 0.1800, 0.0752, 0.9776);
-
 // use with Illuminant C white point
 const mat3 NTSC_FCC_transform = 
 mat3(
@@ -437,19 +458,19 @@ mat3(
  0.1791, 0.6055, 0.0682,
  0.1902, 0.1087, 1.0599);
 
+// Generic CRT NTSC Standard Phosphor
+const mat3 P22_transform = 
+mat3(
+ 0.4665, 0.2566, 0.0058,
+ 0.3039, 0.6682, 0.1056,
+ 0.1800, 0.0752, 0.9776);
+
 // Conrac phosphor gamut
 const mat3 SMPTE_transform = 
 mat3(
  0.3935, 0.2124, 0.0187,
  0.3653, 0.7011, 0.1119,
  0.1917, 0.0866, 0.9584);
-
-// SMPTE compliant Conrad 7211N19 CRT
-const mat3 Conrad_transform = 
-mat3(
- 0.5584, 0.2858, 0.0352,
- 0.2061, 0.6371, 0.0937,
- 0.1859, 0.0771, 0.9602);
 
 // use with D93 white point
 const mat3 NTSC_J_transform = 
@@ -471,6 +492,13 @@ mat3(
  0.3863, 0.2101, 0.0216,
  0.3191, 0.6780, 0.1538,
  0.2477, 0.1118, 1.2383);
+
+// SMPTE compliant Conrad 7211N19 CRT
+const mat3 Conrad_transform = 
+mat3(
+ 0.5584, 0.2858, 0.0352,
+ 0.2061, 0.6371, 0.0937,
+ 0.1859, 0.0771, 0.9602);
 
 
 
