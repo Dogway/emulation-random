@@ -43,7 +43,7 @@ layout(push_constant) uniform Push
    License: Public domain
 
 
-    #####################################...PRESETS...########################################
+    ######################################...PRESETS...#######################################
     ##########################################################################################
     ###                                                                                    ###
     ###      PAL                                                                           ###
@@ -181,7 +181,7 @@ layout(set = 0, binding = 4) uniform sampler2D SamplerLUT2;
 //      http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
 
 // PAL: ~D65 NTSC-U: D65  NTSC-J: D93  NTSC-FCC: C
-// PAL: 6489 NTSC-U: 6504 NTSC-J: 9305 NTSC-FCC: 6774 *correlated
+// PAL: 6489 NTSC-U: 6504 NTSC-J: 9305 NTSC-FCC: 6779.65 *correlated from (0.310, 0.316)
 
 vec3 wp_adjust(vec3 color){
 
@@ -209,6 +209,8 @@ vec3 wp_adjust(vec3 color){
     return color * wp;
 }
 
+
+
 vec3 sRGB_to_XYZ(vec3 RGB){
 
     const mat3x3 m = mat3x3(
@@ -218,7 +220,6 @@ vec3 sRGB_to_XYZ(vec3 RGB){
     return m * RGB;
 }
 
-
 vec3 XYZtoYxy(vec3 XYZ){
 
     float XYZrgb = XYZ.r+XYZ.g+XYZ.b;
@@ -227,7 +228,6 @@ vec3 XYZtoYxy(vec3 XYZ){
     return vec3(XYZ.g, Yxyg, Yxyb);
 }
 
-
 vec3 YxytoXYZ(vec3 Yxy){
 
     float Xs = Yxy.r * (Yxy.g/Yxy.b);
@@ -235,7 +235,6 @@ vec3 YxytoXYZ(vec3 Yxy){
     vec3 XYZ = vec3(Xsz,Xsz,Xsz) * vec3(Xs, Yxy.r, (Xs/Yxy.g)-Xs-Yxy.r);
     return XYZ;
 }
-
 
 vec3 XYZ_to_sRGB(vec3 XYZ){
 
@@ -365,10 +364,9 @@ vec4 rolled_gain_v4(vec4 color, float gain){
 }
 
 
-
 vec3 RGB_YIQ(vec3 col)
  {
-    mat3 conv_mat = mat3(
+    const mat3 conv_mat = mat3(
     0.299996928307425,  0.590001575542717,  0.110001496149858,
     0.599002392519453, -0.277301256521204, -0.321701135998249,
     0.213001700342824, -0.52510120528935,  0.312099504946526);
@@ -378,7 +376,7 @@ vec3 RGB_YIQ(vec3 col)
 
 vec3 YIQ_RGB(vec3 col)
  {
-    mat3 conv_mat = mat3(
+    const mat3 conv_mat = mat3(
     1.0,  0.946882217090069,  0.623556581986143,
     1.0, -0.274787646298978, -0.635691079187380,
     1.0, -1.108545034642030,  1.709006928406470);
@@ -388,43 +386,64 @@ vec3 YIQ_RGB(vec3 col)
 
 vec3 RGB_YUV(vec3 RGB)
  {
-     mat3 conv_mat = mat3(
-     0.299,    0.587,   0.114,
-    -0.14713,-0.28886,  0.436,
-     0.615, -0.514991, -0.10001);
+    const mat3 conv_mat = mat3(
+    0.299,   0.587,    0.114,
+   -0.14713,-0.28886,  0.436,
+    0.615,  -0.514991,-0.10001);
 
     return RGB.rgb * conv_mat;
  }
 
 vec3 YUV_RGB(vec3 YUV)
  {
-     mat3 conv_mat = mat3(
-     1.000, 0.000,   1.13983,
-     1.000,-0.39465,-0.58060,
-     1.000, 2.03211, 0.00000);
+    const mat3 conv_mat = mat3(
+    1.000, 0.0000,  1.13983,
+    1.000,-0.39465,-0.58060,
+    1.000, 2.03211, 0.00000);
 
     return YUV.rgb * conv_mat;
  }
 
+vec3 RGB_YCC(vec3 RGB)
+ {
+    const mat3 conv_mat = mat3(
+    0.299,  0.587,  0.114,
+    0.500, -0.419, -0.081,
+   -0.169, -0.331,  0.500);
+
+    return RGB.rgb * conv_mat;
+ }
+
+vec3 YCC_RGB(vec3 YCC)
+ {
+    const mat3 conv_mat = mat3(
+    1.000,  1.4017, -0.0009,
+    1.000, -0.7142, -0.3437,
+    1.000,  0.0010,  1.7722);
+
+    return YCC.rgb * conv_mat;
+ }
+
+
 
 // to Studio Swing or SMPTE legal (in YIQ space) (for footroom and headroom)
-vec3 PCtoTV(vec3 col)
+vec3 PCtoTV(vec3 col, bool rgb_in)
 {
    col *= 255.;
    col.x = ((col.x * 219.) / 255.) + 16.;
-   col.y = (((col.y - 128.) * 224.) / 255.) + 112.;
-   col.z = (((col.z - 128.) * 224.) / 255.) + 112.;
+   col.y = rgb_in ? ((col.y * 219.) / 255.) + 16. : (((col.y - 128.) * 224.) / 255.) + 128.;
+   col.z = rgb_in ? ((col.z * 219.) / 255.) + 16. : (((col.z - 128.) * 224.) / 255.) + 128.;
    return col.xyz / 255.;
 }
 
 
 // to Full Swing (in YIQ space)
-vec3 TVtoPC(vec3 col)
+vec3 TVtoPC(vec3 col, bool rgb_in)
 {
    col *= 255.;
    float colx = ((col.x - 16.) / 219.) * 255.;
-   float coly = (((col.y - 112.) / 224.) * 255.) + 128.;
-   float colz = (((col.z - 112.) / 224.) * 255.) + 128.;
+   float coly = rgb_in ? ((col.y - 16.) / 219.) * 255. : (((col.y - 128.) / 224.) * 255.) + 128.;
+   float colz = rgb_in ? ((col.z - 16.) / 219.) * 255. : (((col.z - 128.) / 224.) * 255.) + 128.;
    return vec3(colx,coly,colz) / 255.;
 }
 
@@ -455,9 +474,9 @@ mat3(
 // use with Illuminant C white point
 const mat3 NTSC_FCC_transform =
 mat3(
- 0.57143962383270260, 0.2814553380012512, 0.0000000000000000,
- 0.17884123325347900, 0.6046537160873413, 0.0681299939751625,
- 0.19930903613567352, 0.1138908714056015, 1.1104359626770020);
+ 0.60699284076690670, 0.2989666163921356, 0.00000000000000000,
+ 0.17344850301742554, 0.5864211320877075, 0.06607561558485031,
+ 0.20057128369808197, 0.1146121546626091, 1.11746847629547120);
 
 // Generic CRT NTSC Standard Phosphor
 const mat3 P22_transform =
@@ -506,12 +525,12 @@ mat3(
 void main()
 {
 
-//  Analogue Color Knobs
     vec3 src = texture(Source, vTexCoord.xy).rgb;
     vec3 col = (crtgamut == 5.0) ? RGB_YUV(src) : \
                (crtgamut == 4.0) ? RGB_YIQ(src) : \
-                                   PCtoTV(RGB_YIQ(src));
+                                   RGB_YIQ(PCtoTV(src, true));
 
+// YIQ/YUV Analogue Color Controls
     float hue_radians = hue_degrees * (M_PI / 180.0);
     float hue = atan(col.z, col.y) + hue_radians;
     float chroma = sqrt(col.z * col.z + col.y * col.y);
@@ -523,17 +542,27 @@ void main()
     col.z *= Q_MUL;
     col.y *= I_MUL;
 
-    vec2 TV_lvl =  (crtgamut == 5.0) ? vec2(1.0, 1.0)            : \
-                   (crtgamut == 4.0) ? vec2(1.0, 1.0)            : \
-                                       vec2(1.-0.0627,1.-0.05882);
+// Clipping Logic
+    vec2 UV_range = (crtgamut == 5.0) ? vec2(0.4360, 0.6150) : vec2(0.5957, 0.5226);
 
-    col = (crtgamut == 5.0) ? clamp(col.xyz, vec3(1.0-TV_lvl.x, -0.4360*TV_lvl.x, -0.6150*TV_lvl.x), vec3(0.92157, 0.4360*TV_lvl.y, 0.6150*TV_lvl.y)) : \
-                              clamp(col.xyz, vec3(1.0-TV_lvl.x, -0.5957*TV_lvl.x, -0.5226*TV_lvl.x), vec3(0.92157, 0.5957*TV_lvl.y, 0.5226*TV_lvl.y));
+    vec4 lvl_off = vec4(UV_range.x*((16./2.)/255.),     UV_range.y*((16./2.)/255.),       \
+                        UV_range.x*(1.-(240./255.))/2., UV_range.y*(1.-(240./255.))/2.);
 
-    col = (crtgamut == 0.0) ? src          : \
-          (crtgamut == 5.0) ? YUV_RGB(col) : \
-          (crtgamut == 4.0) ? YIQ_RGB(col) : \
-                              YIQ_RGB(TVtoPC(col));
+    vec4 TV_lvl = (crtgamut == 5.0) ? vec4(lvl_off.x, lvl_off.y, lvl_off.z, lvl_off.w)  : \
+                  (crtgamut == 4.0) ? vec4(lvl_off.x, lvl_off.y, lvl_off.z, lvl_off.w)  : \
+                                      vec4(0.0)                                         ;
+
+
+    col = clamp(col.xyz, vec3(0.0, -UV_range.x-TV_lvl.x, -UV_range.y-TV_lvl.y), \
+                         vec3(1.0,  UV_range.x+TV_lvl.z,  UV_range.y+TV_lvl.w)) ;
+
+// YCbCr roundtrip
+    col = (crtgamut == 0.0) ?                        src                : \
+          (crtgamut == 5.0) ?        RGB_YCC(YUV_RGB(col))              : \
+          (crtgamut == 4.0) ?        RGB_YCC(YIQ_RGB(col))              : \
+                                     RGB_YCC(TVtoPC(YIQ_RGB(col), true));
+
+    col = (crtgamut != 0.0) ? YCC_RGB(clamp(col.xyz, vec3(0.0, -0.701, -0.886), vec3(1.0, 0.701, 0.886))) : col;
 
 //  OETF - Opto-Electronic Transfer Function
     vec3 imgColor = (gamma_type == 2.0) ? moncurve_f_f3(col, gamma_in - 0.18, 0.1115) : (gamma_type == 1.0) ? moncurve_f_f3(col, gamma_in, 0.055) : pow(col, vec3(gamma_in));
@@ -550,7 +579,7 @@ void main()
     vec3 vcolor = (global.LUT1_toggle == 0.0) ? imgColor : mixfix(color1, color2, mixer);
 
 
-//  Saturation agnostic sigmoidal contrast
+//  Sigmoidal Contrast
     vec3 Yxy = XYZtoYxy(sRGB_to_XYZ(vcolor));
     float toGamma = clamp(moncurve_r(Yxy.r, 2.40, 0.055), 0.0, 1.0);
     toGamma = (Yxy.r > 0.5) ? contrast_sigmoid_inv(toGamma, 2.3, 0.5) : toGamma;
