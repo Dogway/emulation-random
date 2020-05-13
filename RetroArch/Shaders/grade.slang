@@ -55,7 +55,7 @@ layout(push_constant) uniform Push
     ###      NTSC-U                                                                        ###
     ###          Gamut: SMPTE-C (#3, #7) (or a NTSC based CRT gamut)                       ###
     ###          WP: D65 (6504K)                                                           ###
-    ###          TRC: 2.22 SMPTE-C Gamma                                                   ###
+    ###          TRC: 2.22 SMPTE-C Gamma (automatically mapped from 2.40 in code)          ###
     ###                                                                                    ###
     ###      NTSC-J (Default)                                                              ###
     ###          Gamut: NTSC-J (#4) (or a NTSC-J based CRT gamut)                          ###
@@ -120,7 +120,7 @@ layout(push_constant) uniform Push
 #define Q_SHIFT         params.g_Q_SHIFT
 #define I_MUL           params.g_I_MUL
 #define Q_MUL           params.g_Q_MUL
-#define v_sat           params.g_sat
+#define g_sat           params.g_sat
 #define vibr            params.g_vibr
 #define lum             params.g_lum
 #define cntrst          params.g_cntrst
@@ -373,7 +373,7 @@ vec3 RGB_YIQ(vec3 col)
     0.599002392519453, -0.277301256521204, -0.321701135998249,
     0.213001700342824, -0.52510120528935,  0.312099504946526);
 
-    return col.rgb *= conv_mat;
+    return col.rgb * conv_mat;
  }
 
 vec3 YIQ_RGB(vec3 col)
@@ -383,7 +383,7 @@ vec3 YIQ_RGB(vec3 col)
     1.0, -0.274787646298978, -0.635691079187380,
     1.0, -1.108545034642030,  1.709006928406470);
 
-    return col.rgb *= conv_mat;
+    return col.rgb * conv_mat;
  }
 
 vec3 RGB_YUV(vec3 RGB)
@@ -393,7 +393,7 @@ vec3 RGB_YUV(vec3 RGB)
     -0.14713,-0.28886,  0.436,
      0.615, -0.514991, -0.10001);
 
-    return RGB.rgb *= conv_mat;
+    return RGB.rgb * conv_mat;
  }
 
 vec3 YUV_RGB(vec3 YUV)
@@ -403,7 +403,7 @@ vec3 YUV_RGB(vec3 YUV)
      1.000,-0.39465,-0.58060,
      1.000, 2.03211, 0.00000);
 
-    return YUV.rgb *= conv_mat;
+    return YUV.rgb * conv_mat;
  }
 
 
@@ -573,7 +573,7 @@ void main()
 
 //  RGB Related Transforms
     vec4 screen = vec4(max(contrast, 0.0), 1.0);
-    float sat = v_sat + 1.0;
+    float sat = g_sat + 1.0;
 
                    //  r    g    b  alpha ; alpha does nothing for our purposes
     mat4 color = mat4(wlr, rg,  rb,   0.0,              //red tint

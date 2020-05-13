@@ -19,7 +19,7 @@
     ###      NTSC-U                                                                        ###
     ###          Gamut: SMPTE-C (#3, #7) (or a NTSC based CRT gamut)                       ###
     ###          WP: D65 (6504K)                                                           ###
-    ###          TRC: 2.22 SMPTE-C Gamma                                                   ###
+    ###          TRC: 2.22 SMPTE-C Gamma (automatically mapped from 2.40 in code)          ###
     ###                                                                                    ###
     ###      NTSC-J (Default)                                                              ###
     ###          Gamut: NTSC-J (#4) (or a NTSC-J based CRT gamut)                          ###
@@ -71,6 +71,7 @@
 #pragma parameter LUT_Size2 "LUT Size 2" 64.0 0.0 64.0 16.0
 #pragma parameter LUT2_toggle "LUT 2 Toggle" 0.0 0.0 1.0 1.0
 
+#define M_PI            3.1415926535897932384626433832795
 
 #if defined(VERTEX)
 
@@ -203,7 +204,7 @@ uniform COMPAT_PRECISION float LUT2_toggle;
 #define g_Q_SHIFT 0.0
 #define g_I_MUL 1.0
 #define g_Q_MUL 1.0
-#define wp_temperature 9311.0
+#define wp_temperature 9305.0
 #define g_sat 0.0
 #define g_vibr 0.0
 #define g_lum 0.0
@@ -431,7 +432,7 @@ vec3 RGB_YIQ(vec3 col)
     0.599002392519453, -0.277301256521204, -0.321701135998249,
     0.213001700342824, -0.52510120528935,  0.312099504946526);
 
-    return col.rgb *= conv_mat;
+    return col.rgb * conv_mat;
  }
 
 vec3 YIQ_RGB(vec3 col)
@@ -441,7 +442,7 @@ vec3 YIQ_RGB(vec3 col)
     1.0, -0.274787646298978, -0.635691079187380,
     1.0, -1.108545034642030,  1.709006928406470);
 
-    return col.rgb *= conv_mat;
+    return col.rgb * conv_mat;
  }
 
 vec3 RGB_YUV(vec3 RGB)
@@ -451,7 +452,7 @@ vec3 RGB_YUV(vec3 RGB)
     -0.14713,-0.28886,  0.436,
      0.615, -0.514991, -0.10001);
 
-    return RGB.rgb *= conv_mat;
+    return RGB.rgb * conv_mat;
  }
 
 vec3 YUV_RGB(vec3 YUV)
@@ -461,7 +462,7 @@ vec3 YUV_RGB(vec3 YUV)
      1.000,-0.39465,-0.58060,
      1.000, 2.03211, 0.00000);
 
-    return YUV.rgb *= conv_mat;
+    return YUV.rgb * conv_mat;
  }
 
 
@@ -565,7 +566,7 @@ void main()
 {
 
 //  Analogue Color Knobs
-    vec3 imgColor = COMPAT_TEXTURE(Source, vTexCoord).rgb;
+    vec3 source = COMPAT_TEXTURE(Source, vTexCoord).rgb;
     vec3 col = (g_crtgamut == 5.0) ? RGB_YUV(source) : \
                (g_crtgamut == 4.0) ? RGB_YIQ(source) : \
                                      PCtoTV(RGB_YIQ(source));
@@ -586,7 +587,7 @@ void main()
                                          0.0;
 
     col = (g_crtgamut == 5.0) ? clamp(col.xyz,vec3(0.0627-TV_lvl,0.0627-0.5-TV_lvl,0.0627-0.5-TV_lvl),vec3(0.92157,0.94118-0.5,0.94118-0.5)) : \
-							    clamp(col.xyz,vec3(0.0627-TV_lvl,-0.5957-TV_lvl,  -0.5226-TV_lvl),    vec3(0.92157,0.5957,0.5226));
+                                clamp(col.xyz,vec3(0.0627-TV_lvl,-0.5957-TV_lvl,  -0.5226-TV_lvl),    vec3(0.92157,0.5957,0.5226));
 
     col = (g_crtgamut == 0.0) ? source       : \
           (g_crtgamut == 5.0) ? YUV_RGB(col) : \
