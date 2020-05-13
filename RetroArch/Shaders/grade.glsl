@@ -7,7 +7,7 @@
    License: Public domain
 
 
-    #####################################···PRESETS···########################################
+    #####################################Â·Â·Â·PRESETSÂ·Â·Â·########################################
     ##########################################################################################
     ###                                                                                    ###
     ###      PAL                                                                           ###
@@ -153,6 +153,7 @@ COMPAT_VARYING vec4 TEX0;
 
 #define SourceSize vec4(TextureSize, 1.0 / TextureSize) //either TextureSize or InputSize
 #define OutSize vec4(OutputSize, 1.0 / OutputSize)
+#define M_PI            3.1415926535897932384626433832795
 
 #ifdef PARAMETER_UNIFORM
 uniform COMPAT_PRECISION float g_gamma_out;
@@ -565,7 +566,7 @@ void main()
 {
 
 //  Analogue Color Knobs
-    vec3 imgColor = COMPAT_TEXTURE(Source, vTexCoord).rgb;
+    vec3 source = COMPAT_TEXTURE(Source, vTexCoord).rgb;
     vec3 col = (g_crtgamut == 5.0) ? RGB_YUV(source) : \
                (g_crtgamut == 4.0) ? RGB_YIQ(source) : \
                                      PCtoTV(RGB_YIQ(source));
