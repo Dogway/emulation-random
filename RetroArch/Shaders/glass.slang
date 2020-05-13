@@ -4,6 +4,7 @@ layout(push_constant) uniform Push
 {
     float g_csize;
     float g_bsize;
+    float g_flicker;
     float g_refltog;
     float g_reflstr;
     float g_fresnel;
@@ -34,10 +35,11 @@ layout(push_constant) uniform Push
 
 #pragma parameter g_csize "Corner size" 0.0 0.0 0.07 0.01
 #pragma parameter g_bsize "Border smoothness" 600.0 100.0 600.0 25.0
+#pragma parameter g_flicker "Screen Flicker" 0.0 0.0 1.0 0.01
 #pragma parameter g_refltog "Reflection Toggle" 1.0 0.0 1.0 1.00
 #pragma parameter g_reflstr "Refl. Brightness" 0.25 0.0 1.0 0.01
 #pragma parameter g_fresnel "Refl. Fresnel" 1.0 0.0 1.0 0.10
-#pragma parameter g_reflblur "Refl. Blur" 0.6 0.0 1.0 0.01
+#pragma parameter g_reflblur "Refl. Blur" 0.6 0.0 1.0 0.10
 #pragma parameter gz "Zoom" 1.2 1.0 1.5 0.01
 #pragma parameter gx "Shift-X" 0.0 -1.0 1.0 0.01
 #pragma parameter gy "Shift-Y" -0.01 -1.0 1.0 0.01
@@ -59,6 +61,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
     vec4 OutputSize;
     vec4 OriginalSize;
     vec4 SourceSize;
+    uint FrameCount;
 } global;
 
 #pragma stage vertex
@@ -103,6 +106,11 @@ float corner(vec2 coord)
     coord = (cdist - min(coord,cdist));
     float dist = sqrt(dot(coord,coord));
     return clamp((cdist.x-dist)*params.g_bsize,0.0, 1.0);
+}
+
+
+float rand(float co){
+    return fract(sin(dot(co, 12.9898)) * 43758.5453);
 }
 
 
@@ -186,6 +194,11 @@ void main()
 // Reflection out
     reflection = clamp(vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 3.)), 1.), 0.0, 1.0);
 
+// Corner Size
     vpos *= (global.SourceSize.xy/global.OutputSize.xy);
-    FragColor = (params.g_refltog == 0.0) ? texture(Source, vTexCoord.xy)*corner(vpos) : reflection*corner(vpos);
+
+// Screen Flicker
+    float flicker = mix(1. - params.g_flicker / 10., 1.0, rand(float(global.FrameCount)));
+
+    FragColor = (params.g_refltog == 0.0) ? texture(Source, vTexCoord.xy)*corner(vpos)*flicker : reflection*corner(vpos)*flicker;
 }

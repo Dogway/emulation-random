@@ -9,10 +9,11 @@
 
 #pragma parameter g_csize "Corner size" 0.0 0.0 0.07 0.01
 #pragma parameter g_bsize "Border smoothness" 600.0 100.0 600.0 25.0
+#pragma parameter g_flicker "Screen Flicker" 0.0 0.0 1.0 0.01
 #pragma parameter g_refltog "Reflection Toggle" 1.0 0.0 1.0 1.00
 #pragma parameter g_reflstr "Refl. Brightness" 0.25 0.0 1.0 0.01
 #pragma parameter g_fresnel "Refl. Fresnel" 1.0 0.0 1.0 0.10
-#pragma parameter g_reflblur "Refl. Blur" 0.6 0.0 1.0 0.01
+#pragma parameter g_reflblur "Refl. Blur" 0.6 0.0 1.0 0.10
 #pragma parameter gz "Zoom" 1.2 1.0 1.5 0.01
 #pragma parameter gx "Shift-X" 0.0 -1.0 1.0 0.01
 #pragma parameter gy "Shift-Y" -0.01 -1.0 1.0 0.01
@@ -125,6 +126,7 @@ COMPAT_VARYING vec4 t3;
 #ifdef PARAMETER_UNIFORM
 uniform COMPAT_PRECISION float g_csize;
 uniform COMPAT_PRECISION float g_bsize;
+uniform COMPAT_PRECISION float g_flicker;
 uniform COMPAT_PRECISION float g_refltog;
 uniform COMPAT_PRECISION float g_reflstr;
 uniform COMPAT_PRECISION float g_fresnel;
@@ -144,6 +146,7 @@ uniform COMPAT_PRECISION float goyb;
 #else
 #define g_csize 0.00
 #define g_bsize 600.00
+#define g_flicker 0.00
 #define g_refltog 1.00
 #define g_reflstr 0.00
 #define g_fresnel 1.00
@@ -174,6 +177,11 @@ float corner(vec2 coord)
     coord = (cdist - min(coord,cdist));
     float dist = sqrt(dot(coord,coord));
     return clamp((cdist.x-dist)*g_bsize,0.0, 1.0);
+}
+
+
+float rand(float co){
+    return fract(sin(dot(co, 12.9898)) * 43758.5453);
 }
 
 
@@ -256,8 +264,12 @@ void main()
 // Reflection out
     reflection = clamp(vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 3.)), 1.), 0.0, 1.0);
 
+// Corner Size
     vpos *= (InputSize.xy/TextureSize.xy);
 
-    FragColor = (g_refltog == 0.0) ? COMPAT_TEXTURE(Source, vTexCoord)*corner(vpos) : reflection*corner(vpos);
+// Screen Flicker
+    float flicker = mix(1. - g_flicker / 10., 1.0, rand(float(FrameCount)));
+
+    FragColor = (g_refltog == 0.0) ? COMPAT_TEXTURE(Source, vTexCoord)*corner(vpos)*flicker : reflection*corner(vpos)*flicker;
 }
 #endif
