@@ -154,7 +154,6 @@ COMPAT_VARYING vec4 TEX0;
 
 #define SourceSize vec4(TextureSize, 1.0 / TextureSize) //either TextureSize or InputSize
 #define OutSize vec4(OutputSize, 1.0 / OutputSize)
-#define M_PI            3.1415926535897932384626433832795
 
 #ifdef PARAMETER_UNIFORM
 uniform COMPAT_PRECISION float g_gamma_out;
