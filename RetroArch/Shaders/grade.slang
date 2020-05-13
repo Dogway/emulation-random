@@ -507,10 +507,10 @@ void main()
 {
 
 //  Analogue Color Knobs
-    vec3 source = texture(Source, vTexCoord.xy).rgb;
-    vec3 col = (crtgamut == 5.0) ? RGB_YUV(source) : \
-               (crtgamut == 4.0) ? RGB_YIQ(source) : \
-                                   PCtoTV(RGB_YIQ(source));
+    vec3 src = texture(Source, vTexCoord.xy).rgb;
+    vec3 col = (crtgamut == 5.0) ? RGB_YUV(src) : \
+               (crtgamut == 4.0) ? RGB_YIQ(src) : \
+                                   PCtoTV(RGB_YIQ(src));
 
     float hue_radians = hue_degrees * (M_PI / 180.0);
     float hue = atan(col.z, col.y) + hue_radians;
@@ -530,7 +530,7 @@ void main()
     col = (crtgamut == 5.0) ? clamp(col.xyz,vec3(0.0627-TV_lvl,0.0627-0.5-TV_lvl,0.0627-0.5-TV_lvl),vec3(0.92157,0.94118-0.5,0.94118-0.5)) : \
                               clamp(col.xyz,vec3(0.0627-TV_lvl,-0.5957-TV_lvl,  -0.5226-TV_lvl),    vec3(0.92157,0.5957,0.5226));
 
-    col = (crtgamut == 0.0) ? source       : \
+    col = (crtgamut == 0.0) ? src          : \
           (crtgamut == 5.0) ? YUV_RGB(col) : \
           (crtgamut == 4.0) ? YIQ_RGB(col) : \
                               YIQ_RGB(TVtoPC(col));
@@ -610,9 +610,9 @@ void main()
                                       m_in*screen.rgb;
 
 //  Color Temperature
-    vec3 adjusted = (crtgamut == 0.0) ? wp_adjust(screen.rgb) : wp_adjust(XYZ_to_sRGB(gamut));
-    vec3 base_luma = XYZtoYxy(gamut);
-    vec3 adjusted_luma = XYZtoYxy(sRGB_to_XYZ(adjusted));
+    vec3 adjusted =  (crtgamut == 0.0) ? wp_adjust(screen.rgb)             : wp_adjust(XYZ_to_sRGB(gamut));
+    vec3 base_luma = (crtgamut == 0.0) ? XYZtoYxy(sRGB_to_XYZ(screen.rgb)) : XYZtoYxy(gamut);
+    vec3 adjusted_luma =                 XYZtoYxy(sRGB_to_XYZ(adjusted));
     adjusted = adjusted_luma + (vec3(base_luma.r, 0.0, 0.0) - vec3(adjusted_luma.r, 0.0, 0.0));
     adjusted = clamp(XYZ_to_sRGB(YxytoXYZ(adjusted)), 0.0, 1.0);
 
