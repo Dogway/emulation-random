@@ -523,12 +523,12 @@ void main()
     col.z *= Q_MUL;
     col.y *= I_MUL;
 
-    float TV_lvl = (crtgamut == 5.0) ? 0.0627  : \
-                   (crtgamut == 4.0) ? 0.0627  : \
-                                       0.0;
+    vec2 TV_lvl =  (crtgamut == 5.0) ? vec2(1.0, 1.0)            : \
+                   (crtgamut == 4.0) ? vec2(1.0, 1.0)            : \
+                                       vec2(1.-0.0627,1.-0.05882);
 
-    col = (crtgamut == 5.0) ? clamp(col.xyz,vec3(0.0627-TV_lvl,0.0627-0.5-TV_lvl,0.0627-0.5-TV_lvl),vec3(0.92157,0.94118-0.5,0.94118-0.5)) : \
-                              clamp(col.xyz,vec3(0.0627-TV_lvl,-0.5957-TV_lvl,  -0.5226-TV_lvl),    vec3(0.92157,0.5957,0.5226));
+    col = (crtgamut == 5.0) ? clamp(col.xyz, vec3(1.0-TV_lvl.x, -0.4360*TV_lvl.x, -0.6150*TV_lvl.x), vec3(0.92157, 0.4360*TV_lvl.y, 0.6150*TV_lvl.y)) : \
+                              clamp(col.xyz, vec3(1.0-TV_lvl.x, -0.5957*TV_lvl.x, -0.5226*TV_lvl.x), vec3(0.92157, 0.5957*TV_lvl.y, 0.5226*TV_lvl.y));
 
     col = (crtgamut == 0.0) ? src          : \
           (crtgamut == 5.0) ? YUV_RGB(col) : \
