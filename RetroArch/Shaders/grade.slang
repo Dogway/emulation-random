@@ -2,6 +2,7 @@
 
 layout(push_constant) uniform Push
 {
+    float g_space_out;
     float g_gamma_out;
     float g_gamma_in;
     float g_gamma_type;
@@ -71,6 +72,7 @@ layout(push_constant) uniform Push
 */
 
 
+#pragma parameter g_space_out "LCD Color Space" 0.0 0.0 2.0 1.0
 #pragma parameter g_gamma_out "LCD Gamma" 2.20 0.0 3.0 0.05
 #pragma parameter g_gamma_in "CRT Gamma" 2.40 0.0 3.0 0.05
 #pragma parameter g_gamma_type "CRT Gamma (POW:0, sRGB:1, SMPTE-C:2)" 1.0 0.0 2.0 1.0
@@ -108,6 +110,7 @@ layout(push_constant) uniform Push
 #pragma parameter LUT2_toggle "LUT 2 Toggle" 0.0 0.0 1.0 1.0
 
 #define M_PI            3.1415926535897932384626433832795
+#define SPC             params.g_space_out
 #define gamma_out       params.g_gamma_out
 #define gamma_in        params.g_gamma_in
 #define gamma_type      params.g_gamma_type
@@ -171,6 +174,76 @@ layout(set = 0, binding = 3) uniform sampler2D SamplerLUT1;
 layout(set = 0, binding = 4) uniform sampler2D SamplerLUT2;
 
 
+/////////////////////////////////////////////////////////////////////////////////
+
+
+
+vec3 XYZ_to_RGB(vec3 XYZ, float CSPC){
+
+    // to sRGB
+    const mat3x3 sRGB = mat3x3(
+     3.2409696578979490, -0.96924358606338500,  0.055630072951316833,
+    -1.5373830795288086,  1.87596738338470460, -0.203976929187774660,
+    -0.4986107349395752,  0.04155508056282997,  1.056971430778503400);
+
+    // to DCI-P3
+    const mat3x3 DCIP3 = mat3x3(
+	 2.72539401054382320, -0.7951681613922119,  0.041241902858018875,
+	-1.01800286769866940,  1.6897321939468384, -0.087639048695564270,
+	-0.44016319513320923,  0.0226471945643425,  1.100929737091064500);
+
+    // to Rec.2020
+    const mat3x3 rec2020 = mat3x3(
+	 1.71665108203887940, -0.666684210300445600,  0.017639854922890663,
+	-0.35567077994346620,  1.616480946540832500, -0.042770612984895706,
+	-0.25336623191833496,  0.015768535435199738,  0.942102968692779500);
+
+   return (CSPC == 2.) ? rec2020 * XYZ : (CSPC == 1.) ? DCIP3 * XYZ : sRGB * XYZ;
+}
+
+
+// I'm using here the matrices from above still need to invert them
+vec3 RGB_to_XYZ(vec3 RGB, float CSPC){
+
+    // from sRGB
+    const mat3x3 sRGB = mat3x3(
+    0.41239082813262940, 0.21263903379440308, 0.019330820068717003,
+    0.35758435726165770, 0.71516871452331540, 0.119194783270359040,
+    0.18048080801963806, 0.07219231873750687, 0.95053225755691530);
+
+    // from DCI-P3
+    const mat3x3 DCIP3 = mat3x3(
+	 0.632185101509094200,  0.2974988520145416000,  0.000000000000000000,
+	 0.271144151687622070,  0.7059980034828186000,  0.046043347567319870,
+	-0.008742406964302063, -0.0034969625994563103, -0.046043343842029570);
+
+    // from Rec.2020
+    const mat3x3 rec2020 = mat3x3(
+	0.44516983628273010, 0.20949168503284454, 0.00000000000000000,
+	0.27713435888290405, 0.72159516811370850, 0.04706055670976639,
+	0.17228263616561890, 0.06891304999589920, 0.90735518932342530);
+
+   return (CSPC == 2.) ? rec2020 * RGB : (CSPC == 1.) ? DCIP3 * RGB : sRGB * RGB;
+}
+
+vec3 XYZtoYxy(vec3 XYZ){
+
+    float XYZrgb = XYZ.r+XYZ.g+XYZ.b;
+    float Yxyg = (XYZrgb <= 0.0) ? 0.3805 : XYZ.r / XYZrgb;
+    float Yxyb = (XYZrgb <= 0.0) ? 0.3769 : XYZ.g / XYZrgb;
+    return vec3(XYZ.g, Yxyg, Yxyb);
+}
+
+vec3 YxytoXYZ(vec3 Yxy){
+
+    float Xs = Yxy.r * (Yxy.g/Yxy.b);
+    float Xsz = (Yxy.r <= 0.0) ? 0.0 : 1.0;
+    vec3 XYZ = vec3(Xsz,Xsz,Xsz) * vec3(Xs, Yxy.r, (Xs/Yxy.g)-Xs-Yxy.r);
+    return XYZ;
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+//
 // White Point Mapping function
 //
 // From the first comment post (sRGB primaries and linear light compensated)
@@ -206,68 +279,10 @@ vec3 wp_adjust(vec3 color){
     wp.rgb = clamp(wp.rgb, vec3(0.), vec3(1.));
 
     // Linear color input
-    return color * wp;
+    return color * XYZ_to_RGB(RGB_to_XYZ(wp, 0.), SPC);
 }
 
-
-
-vec3 sRGB_to_XYZ(vec3 RGB){
-
-    const mat3x3 m = mat3x3(
-    0.41239082813262940, 0.21263903379440308, 0.019330820068717003,
-    0.35758435726165770, 0.71516871452331540, 0.119194783270359040,
-    0.18048080801963806, 0.07219231873750687, 0.95053225755691530);
-    return m * RGB;
-}
-
-vec3 XYZtoYxy(vec3 XYZ){
-
-    float XYZrgb = XYZ.r+XYZ.g+XYZ.b;
-    float Yxyg = (XYZrgb <= 0.0) ? 0.3805 : XYZ.r / XYZrgb;
-    float Yxyb = (XYZrgb <= 0.0) ? 0.3769 : XYZ.g / XYZrgb;
-    return vec3(XYZ.g, Yxyg, Yxyb);
-}
-
-vec3 YxytoXYZ(vec3 Yxy){
-
-    float Xs = Yxy.r * (Yxy.g/Yxy.b);
-    float Xsz = (Yxy.r <= 0.0) ? 0.0 : 1.0;
-    vec3 XYZ = vec3(Xsz,Xsz,Xsz) * vec3(Xs, Yxy.r, (Xs/Yxy.g)-Xs-Yxy.r);
-    return XYZ;
-}
-
-vec3 XYZ_to_sRGB(vec3 XYZ){
-
-    const mat3x3 m = mat3x3(
-     3.2409696578979490, -0.96924358606338500,  0.055630072951316833,
-    -1.5373830795288086,  1.87596738338470460, -0.203976929187774660,
-    -0.4986107349395752,  0.04155508056282997,  1.056971430778503400);
-   return m * XYZ;
-}
-
-
-//  This shouldn't be necessary but it seems some undefined values can
-//  creep in and each GPU vendor handles that differently. This keeps
-//  all values within a safe range
-vec3 mixfix(vec3 a, vec3 b, float c)
-{
-    return (a.z < 1.0) ? mix(a, b, c) : a;
-}
-
-
-vec4 mixfix_v4(vec4 a, vec4 b, float c)
-{
-    return (a.z < 1.0) ? mix(a, b, c) : a;
-}
-
-
-float SatMask(float color_r, float color_g, float color_b)
-{
-    float max_rgb = max(color_r, max(color_g, color_b));
-    float min_rgb = min(color_r, min(color_g, color_b));
-    float msk = clamp((max_rgb - min_rgb) / (max_rgb + min_rgb), 0.0, 1.0);
-    return msk;
-}
+/////////////////////////////////////////////////////////////////////////////////
 
 
 float moncurve_f( float color, float gamma, float offs)
@@ -364,6 +379,38 @@ vec4 rolled_gain_v4(vec4 color, float gain){
 }
 
 
+float SatMask(float color_r, float color_g, float color_b)
+{
+    float max_rgb = max(color_r, max(color_g, color_b));
+    float min_rgb = min(color_r, min(color_g, color_b));
+    float msk = clamp((max_rgb - min_rgb) / (max_rgb + min_rgb), 0.0, 1.0);
+    return msk;
+}
+
+
+// to Studio Swing or SMPTE legal (in YIQ space) (for footroom and headroom)
+vec3 PCtoTV(vec3 col, bool rgb_in)
+{
+   col *= 255.;
+   col.x = ((col.x * 219.) / 255.) + 16.;
+   col.y = rgb_in ? ((col.y * 219.) / 255.) + 16. : (((col.y - 128.) * 224.) / 255.) + 128.;
+   col.z = rgb_in ? ((col.z * 219.) / 255.) + 16. : (((col.z - 128.) * 224.) / 255.) + 128.;
+   return col.xyz / 255.;
+}
+
+
+// to Full Swing (in YIQ space)
+vec3 TVtoPC(vec3 col, bool rgb_in)
+{
+   col *= 255.;
+   float colx = ((col.x - 16.) / 219.) * 255.;
+   float coly = rgb_in ? ((col.y - 16.) / 219.) * 255. : (((col.y - 128.) / 224.) * 255.) + 128.;
+   float colz = rgb_in ? ((col.z - 16.) / 219.) * 255. : (((col.z - 128.) / 224.) * 255.) + 128.;
+   return vec3(colx,coly,colz) / 255.;
+}
+
+
+
 vec3 RGB_YIQ(vec3 col)
  {
     const mat3 conv_mat = mat3(
@@ -408,8 +455,8 @@ vec3 RGB_YCC(vec3 RGB)
  {
     const mat3 conv_mat = mat3(
     0.299,  0.587,  0.114,
-    0.500, -0.419, -0.081,
-   -0.169, -0.331,  0.500);
+    0.701, -0.587, -0.114,
+   -0.299, -0.587,  0.886);
 
     return RGB.rgb * conv_mat;
  }
@@ -417,35 +464,12 @@ vec3 RGB_YCC(vec3 RGB)
 vec3 YCC_RGB(vec3 YCC)
  {
     const mat3 conv_mat = mat3(
-    1.000,  1.4017, -0.0009,
-    1.000, -0.7142, -0.3437,
-    1.000,  0.0010,  1.7722);
+    1.0000,  1.0000,  0.0000,
+    1.0000, -0.5094, -0.1942,
+    1.0000,  0.0000,  1.0000);
 
     return YCC.rgb * conv_mat;
  }
-
-
-
-// to Studio Swing or SMPTE legal (in YIQ space) (for footroom and headroom)
-vec3 PCtoTV(vec3 col, bool rgb_in)
-{
-   col *= 255.;
-   col.x = ((col.x * 219.) / 255.) + 16.;
-   col.y = rgb_in ? ((col.y * 219.) / 255.) + 16. : (((col.y - 128.) * 224.) / 255.) + 128.;
-   col.z = rgb_in ? ((col.z * 219.) / 255.) + 16. : (((col.z - 128.) * 224.) / 255.) + 128.;
-   return col.xyz / 255.;
-}
-
-
-// to Full Swing (in YIQ space)
-vec3 TVtoPC(vec3 col, bool rgb_in)
-{
-   col *= 255.;
-   float colx = ((col.x - 16.) / 219.) * 255.;
-   float coly = rgb_in ? ((col.y - 16.) / 219.) * 255. : (((col.y - 128.) / 224.) * 255.) + 128.;
-   float colz = rgb_in ? ((col.z - 16.) / 219.) * 255. : (((col.z - 128.) / 224.) * 255.) + 128.;
-   return vec3(colx,coly,colz) / 255.;
-}
 
 
 
@@ -521,6 +545,22 @@ mat3(
  0.18592119216918945, 0.07705944031476974, 0.96018517017364500);
 
 
+//  This shouldn't be necessary but it seems some undefined values can
+//  creep in and each GPU vendor handles that differently. This keeps
+//  all values within a safe range
+vec3 mixfix(vec3 a, vec3 b, float c)
+{
+    return (a.z < 1.0) ? mix(a, b, c) : a;
+}
+
+
+vec4 mixfix_v4(vec4 a, vec4 b, float c)
+{
+    return (a.z < 1.0) ? mix(a, b, c) : a;
+}
+
+
+
 
 void main()
 {
@@ -543,7 +583,7 @@ void main()
     col.y *= I_MUL;
 
 // Clipping Logic
-    vec2 UV_range = (crtgamut == 5.0) ? vec2(0.4360, 0.6150) : vec2(0.5957, 0.5226);
+    vec2 UV_range = (crtgamut == 5.0) ? vec2(0.436, 0.615) : vec2(0.599, 0.5251);
 
     vec4 lvl_off = vec4(UV_range.x*((16./2.)/255.),     UV_range.y*((16./2.)/255.),       \
                         UV_range.x*(1.-(240./255.))/2., UV_range.y*(1.-(240./255.))/2.);
@@ -556,16 +596,21 @@ void main()
     col = clamp(col.xyz, vec3(0.0, -UV_range.x-TV_lvl.x, -UV_range.y-TV_lvl.y), \
                          vec3(1.0,  UV_range.x+TV_lvl.z,  UV_range.y+TV_lvl.w)) ;
 
-// YCbCr roundtrip
-    col = (crtgamut == 0.0) ?                        src                : \
-          (crtgamut == 5.0) ?        RGB_YCC(YUV_RGB(col))              : \
-          (crtgamut == 4.0) ?        RGB_YCC(YIQ_RGB(col))              : \
-                                     RGB_YCC(TVtoPC(YIQ_RGB(col), true));
 
-    col = (crtgamut != 0.0) ? YCC_RGB(clamp(col.xyz, vec3(0.0, -0.701, -0.886), vec3(1.0, 0.701, 0.886))) : col;
+// YCbCr roundtrip to clamp out of gamut sRGB values
+    col = (crtgamut == 5.0) ?        RGB_YCC(YUV_RGB(col))              : \
+          (crtgamut == 4.0) ?        RGB_YCC(YIQ_RGB(col))              : \
+                                     RGB_YCC(YIQ_RGB(col));
+
+    col = clamp(col.xyz, vec3(0.0, -0.701, -0.886), vec3(1.0, 0.701, 0.886));
+
+    col = (crtgamut == 0.0) ?                src               : \
+          (crtgamut == 5.0) ?        YCC_RGB(col)              : \
+          (crtgamut == 4.0) ?        YCC_RGB(col)              : \
+                                     TVtoPC(YCC_RGB(col), true);
 
 //  OETF - Opto-Electronic Transfer Function
-    vec3 imgColor = (gamma_type == 2.0) ? moncurve_f_f3(col, gamma_in - 0.18, 0.1115) : (gamma_type == 1.0) ? moncurve_f_f3(col, gamma_in, 0.055) : pow(col, vec3(gamma_in));
+    vec3 imgColor = (gamma_type == 2.0) ? moncurve_f_f3(col, gamma_in - 0.18, 0.1115) : (gamma_type == 1.0) ? moncurve_f_f3(col, gamma_in, 0.055) : clamp(pow(col, vec3(gamma_in)), 0.0, 1.0);
 
 
 //  Look LUT
@@ -578,15 +623,17 @@ void main()
     vec3 color2 = texture(SamplerLUT1, vec2(blue2, green)).rgb;
     vec3 vcolor = (global.LUT1_toggle == 0.0) ? imgColor : mixfix(color1, color2, mixer);
 
+    vcolor = RGB_to_XYZ(vcolor, 0.);
+
 
 //  Sigmoidal Contrast
-    vec3 Yxy = XYZtoYxy(sRGB_to_XYZ(vcolor));
+    vec3 Yxy = XYZtoYxy(vcolor);
     float toGamma = clamp(moncurve_r(Yxy.r, 2.40, 0.055), 0.0, 1.0);
     toGamma = (Yxy.r > 0.5) ? contrast_sigmoid_inv(toGamma, 2.3, 0.5) : toGamma;
     float sigmoid = (cntrst > 0.0) ? contrast_sigmoid(toGamma, cntrst, mid) : contrast_sigmoid_inv(toGamma, cntrst, mid);
     vec3 contrast = vec3(moncurve_f(sigmoid, 2.40, 0.055), Yxy.g, Yxy.b);
-    vec3 XYZsrgb = clamp(XYZ_to_sRGB(YxytoXYZ(contrast)), 0.0, 1.0);
-    contrast = (cntrst == 0.0) ? vcolor : XYZsrgb;
+    vec3 XYZsrgb = clamp(XYZ_to_RGB(YxytoXYZ(contrast), SPC), 0.0, 1.0);
+    contrast = (cntrst == 0.0) ? XYZ_to_RGB(vcolor, SPC) : XYZsrgb;
 
 
 //  Vignetting & Black Level
@@ -610,10 +657,17 @@ void main()
                       br,  bg,  wlb,  0.0,              //blue tint
                       blr/20., blg/20., blb/20., 0.0);  //black tint
 
-    mat4 adjust = mat4((1.0 - sat) * 0.2126 + sat, (1.0 - sat) * 0.2126, (1.0 - sat) * 0.2126, 1.0,
-                       (1.0 - sat) * 0.7152, (1.0 - sat) * 0.7152 + sat, (1.0 - sat) * 0.7152, 1.0,
-                       (1.0 - sat) * 0.0722, (1.0 - sat) * 0.0722, (1.0 - sat) * 0.0722 + sat, 1.0,
+
+    vec3 coeff = (SPC == 2.) ? vec3(0.20949168503284454, 0.7215951681137085,  0.0689130499958992000) : \
+                 (SPC == 1.) ? vec3(0.29749885201454160, 0.7059980034828186, -0.0034969625994563103) : \
+                               vec3(0.21263903379440308, 0.7151687145233154,  0.0721923187375068700) ;
+
+
+    mat4 adjust = mat4((1.0 - sat) * coeff.x + sat, (1.0 - sat) * coeff.x, (1.0 - sat) * coeff.x, 1.0,
+                       (1.0 - sat) * coeff.y, (1.0 - sat) * coeff.y + sat, (1.0 - sat) * coeff.y, 1.0,
+                       (1.0 - sat) * coeff.z, (1.0 - sat) * coeff.z, (1.0 - sat) * coeff.z + sat, 1.0,
                         0.0, 0.0, 0.0, 1.0);
+
 
     screen = clamp(rolled_gain_v4(screen, lum * 2.0), 0.0, 1.0);
     screen = color * screen;
@@ -639,11 +693,11 @@ void main()
                                       m_in*screen.rgb;
 
 //  Color Temperature
-    vec3 adjusted =  (crtgamut == 0.0) ? wp_adjust(screen.rgb)             : wp_adjust(XYZ_to_sRGB(gamut));
-    vec3 base_luma = (crtgamut == 0.0) ? XYZtoYxy(sRGB_to_XYZ(screen.rgb)) : XYZtoYxy(gamut);
-    vec3 adjusted_luma =                 XYZtoYxy(sRGB_to_XYZ(adjusted));
+    vec3 adjusted =  (crtgamut == 0.0) ? wp_adjust(screen.rgb)                 : wp_adjust(XYZ_to_RGB(gamut, SPC));
+    vec3 base_luma = (crtgamut == 0.0) ? XYZtoYxy(RGB_to_XYZ(screen.rgb, SPC)) :           XYZtoYxy(gamut);
+    vec3 adjusted_luma =                 XYZtoYxy(RGB_to_XYZ(adjusted,   SPC)) ;
     adjusted = adjusted_luma + (vec3(base_luma.r, 0.0, 0.0) - vec3(adjusted_luma.r, 0.0, 0.0));
-    adjusted = clamp(XYZ_to_sRGB(YxytoXYZ(adjusted)), 0.0, 1.0);
+    adjusted = clamp(XYZ_to_RGB(YxytoXYZ(adjusted), SPC), 0.0, 1.0);
 
 
 //  Technical LUT
