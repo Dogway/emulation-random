@@ -410,6 +410,8 @@ vec3 TVtoPC(vec3 col, bool rgb_in)
    return vec3(colx,coly,colz) / 255.;
 }
 
+
+
 // Sanctioned YIQ matrix
 vec3 RGB_YIQ(vec3 col)
  {
@@ -433,20 +435,7 @@ vec3 YIQ_RGB(vec3 col)
  }
 
 
-
-// in gamma TV space (Rec.709) (from Dither)
-vec3 YUV_r709(vec3 YUV)
- {
-    const mat3 conv_mat = mat3(
-    1.16438356164383561644,  0.00000000000000000000,  2.06418571428571428571,
-    1.16438356164383561644, -0.21324861427372962608, -0.53290932855944391179,
-    1.16438356164383561644,  2.20458571428571428571,  0.00000000000000000000);
-
-    return YUV.rgb * conv_mat;
- }
-
-// in gamma TV space (Rec.601) (from Dither) (clamp 0.43921568627450980392, 0.43921568627450980392)
-// the e-Mega Reference says this is for full range
+// in gamma full range space (Rec.601)
 vec3 r601_YUV(vec3 RGB)
  {
     const mat3 conv_mat = mat3(
@@ -457,34 +446,24 @@ vec3 r601_YUV(vec3 RGB)
     return RGB.rgb * conv_mat;
  }
 
-// RGB to YCC from gamma+TV space from : Communications Engineering e-Mega Reference
-vec3 RGB_YCC(vec3 col)
- {
-   col *= 255.;
-   col.x =  round(0.299 * col.r + 0.587 * col.g + 0.114 * col.b);
-   col.y = round(-0.172 * col.r - 0.339 * col.g + 0.511 * col.b + 128.);
-   col.z =  round(0.511 * col.r - 0.428 * col.g - 0.083 * col.b + 128.);
-   return col.xyz / 255.;
- }
-
-// YCC to RGB from gamma+TV space from : Communications Engineering e-Mega Reference
-vec3 YCC_RGB(vec3 col)
- {
-   col *= 255.;
-   col.r = round(col.x + 1.371 * (col.z - 128.));
-   col.g = round(col.x - 0.698 * (col.z - 128.) - 0.336 * (col.y - 128.));
-   col.b = round(col.x + 1.732 * (col.y - 128.));
-   return col.rgb / 255.;
- }
-
-// in gamma TV space (Rec.601) (from Dither)
-// the e-Mega Reference says this is for full range
+// in gamma full range space (Rec.601)
 vec3 YUV_r601(vec3 YUV)
  {
     const mat3 conv_mat = mat3(
     1.16438356164383561644,  0.00000000000000000000,  1.97778571428571428571,
     1.16438356164383561644, -0.39176229009491360428, -0.81296764723777074714,
     1.16438356164383561644,  2.16278571428571428571,  0.00000000000000000000);
+
+    return YUV.rgb * conv_mat;
+ }
+
+// in gamma full range space (Rec.709)
+vec3 YUV_r709(vec3 YUV)
+ {
+    const mat3 conv_mat = mat3(
+    1.16438356164383561644,  0.00000000000000000000,  2.06418571428571428571,
+    1.16438356164383561644, -0.21324861427372962608, -0.53290932855944391179,
+    1.16438356164383561644,  2.20458571428571428571,  0.00000000000000000000);
 
     return YUV.rgb * conv_mat;
  }
@@ -527,22 +506,21 @@ mat3(
  0.36525884270668030, 0.70106136798858640, 0.11193416267633438,
  0.19164848327636720, 0.08655092865228653, 0.95824241638183590);
 
-// use with D93 white point
+// NTSC-J (use with D93 white point)
 const mat3 NTSC_J_transform =
 mat3(
  0.39603787660598755, 0.22429330646991730, 0.02050681784749031,
  0.31201449036598206, 0.67417418956756590, 0.12814880907535553,
  0.24496731162071228, 0.10153251141309738, 1.26512730121612550);
 
-// EBU is PAL, I used the same primaries
-// PAL phosphor gamut
+// EBU PAL phosphor gamut (matches sRGB, just less precision)
 const mat3 EBU_transform =
 mat3(
  0.43194326758384705, 0.22272075712680817, 0.020247340202331543,
  0.34123489260673523, 0.70600330829620360, 0.129433929920196530,
  0.17818950116634370, 0.07127580046653748, 0.938464701175689700);
 
-// Sony Trinitron KV-20M20 (D93 assumed)
+// Sony Trinitron KV-20M20 (use with D93 white point)
 const mat3 Sony20_20_transform =
 mat3(
  0.38629359006881714, 0.21014373004436493, 0.021632442250847816,
@@ -576,7 +554,6 @@ vec4 mixfix_v4(vec4 a, vec4 b, float c)
 
 void main()
 {
-	//here I need to know what colors is the emulator outputiing; RAW? sRGB?
 
     vec3 src = texture(Source, vTexCoord.xy).rgb;
     vec3 col = (crtgamut == 5.0) ? r601_YUV(src) : \
@@ -596,29 +573,24 @@ void main()
     col.y *= I_MUL;
 
 
-// Clipping Logic
-    vec2 UV_range = (crtgamut == 5.0) ? vec2(0.439216, 0.439216) : vec2(0.599, 0.5251);
+// Clipping Logic / Gamut Limiting
+    vec2 UV_range = (crtgamut == 5.0) ? vec2(((240.-16.)/255.)/2., ((240.-16.)/255.)/2.) : vec2(0.599, 0.5251);
 
-    vec4 lvl_off = vec4(UV_range.x*((16./2.)/255.),     UV_range.y*((16./2.)/255.),       \
+    vec4 lvl_off = vec4(UV_range.x*((16./2.)/255.),     UV_range.y*((16./2.)/255.),    \
                         UV_range.x*(1.-(240./255.))/2., UV_range.y*(1.-(240./255.))/2.);
 
-    vec4 TV_lvl = (crtgamut == 5.0) ? vec4(lvl_off.x, lvl_off.y, lvl_off.z, lvl_off.w)  : \
-                  (crtgamut == 4.0) ? vec4(lvl_off.x, lvl_off.y, lvl_off.z, lvl_off.w)  : \
-                                      vec4(0.0)                                         ;
 
-    col = clamp(col.xyz, vec3(0.0, -UV_range.x-TV_lvl.x, -UV_range.y-TV_lvl.y), \
-                         vec3(1.0,  UV_range.x+TV_lvl.z,  UV_range.y+TV_lvl.w)) ;
+    col = (crtgamut == 4.0) ? clamp(col.xyz, vec3(0.0, -UV_range.x+lvl_off.x, -UV_range.y+lvl_off.y), vec3(1.0, UV_range.x-lvl_off.z,  UV_range.y-lvl_off.w)) : \
+                              clamp(col.xyz, vec3(0.0, -UV_range.x,           -UV_range.y),           vec3(1.0, UV_range.x,            UV_range.y))           ;
 
 // YCbCr roundtrip to clamp out of gamut sRGB values
-    col = (crtgamut == 5.0) ?     		    YUV_r601(col)              : \
-          (crtgamut == 4.0) ?        TVtoPC(YIQ_RGB(col), true)              : \
-                                     TVtoPC(YIQ_RGB(col), true);
+    col = (crtgamut == 5.0) ?              YUV_r601(col)        : \
+          (crtgamut == 4.0) ?        TVtoPC(YIQ_RGB(col), true) : \
+                                     TVtoPC(YIQ_RGB(col), true) ;
 
 // 8-bit Quantization
     col = r601_YUV(floor(col * 255.)/255.);
-
-    float YCC_clp = ((240.-16.)/255.)/2.;
-    col = clamp(col.xyz, vec3(0.0, -YCC_clp, -YCC_clp), vec3(1.0, YCC_clp, YCC_clp));
+    col = clamp(col.xyz, vec3(0.0, -UV_range.x, -UV_range.x), vec3(1.0, UV_range.x, UV_range.x));
 
     col = (crtgamut == 0.0) ?                src                : \
           (crtgamut == 5.0) ?        YUV_r709(col)              : \
@@ -627,17 +599,17 @@ void main()
 
     col = clamp(col, 0.0, 1.0);
 
-//  OETF - Opto-Electronic Transfer Function
+// OETF - Opto-Electronic Transfer Function
     vec3 imgColor = (gamma_type == 2.0) ? moncurve_f_f3(col,  gamma_in - 0.17778, 0.099) : \
-					(gamma_type == 1.0) ? moncurve_f_f3(col,  gamma_in, 0.055)           : \
-										  clamp(pow(col, vec3(gamma_in)), 0.0, 1.0)      ;
+                    (gamma_type == 1.0) ? moncurve_f_f3(col,  gamma_in, 0.055)           : \
+                                          clamp(pow(col, vec3(gamma_in)), 0.0, 1.0)      ;
 
 
-//  Look LUT
-    float red = (imgColor.r * (global.LUT_Size1 - 1.0) + 0.4999) / (global.LUT_Size1 * global.LUT_Size1);
-    float green = (imgColor.g * (global.LUT_Size1 - 1.0) + 0.4999) / global.LUT_Size1;
+// Look LUT
+    float red =   (imgColor.r * (global.LUT_Size1 - 1.0) + 0.4999) / (global.LUT_Size1 * global.LUT_Size1);
+    float green = (imgColor.g * (global.LUT_Size1 - 1.0) + 0.4999) /  global.LUT_Size1;
     float blue1 = (floor(imgColor.b * (global.LUT_Size1 - 1.0)) / global.LUT_Size1) + red;
-    float blue2 = (ceil(imgColor.b * (global.LUT_Size1 - 1.0)) / global.LUT_Size1) + red;
+    float blue2 =  (ceil(imgColor.b * (global.LUT_Size1 - 1.0)) / global.LUT_Size1) + red;
     float mixer = clamp(max((imgColor.b - blue1) / (blue2 - blue1), 0.0), 0.0, 32.0);
     vec3 color1 = texture(SamplerLUT1, vec2(blue1, green)).rgb;
     vec3 color2 = texture(SamplerLUT1, vec2(blue2, green)).rgb;
@@ -646,7 +618,7 @@ void main()
     vcolor = RGB_to_XYZ(vcolor, 0.);
 
 
-//  Sigmoidal Contrast
+// Sigmoidal Contrast
     vec3 Yxy = XYZtoYxy(vcolor);
     float toGamma = clamp(moncurve_r(Yxy.r, 2.40, 0.055), 0.0, 1.0);
     toGamma = (Yxy.r > 0.5) ? contrast_sigmoid_inv(toGamma, 2.3, 0.5) : toGamma;
@@ -656,7 +628,7 @@ void main()
     contrast = (cntrst == 0.0) ? XYZ_to_RGB(vcolor, SPC) : XYZsrgb;
 
 
-//  Vignetting & Black Level
+// Vignetting & Black Level
     vec2 vpos = vTexCoord*(global.OriginalSize.xy/global.SourceSize.xy);
 
     vpos *= 1.0 - vpos.xy;
@@ -667,7 +639,7 @@ void main()
     contrast += (lift / 20.0) * (1.0 - contrast);
 
 
-//  RGB Related Transforms
+// RGB Related Transforms
     vec4 screen = vec4(max(contrast, 0.0), 1.0);
     float sat = g_sat + 1.0;
 
@@ -695,7 +667,7 @@ void main()
     screen = mixfix_v4(screen, clamp(adjust * screen, 0.0, 1.0), sat_msk);
 
 
-//  CRT Phosphor Gamut
+// CRT Phosphor Gamut
     mat3 m_in;
 
     if (crtgamut == 1.0) { m_in = NTSC_FCC_transform;           } else
@@ -708,22 +680,23 @@ void main()
 
     vec3 gamut = (crtgamut == 1.0) ? (m_in*screen.rgb)*C_D65_Brad    : \
                  (crtgamut == 4.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
+                 (crtgamut == 5.0) ?       screen.rgb                : \
                  (crtgamut == 6.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
                                       m_in*screen.rgb;
 
-//  Color Temperature
-    vec3 adjusted =  (crtgamut == 0.0) ? wp_adjust(screen.rgb)                 : wp_adjust(XYZ_to_RGB(gamut, SPC));
-    vec3 base_luma = (crtgamut == 0.0) ? XYZtoYxy(RGB_to_XYZ(screen.rgb, SPC)) :             XYZtoYxy(gamut);
-    vec3 adjusted_luma =                 XYZtoYxy(RGB_to_XYZ(adjusted,   SPC)) ;
+// Color Temperature
+    vec3 adjusted =  (crtgamut == 0.0) || (crtgamut == 5.0) ?           wp_adjust(screen.rgb) :       wp_adjust(XYZ_to_RGB(gamut, SPC));
+    vec3 base_luma = (crtgamut == 0.0) || (crtgamut == 5.0) ? XYZtoYxy(RGB_to_XYZ(screen.rgb, SPC)) :             XYZtoYxy(gamut);
+    vec3 adjusted_luma =                                      XYZtoYxy(RGB_to_XYZ(adjusted,   SPC)) ;
     adjusted = adjusted_luma + (vec3(base_luma.r, 0.0, 0.0) - vec3(adjusted_luma.r, 0.0, 0.0));
     adjusted = clamp(XYZ_to_RGB(YxytoXYZ(adjusted), SPC), 0.0, 1.0);
 
 
-//  Technical LUT
-    float red_2 = (adjusted.r * (global.LUT_Size2 - 1.0) + 0.4999) / (global.LUT_Size2 * global.LUT_Size2);
+// Technical LUT
+    float red_2 =   (adjusted.r * (global.LUT_Size2 - 1.0) + 0.4999) / (global.LUT_Size2 * global.LUT_Size2);
     float green_2 = (adjusted.g * (global.LUT_Size2 - 1.0) + 0.4999) / global.LUT_Size2;
     float blue1_2 = (floor(adjusted.b * (global.LUT_Size2 - 1.0)) / global.LUT_Size2) + red_2;
-    float blue2_2 = (ceil(adjusted.b * (global.LUT_Size2 - 1.0)) / global.LUT_Size2) + red_2;
+    float blue2_2 =  (ceil(adjusted.b * (global.LUT_Size2 - 1.0)) / global.LUT_Size2) + red_2;
     float mixer_2 = clamp(max((adjusted.b - blue1_2) / (blue2_2 - blue1_2), 0.0), 0.0, 32.0);
     vec3 color1_2 = texture(SamplerLUT2, vec2(blue1_2, green_2)).rgb;
     vec3 color2_2 = texture(SamplerLUT2, vec2(blue2_2, green_2)).rgb;
@@ -731,11 +704,11 @@ void main()
 
     LUT2_output = (global.LUT2_toggle == 0.0) ? adjusted : LUT2_output;
 
-//  EOTF - Electro-Optical Transfer Function
-    vec3 TRC = (gamma_out == 1.0) ? LUT2_output                                             : \
+// EOTF - Electro-Optical Transfer Function
+    vec3 TRC = (gamma_out == 1.0) ?               LUT2_output                               : \
                      (SPC == 2.0) ? moncurve_r_f3(LUT2_output, gamma_out + 0.22222, 0.0993) : \
                      (SPC == 1.0) ?           pow(LUT2_output, vec3(1./gamma_out + 0.20))   : \
-                                   moncurve_r_f3(LUT2_output, gamma_out + 0.20, 0.055);
+                                   moncurve_r_f3(LUT2_output, gamma_out + 0.20, 0.055)      ;
 
     FragColor = vec4(TRC, 1.0);
 }
