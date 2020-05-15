@@ -188,9 +188,9 @@ vec3 XYZ_to_RGB(vec3 XYZ, float CSPC){
 
     // to DCI-P3
     const mat3x3 DCIP3 = mat3x3(
-	 2.7253935337066650, -0.7951678037643433,  0.04124189168214798,
-	-1.0180026292800903,  1.6897318363189697, -0.08763901889324188,
-	-0.4401630759239197,  0.0226471945643425,  1.10092937946319580);
+     2.7253935337066650, -0.7951678037643433,  0.04124189168214798,
+    -1.0180026292800903,  1.6897318363189697, -0.08763901889324188,
+    -0.4401630759239197,  0.0226471945643425,  1.10092937946319580);
 
     // to Rec.2020
     const mat3x3 rec2020 = mat3x3(
@@ -214,9 +214,9 @@ vec3 RGB_to_XYZ(vec3 RGB, float CSPC){
 
     // from DCI-P3
     const mat3x3 DCIP3 = mat3x3(
-	0.44516983628273010, 0.33465281128883360, 0.00000000000000000,
-	0.17348529398441315, 0.72159516811370850, 0.05168478935956955,
-	0.09819923341274261, 0.06274740397930145, 0.90735518932342530);
+    0.44516983628273010, 0.33465281128883360, 0.00000000000000000,
+    0.17348529398441315, 0.72159516811370850, 0.05168478935956955,
+    0.09819923341274261, 0.06274740397930145, 0.90735518932342530);
 
     // from Rec.2020
     const mat3x3 rec2020 = mat3x3(
@@ -435,16 +435,6 @@ vec3 YIQ_RGB(vec3 col)
  }
 
 
-// in gamma full range space (Rec.601)
-vec3 r601_YUV(vec3 RGB)
- {
-    const mat3 conv_mat = mat3(
-    0.25678823529411764706,  0.50412941176470588235,  0.09790588235294117647,
-   -0.14822290089850838755, -0.29099278537600141637,  0.43921568627450980392,
-    0.43921568627450980392, -0.36778831361360521384, -0.07142737266090459008);
-
-    return RGB.rgb * conv_mat;
- }
 
 // in gamma full range space (Rec.601)
 vec3 YUV_r601(vec3 YUV)
@@ -457,6 +447,17 @@ vec3 YUV_r601(vec3 YUV)
     return YUV.rgb * conv_mat;
  }
 
+// in gamma full range space (Rec.601)
+vec3 r601_YUV(vec3 RGB)
+ {
+    const mat3 conv_mat = mat3(
+    0.25678823529411764706,  0.50412941176470588235,  0.09790588235294117647,
+   -0.14822290089850838755, -0.29099278537600141637,  0.43921568627450980392,
+    0.43921568627450980392, -0.36778831361360521384, -0.07142737266090459008);
+
+    return RGB.rgb * conv_mat;
+ }
+
 // in gamma full range space (Rec.709)
 vec3 YUV_r709(vec3 YUV)
  {
@@ -466,6 +467,17 @@ vec3 YUV_r709(vec3 YUV)
     1.16438356164383561644,  2.20458571428571428571,  0.00000000000000000000);
 
     return YUV.rgb * conv_mat;
+ }
+
+// in gamma full range space (Rec.709)
+vec3 r709_YUV(vec3 RGB)
+ {
+    const mat3 conv_mat = mat3(
+    0.16364459693431854,  0.6338654756546020,  0.061313521116971970,
+   -0.08643123507499695, -0.3347850739955902,  0.421216309070587160,
+    0.39214250445365906, -0.3575562536716461, -0.034586258232593536);
+
+    return RGB.rgb * conv_mat;
  }
 
 
@@ -513,12 +525,12 @@ mat3(
  0.31201449036598206, 0.67417418956756590, 0.12814880907535553,
  0.24496731162071228, 0.10153251141309738, 1.26512730121612550);
 
-// EBU PAL phosphor gamut (matches sRGB, just less precision)
+// EBU PAL phosphor gamut (matches ITU 601)
 const mat3 EBU_transform =
 mat3(
- 0.43194326758384705, 0.22272075712680817, 0.020247340202331543,
- 0.34123489260673523, 0.70600330829620360, 0.129433929920196530,
- 0.17818950116634370, 0.07127580046653748, 0.938464701175689700);
+ 0.43057379126548767, 0.22201462090015410, 0.020183145999908447,
+ 0.34154993295669556, 0.70665508508682250, 0.129553422331810000,
+ 0.17832535505294800, 0.07133013755083084, 0.939180195331573500);
 
 // Sony Trinitron KV-20M20 (use with D93 white point)
 const mat3 Sony20_20_transform =
@@ -556,9 +568,11 @@ void main()
 {
 
     vec3 src = texture(Source, vTexCoord.xy).rgb;
-    vec3 col = (crtgamut == 5.0) ? r601_YUV(src) : \
-               (crtgamut == 4.0) ? RGB_YIQ(PCtoTV(src, true)) : \
-                                   RGB_YIQ(PCtoTV(src, true));
+
+    vec3 col = r709_YUV(src);  // assumed gamma encoded + full range
+         col = (crtgamut == 5.0) ?                         col          : \
+               (crtgamut == 4.0) ? RGB_YIQ(PCtoTV(YUV_r601(col), true)) : \
+                                   RGB_YIQ(PCtoTV(YUV_r601(col), true)) ;
 
 // YIQ/YUV Analogue Color Controls
     float hue_radians = hue_degrees * (M_PI / 180.0);
@@ -680,13 +694,12 @@ void main()
 
     vec3 gamut = (crtgamut == 1.0) ? (m_in*screen.rgb)*C_D65_Brad    : \
                  (crtgamut == 4.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
-                 (crtgamut == 5.0) ?       screen.rgb                : \
                  (crtgamut == 6.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
                                       m_in*screen.rgb;
 
 // Color Temperature
-    vec3 adjusted =  (crtgamut == 0.0) || (crtgamut == 5.0) ?           wp_adjust(screen.rgb) :       wp_adjust(XYZ_to_RGB(gamut, SPC));
-    vec3 base_luma = (crtgamut == 0.0) || (crtgamut == 5.0) ? XYZtoYxy(RGB_to_XYZ(screen.rgb, SPC)) :             XYZtoYxy(gamut);
+    vec3 adjusted =  (crtgamut == 0.0) ?           wp_adjust(screen.rgb)       : wp_adjust(XYZ_to_RGB(gamut, SPC));
+    vec3 base_luma = (crtgamut == 0.0) ? XYZtoYxy(RGB_to_XYZ(screen.rgb, SPC)) :             XYZtoYxy(gamut);
     vec3 adjusted_luma =                                      XYZtoYxy(RGB_to_XYZ(adjusted,   SPC)) ;
     adjusted = adjusted_luma + (vec3(base_luma.r, 0.0, 0.0) - vec3(adjusted_luma.r, 0.0, 0.0));
     adjusted = clamp(XYZ_to_RGB(YxytoXYZ(adjusted), SPC), 0.0, 1.0);
@@ -708,7 +721,7 @@ void main()
     vec3 TRC = (gamma_out == 1.0) ?               LUT2_output                               : \
                      (SPC == 2.0) ? moncurve_r_f3(LUT2_output, gamma_out + 0.22222, 0.0993) : \
                      (SPC == 1.0) ?           pow(LUT2_output, vec3(1./gamma_out + 0.20))   : \
-                                   moncurve_r_f3(LUT2_output, gamma_out + 0.20, 0.055)      ;
+                                    moncurve_r_f3(LUT2_output, gamma_out + 0.20, 0.055)     ;
 
     FragColor = vec4(TRC, 1.0);
 }
