@@ -437,7 +437,29 @@ vec3 YIQ_RGB(vec3 col)
  }
 
 
-  
+
+// gamma space PC in TV out range
+vec3 RGB_FCC(vec3 RGB)
+ {
+    const mat3 conv_mat = mat3(
+    0.25764705882352941176,  0.50670588235294117647,  0.09447058823529411765,
+   -0.14805023132848645076, -0.29116545494602335316,  0.43921568627450980392,
+    0.43921568627450980392, -0.37019607843137254900, -0.06901960784313725490);
+
+    return RGB.rgb * conv_mat;
+ }
+
+// gamma space TV in PC out range
+vec3 FCC_RGB(vec3 FCC)
+ {
+    const mat3 conv_mat = mat3(
+    1.16438356164383561644,  0.000,                   1.59375,
+    1.16438356164383561644, -0.37779207021791767554, -0.81038135593220338983,
+    1.16438356164383561644,  2.02633928571428571429,  0.000);
+
+    return FCC.xyz * conv_mat;
+ }
+
 // gamma space full range
 vec3 YUV_r601(vec3 YUV)
  {
@@ -571,9 +593,11 @@ void main()
     vec3 src = texture(Source, vTexCoord.xy).rgb;
 
     vec3 col = r709_YUV(src);
-         col = (crtgamut == 3.0) ?       r601_YUV(YUV_r601(col))        : \
-               (crtgamut == 2.0) ? RGB_YIQ(PCtoTV(YUV_r601(col), true)) : \
-                                   RGB_YIQ(PCtoTV(YUV_r601(col), true)) ;
+         col = (crtgamut ==  3.0) ?       r601_YUV(YUV_r601(col))        : \
+               (crtgamut ==  2.0) ? RGB_YIQ(PCtoTV(YUV_r601(col), true)) : \
+               (crtgamut == -3.0) ? RGB_FCC(       YUV_r601(col))        : \
+               (crtgamut == -4.0) ? RGB_FCC(       YUV_r601(col))        : \
+                                    RGB_YIQ(PCtoTV(YUV_r601(col), true)) ;
 
 // YIQ/YUV Analogue Color Controls
     float hue_radians = hue_degrees * (M_PI / 180.0);
@@ -589,29 +613,29 @@ void main()
 
 
 // Clipping Logic / Gamut Limiting
-    vec2 UV_range = (crtgamut == 3.0) ? vec2(((240.-16.)/255.)/2., ((240.-16.)/255.)/2.) : vec2(0.599, 0.5251);
+    vec2 UV_range = (crtgamut ==  3.0) ? vec2(((240.-16.)/255.)/2., ((240.-16.)/255.)/2.) : \
+                    (crtgamut == -4.0) ? vec2(((240.-16.)/255.)/2., ((240.-16.)/255.)/2.) : \
+                    (crtgamut == -3.0) ? vec2(((240.-16.)/255.)/2., ((240.-16.)/255.)/2.) : \
+                                         vec2(0.599, 0.5251)                              ;
 
     vec4 lvl_off = vec4(UV_range.x*((16./2.)/255.),     UV_range.y*((16./2.)/255.),    \
                         UV_range.x*(1.-(240./255.))/2., UV_range.y*(1.-(240./255.))/2.);
-
 
     col = (crtgamut == 2.0) ? clamp(col.xyz, vec3(0.0, -UV_range.x+lvl_off.x, -UV_range.y+lvl_off.y), vec3(1.0, UV_range.x-lvl_off.z,  UV_range.y-lvl_off.w)) : \
                               clamp(col.xyz, vec3(0.0, -UV_range.x,           -UV_range.y),           vec3(1.0, UV_range.x,            UV_range.y))           ;
 
 // YCbCr roundtrip to clamp out of gamut sRGB values
-    col = (crtgamut == 3.0) ?              YUV_r601(col)        : \
-          (crtgamut == 2.0) ?        TVtoPC(YIQ_RGB(col), true) : \
-                                     TVtoPC(YIQ_RGB(col), true) ;
+    col = (crtgamut ==  3.0) ?              YUV_r601(col)        : \
+          (crtgamut ==  2.0) ?        TVtoPC(YIQ_RGB(col), true) : \
+          (crtgamut == -3.0) ?               FCC_RGB(col)        : \
+          (crtgamut == -4.0) ?               FCC_RGB(col)        : \
+                                     TVtoPC(YIQ_RGB(col), true)  ;
 
 // 8-bit Quantization
     col = r601_YUV(floor(col * 255.)/255.);
     col = clamp(col.xyz, vec3(0.0, -0.5, -0.5), vec3(1.0, 0.5, 0.5));
 
-    col = (crtgamut == 0.0) ?                src                : \
-          (crtgamut == 3.0) ?        YUV_r709(col)              : \
-          (crtgamut == 2.0) ?        YUV_r709(col)              : \
-                                     YUV_r709(col);
-
+    col = (crtgamut == 0.0) ? src : YUV_r709(col);
     col = clamp(col, 0.0, 1.0);
 
 // OETF - Opto-Electronic Transfer Function
