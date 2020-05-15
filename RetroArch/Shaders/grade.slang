@@ -436,9 +436,7 @@ vec3 YIQ_RGB(vec3 col)
     return col.rgb * conv_mat;
  }
 
-
-
-// gamma space PC in TV out range
+// gamma space PC in TV out
 vec3 RGB_FCC(vec3 RGB)
  {
     const mat3 conv_mat = mat3(
@@ -449,7 +447,7 @@ vec3 RGB_FCC(vec3 RGB)
     return RGB.rgb * conv_mat;
  }
 
-// gamma space TV in PC out range
+// gamma space TV in PC out
 vec3 FCC_RGB(vec3 FCC)
  {
     const mat3 conv_mat = mat3(
@@ -458,6 +456,17 @@ vec3 FCC_RGB(vec3 FCC)
     1.16438356164383561644,  2.02633928571428571429,  0.000);
 
     return FCC.xyz * conv_mat;
+ }
+
+// gamma space full range
+vec3 r601_YUV(vec3 RGB)
+ {
+    const mat3 conv_mat = mat3(
+    0.299,                   0.587,                   0.114,
+   -0.16873589164785553047, -0.33126410835214446953,  0.500,
+    0.500,                  -0.41868758915834522111, -0.08131241084165477889);
+
+    return RGB.rgb * conv_mat;
  }
 
 // gamma space full range
@@ -472,12 +481,12 @@ vec3 YUV_r601(vec3 YUV)
  }
 
 // gamma space full range
-vec3 r601_YUV(vec3 RGB)
+vec3 r709_YUV(vec3 RGB)
  {
     const mat3 conv_mat = mat3(
-    0.299,                   0.587,                   0.114,
-   -0.16873589164785553047, -0.33126410835214446953,  0.500,
-    0.500,                  -0.41868758915834522111, -0.08131241084165477889);
+    0.2126,                  0.7152,                  0.0722,
+   -0.11457210605733994395, -0.38542789394266005605,  0.5000,
+    0.5000,                 -0.45415290830581661163, -0.04584709169418338837);
 
     return RGB.rgb * conv_mat;
  }
@@ -493,16 +502,6 @@ vec3 YUV_r709(vec3 YUV)
     return YUV.rgb * conv_mat;
  }
 
-// gamma space full range
-vec3 r709_YUV(vec3 RGB)
- {
-    const mat3 conv_mat = mat3(
-    0.2126,                  0.7152,                  0.0722,
-   -0.11457210605733994395, -0.38542789394266005605,  0.5000,
-    0.5000,                 -0.45415290830581661163, -0.04584709169418338837);
-
-    return RGB.rgb * conv_mat;
- }
 
 
 
@@ -618,18 +617,15 @@ void main()
                     (crtgamut == -3.0) ? vec2(((240.-16.)/255.)/2., ((240.-16.)/255.)/2.) : \
                                          vec2(0.599, 0.5251)                              ;
 
-    vec4 lvl_off = vec4(UV_range.x*((16./2.)/255.),     UV_range.y*((16./2.)/255.),    \
-                        UV_range.x*(1.-(240./255.))/2., UV_range.y*(1.-(240./255.))/2.);
-
-    col = (crtgamut == 2.0) ? clamp(col.xyz, vec3(0.0, -UV_range.x+lvl_off.x, -UV_range.y+lvl_off.y), vec3(1.0, UV_range.x-lvl_off.z,  UV_range.y-lvl_off.w)) : \
-                              clamp(col.xyz, vec3(0.0, -UV_range.x,           -UV_range.y),           vec3(1.0, UV_range.x,            UV_range.y))           ;
+    col = (crtgamut == 2.0) ? clamp(col.xyz, vec3(0.0, -UV_range.x+((16./2.)/255.), -UV_range.y+((16./2.)/255.)), vec3(1.0, UV_range.x-(1.-(240./255.))/2., UV_range.y-(1.-(240./255.))/2.)) : \
+                              clamp(col.xyz, vec3(0.0, -UV_range.x,                 -UV_range.y),                 vec3(1.0, UV_range.x,                     UV_range.y))                     ;
 
 // YCbCr roundtrip to clamp out of gamut sRGB values
     col = (crtgamut ==  3.0) ?              YUV_r601(col)        : \
           (crtgamut ==  2.0) ?        TVtoPC(YIQ_RGB(col), true) : \
           (crtgamut == -3.0) ?               FCC_RGB(col)        : \
           (crtgamut == -4.0) ?               FCC_RGB(col)        : \
-                                     TVtoPC(YIQ_RGB(col), true)  ;
+                                      TVtoPC(YIQ_RGB(col), true) ;
 
 // 8-bit Quantization
     col = r601_YUV(floor(col * 255.)/255.);
@@ -718,6 +714,7 @@ void main()
     if (crtgamut ==  3.0) { m_in = EBU_transform;               }
 
     vec3 gamut = (crtgamut == -4.0) ? (m_in*screen.rgb)*C_D65_Brad    : \
+                 (crtgamut == -3.0) ? (m_in*screen.rgb)*C_D65_Brad    : \
                  (crtgamut == -2.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
                  (crtgamut ==  2.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
                                        m_in*screen.rgb;
