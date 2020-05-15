@@ -37,8 +37,10 @@ layout(push_constant) uniform Push
 
 /*
    Grade
-   > Ubershader grouping some color related monolithic shaders like color-mangler (hunterk), white_point (hunterk, Dogway), lut_x2 (Guest, Dr. Venom)
-   > and the addition of analogue color emulation, vibrance, crt-gamut, color space and TRC support, vignette, black level, rolled gain and sigmoidal contrast.
+   > Ubershader grouping some color related monolithic shaders like:
+    ::color-mangler (hunterk), ntsc color tuning knobs (Doriphor), white_point (hunterk, Dogway), lut_x2 (Guest, Dr. Venom).
+   > and the addition of:
+    ::analogue color emulation, vibrance, crt phosphor gamut, color space + TRC support, vignette, black level, rolled gain and sigmoidal contrast.
 
    Author: Dogway
    License: Public domain
@@ -48,23 +50,23 @@ layout(push_constant) uniform Push
     ##########################################################################################
     ###                                                                                    ###
     ###      PAL                                                                           ###
-    ###          Gamut: EBU (#5) (or an EBU based CRT gamut)                               ###
+    ###          Gamut: EBU (#3) (or an EBU based CRT gamut)                               ###
     ###          WP: D65 (6504K)                                                           ###
     ###          TRC: 2.8 Gamma (POW or sRGB)*                                             ###
-    ###          Saturation: -0.05                                                         ###
+    ###          Saturation: -0.02                                                         ###
     ###                                                                                    ###
     ###      NTSC-U                                                                        ###
-    ###          Gamut: SMPTE-C (#3, #7) (or a NTSC based CRT gamut)                       ###
+    ###          Gamut: SMPTE-C (#1) (or a NTSC-U based CRT gamut)                         ###
     ###          WP: D65 (6504K)                                                           ###
     ###          TRC: 2.22 SMPTE-C Gamma (automatically mapped from 2.40 in code)          ###
     ###                                                                                    ###
     ###      NTSC-J (Default)                                                              ###
-    ###          Gamut: NTSC-J (#4) (or a NTSC-J based CRT gamut)                          ###
+    ###          Gamut: NTSC-J (#2) (or a NTSC-J based CRT gamut)                          ###
     ###          WP: D93 (9305K)                                                           ###
     ###          TRC: 2.4 Gamma(?) (POW or sRGB)*                                          ###
     ###                                                                                    ###
-    ###      *POW may crush dark tones, a good approximation to "pow(c, 2.4)"...           ###
-    ###       ...is to use sRGB gamma type with a value of 2.55 in crt_gamma               ###
+    ###      *POW may crush dark tones, a good approximation faithful to CRT is            ###
+    ###       ... to use sRGB gamma type with a value of 2.40 as crt_gamma                 ###
     ###                                                                                    ###
     ###                                                                                    ###
     ##########################################################################################
@@ -79,7 +81,7 @@ layout(push_constant) uniform Push
 #pragma parameter g_vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
 #pragma parameter g_vstr "Vignette Strength" 40.0 0.0 50.0 1.0
 #pragma parameter g_vpower "Vignette Power" 0.20 0.0 0.5 0.01
-#pragma parameter g_crtgamut "Gamut (3:NTSC-U 4:NTSC-J 5:PAL)" 4.0 0.0 7.0 1.0
+#pragma parameter g_crtgamut "Gamut (1:NTSC-U 2:NTSC-J 3:PAL)" 2.0 -4.0 3.0 1.0
 #pragma parameter g_hue_degrees "Hue" 0.0 -360.0 360.0 1.0
 #pragma parameter g_I_SHIFT "I/U Shift" 0.0 -1.0 1.0 0.01
 #pragma parameter g_Q_SHIFT "Q/V Shift" 0.0 -1.0 1.0 0.01
@@ -423,7 +425,7 @@ vec3 RGB_YIQ(vec3 col)
     return col.rgb * conv_mat;
  }
 
-// Sanctioned YIQ matrix
+// Sanctioned YIQ matrix (inverse)
 vec3 YIQ_RGB(vec3 col)
  {
     const mat3 conv_mat = mat3(
@@ -435,47 +437,47 @@ vec3 YIQ_RGB(vec3 col)
  }
 
 
-
-// in gamma full range space (Rec.601)
+  
+// gamma space full range
 vec3 YUV_r601(vec3 YUV)
  {
     const mat3 conv_mat = mat3(
-    1.16438356164383561644,  0.00000000000000000000,  1.97778571428571428571,
-    1.16438356164383561644, -0.39176229009491360428, -0.81296764723777074714,
-    1.16438356164383561644,  2.16278571428571428571,  0.00000000000000000000);
+    1.0,  0.000,                   1.402,
+    1.0, -0.34413628620102214651, -0.71413628620102214651,
+    1.0,  1.772,                   0.000);
 
     return YUV.rgb * conv_mat;
  }
 
-// in gamma full range space (Rec.601)
+// gamma space full range
 vec3 r601_YUV(vec3 RGB)
  {
     const mat3 conv_mat = mat3(
-    0.25678823529411764706,  0.50412941176470588235,  0.09790588235294117647,
-   -0.14822290089850838755, -0.29099278537600141637,  0.43921568627450980392,
-    0.43921568627450980392, -0.36778831361360521384, -0.07142737266090459008);
+    0.299,                   0.587,                   0.114,
+   -0.16873589164785553047, -0.33126410835214446953,  0.500,
+    0.500,                  -0.41868758915834522111, -0.08131241084165477889);
 
     return RGB.rgb * conv_mat;
  }
 
-// in gamma full range space (Rec.709)
+// gamma space full range
 vec3 YUV_r709(vec3 YUV)
  {
     const mat3 conv_mat = mat3(
-    1.16438356164383561644,  0.00000000000000000000,  2.06418571428571428571,
-    1.16438356164383561644, -0.21324861427372962608, -0.53290932855944391179,
-    1.16438356164383561644,  2.20458571428571428571,  0.00000000000000000000);
+    1.0,  0.00000000000000000000,  1.5748,
+    1.0, -0.18732427293064876957, -0.46812427293064876957,
+    1.0,  1.8556,                  0.00000000000000000000);
 
     return YUV.rgb * conv_mat;
  }
 
-// in gamma full range space (Rec.709)
+// gamma space full range
 vec3 r709_YUV(vec3 RGB)
  {
     const mat3 conv_mat = mat3(
-    0.16364459693431854,  0.6338654756546020,  0.061313521116971970,
-   -0.08643123507499695, -0.3347850739955902,  0.421216309070587160,
-    0.39214250445365906, -0.3575562536716461, -0.034586258232593536);
+    0.2126,                  0.7152,                  0.0722,
+   -0.11457210605733994395, -0.38542789394266005605,  0.5000,
+    0.5000,                 -0.45415290830581661163, -0.04584709169418338837);
 
     return RGB.rgb * conv_mat;
  }
@@ -563,15 +565,14 @@ vec4 mixfix_v4(vec4 a, vec4 b, float c)
 
 
 
-
 void main()
 {
 
     vec3 src = texture(Source, vTexCoord.xy).rgb;
 
-    vec3 col = r709_YUV(src);  // assumed gamma encoded + full range
-         col = (crtgamut == 5.0) ?                         col          : \
-               (crtgamut == 4.0) ? RGB_YIQ(PCtoTV(YUV_r601(col), true)) : \
+    vec3 col = r709_YUV(src);
+         col = (crtgamut == 3.0) ?       r601_YUV(YUV_r601(col))        : \
+               (crtgamut == 2.0) ? RGB_YIQ(PCtoTV(YUV_r601(col), true)) : \
                                    RGB_YIQ(PCtoTV(YUV_r601(col), true)) ;
 
 // YIQ/YUV Analogue Color Controls
@@ -588,27 +589,27 @@ void main()
 
 
 // Clipping Logic / Gamut Limiting
-    vec2 UV_range = (crtgamut == 5.0) ? vec2(((240.-16.)/255.)/2., ((240.-16.)/255.)/2.) : vec2(0.599, 0.5251);
+    vec2 UV_range = (crtgamut == 3.0) ? vec2(((240.-16.)/255.)/2., ((240.-16.)/255.)/2.) : vec2(0.599, 0.5251);
 
     vec4 lvl_off = vec4(UV_range.x*((16./2.)/255.),     UV_range.y*((16./2.)/255.),    \
                         UV_range.x*(1.-(240./255.))/2., UV_range.y*(1.-(240./255.))/2.);
 
 
-    col = (crtgamut == 4.0) ? clamp(col.xyz, vec3(0.0, -UV_range.x+lvl_off.x, -UV_range.y+lvl_off.y), vec3(1.0, UV_range.x-lvl_off.z,  UV_range.y-lvl_off.w)) : \
+    col = (crtgamut == 2.0) ? clamp(col.xyz, vec3(0.0, -UV_range.x+lvl_off.x, -UV_range.y+lvl_off.y), vec3(1.0, UV_range.x-lvl_off.z,  UV_range.y-lvl_off.w)) : \
                               clamp(col.xyz, vec3(0.0, -UV_range.x,           -UV_range.y),           vec3(1.0, UV_range.x,            UV_range.y))           ;
 
 // YCbCr roundtrip to clamp out of gamut sRGB values
-    col = (crtgamut == 5.0) ?              YUV_r601(col)        : \
-          (crtgamut == 4.0) ?        TVtoPC(YIQ_RGB(col), true) : \
+    col = (crtgamut == 3.0) ?              YUV_r601(col)        : \
+          (crtgamut == 2.0) ?        TVtoPC(YIQ_RGB(col), true) : \
                                      TVtoPC(YIQ_RGB(col), true) ;
 
 // 8-bit Quantization
     col = r601_YUV(floor(col * 255.)/255.);
-    col = clamp(col.xyz, vec3(0.0, -UV_range.x, -UV_range.x), vec3(1.0, UV_range.x, UV_range.x));
+    col = clamp(col.xyz, vec3(0.0, -0.5, -0.5), vec3(1.0, 0.5, 0.5));
 
     col = (crtgamut == 0.0) ?                src                : \
-          (crtgamut == 5.0) ?        YUV_r709(col)              : \
-          (crtgamut == 4.0) ?        YUV_r709(col)              : \
+          (crtgamut == 3.0) ?        YUV_r709(col)              : \
+          (crtgamut == 2.0) ?        YUV_r709(col)              : \
                                      YUV_r709(col);
 
     col = clamp(col, 0.0, 1.0);
@@ -684,23 +685,23 @@ void main()
 // CRT Phosphor Gamut
     mat3 m_in;
 
-    if (crtgamut == 1.0) { m_in = NTSC_FCC_transform;           } else
-    if (crtgamut == 2.0) { m_in = P22_transform;                } else
-    if (crtgamut == 3.0) { m_in = SMPTE_transform;              } else
-    if (crtgamut == 4.0) { m_in = NTSC_J_transform;             } else
-    if (crtgamut == 5.0) { m_in = EBU_transform;                } else
-    if (crtgamut == 6.0) { m_in = Sony20_20_transform;          } else
-    if (crtgamut == 7.0) { m_in = Conrad_transform;             }
+    if (crtgamut == -4.0) { m_in = NTSC_FCC_transform;          } else
+    if (crtgamut == -3.0) { m_in = Conrad_transform;            } else
+    if (crtgamut == -2.0) { m_in = Sony20_20_transform;         } else
+    if (crtgamut == -1.0) { m_in = P22_transform;               } else
+    if (crtgamut ==  1.0) { m_in = SMPTE_transform;             } else
+    if (crtgamut ==  2.0) { m_in = NTSC_J_transform;            } else
+    if (crtgamut ==  3.0) { m_in = EBU_transform;               }
 
-    vec3 gamut = (crtgamut == 1.0) ? (m_in*screen.rgb)*C_D65_Brad    : \
-                 (crtgamut == 4.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
-                 (crtgamut == 6.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
-                                      m_in*screen.rgb;
+    vec3 gamut = (crtgamut == -4.0) ? (m_in*screen.rgb)*C_D65_Brad    : \
+                 (crtgamut == -2.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
+                 (crtgamut ==  2.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
+                                       m_in*screen.rgb;
 
 // Color Temperature
     vec3 adjusted =  (crtgamut == 0.0) ?           wp_adjust(screen.rgb)       : wp_adjust(XYZ_to_RGB(gamut, SPC));
     vec3 base_luma = (crtgamut == 0.0) ? XYZtoYxy(RGB_to_XYZ(screen.rgb, SPC)) :             XYZtoYxy(gamut);
-    vec3 adjusted_luma =                                      XYZtoYxy(RGB_to_XYZ(adjusted,   SPC)) ;
+    vec3 adjusted_luma =                 XYZtoYxy(RGB_to_XYZ(adjusted,   SPC)) ;
     adjusted = adjusted_luma + (vec3(base_luma.r, 0.0, 0.0) - vec3(adjusted_luma.r, 0.0, 0.0));
     adjusted = clamp(XYZ_to_RGB(YxytoXYZ(adjusted), SPC), 0.0, 1.0);
 
