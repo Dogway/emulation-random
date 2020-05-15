@@ -205,7 +205,6 @@ vec3 XYZ_to_RGB(vec3 XYZ, float CSPC){
 }
 
 
-// I'm using here the matrices from above still need to invert them
 vec3 RGB_to_XYZ(vec3 RGB, float CSPC){
 
     // from sRGB
