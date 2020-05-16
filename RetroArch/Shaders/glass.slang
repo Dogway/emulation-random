@@ -137,14 +137,17 @@ void main()
     float zoom   = fract(params.gz)/10.;
 
 // Screen Jitter
+    float scale   = 2.0 + params.g_shaker/0.03;
+    float prob    = 0.5 + params.g_shaker/3.;
     float shaker  = rand(      float(global.FrameCount), 43758.5453)                   * \
-                    rand(      float(global.FrameCount), 4.37585453) * params.g_shaker * \
-                    round(rand(float(global.FrameCount), 53.7585453) * 1.0);
+                    rand(      float(global.FrameCount), 4.37585453) * params.g_shaker;
+                    
+          shaker  = shaker + shaker * round(rand(float(global.FrameCount), 53.7585453) * prob) * scale * clamp(params.g_shaker,0.0,0.01)*100.;
 
-    vec2 coords  = vec2(params.gx, params.gy+shaker*0.5);
-    vec2 coordsr = vec2(params.goxr, params.goyr+shaker);
-    vec2 coordsg = vec2(params.goxg, params.goyg+shaker);
-    vec2 coordsb = vec2(params.goxb, params.goyb+shaker);
+    vec2 coords  = vec2(params.gx,   params.gy   + shaker * 0.5);
+    vec2 coordsr = vec2(params.goxr, params.goyr + shaker);
+    vec2 coordsg = vec2(params.goxg, params.goyg + shaker);
+    vec2 coordsb = vec2(params.goxb, params.goyb + shaker);
 
 // Screen Zoom
     float cr = texture(Source, (vTexCoord.xy - c_dist) / (fract(params.gzr)/20. + 1.) + c_dist + coordsr/40.).r;
