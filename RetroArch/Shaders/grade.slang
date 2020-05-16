@@ -630,16 +630,15 @@ void main()
     col = r601_YUV(floor(col * 255.)/255.);
     col = clamp(col.xyz, vec3(0.0, -0.5, -0.5), vec3(1.0, 0.5, 0.5));
 
-    col = (crtgamut == 0.0) ? src : YUV_r709(col);
-    col = clamp(col, 0.0, 1.0);
+    col = (crtgamut == 0.0) ? src : clamp(YUV_r709(col), 0.0, 1.0);
 
 // OETF - Opto-Electronic Transfer Function
-    vec3 imgColor = (gamma_type == 2.0) ? moncurve_f_f3(col,  gamma_in - 0.17778, 0.099) : \
-                    (gamma_type == 1.0) ? moncurve_f_f3(col,  gamma_in, 0.055)           : \
-                                          clamp(pow(col, vec3(gamma_in)), 0.0, 1.0)      ;
+    vec3 imgColor = (gamma_type == 2.0) ? moncurve_f_f3(col,  gamma_in -  0.17778, 0.099) : \
+                    (gamma_type == 1.0) ? moncurve_f_f3(col,  gamma_in,   0.055)          : \
+                                          clamp(pow(col, vec3(gamma_in)), 0.0, 1.0)       ;
 
 
-// Look LUT
+// Look LUT - (in sRGB space)
     float red =   (imgColor.r * (global.LUT_Size1 - 1.0) + 0.4999) / (global.LUT_Size1 * global.LUT_Size1);
     float green = (imgColor.g * (global.LUT_Size1 - 1.0) + 0.4999) /  global.LUT_Size1;
     float blue1 = (floor(imgColor.b * (global.LUT_Size1 - 1.0)) / global.LUT_Size1) + red;
@@ -726,7 +725,7 @@ void main()
     adjusted = clamp(XYZ_to_RGB(YxytoXYZ(adjusted), SPC), 0.0, 1.0);
 
 
-// Technical LUT
+// Technical LUT - (in SPC space)
     float red_2 =   (adjusted.r * (global.LUT_Size2 - 1.0) + 0.4999) / (global.LUT_Size2 * global.LUT_Size2);
     float green_2 = (adjusted.g * (global.LUT_Size2 - 1.0) + 0.4999) / global.LUT_Size2;
     float blue1_2 = (floor(adjusted.b * (global.LUT_Size2 - 1.0)) / global.LUT_Size2) + red_2;
