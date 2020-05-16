@@ -5,6 +5,7 @@ layout(push_constant) uniform Push
     float g_csize;
     float g_bsize;
     float g_flicker;
+    float g_shaker;
     float g_refltog;
     float g_reflstr;
     float g_fresnel;
@@ -26,8 +27,9 @@ layout(push_constant) uniform Push
 
 /*
    CRT Glass shader
-      >> Emulation of CRT glass chromatic aberration and inner+outer reflection
-      >> Stack just before scanlines. Works better with curved geometry modes.
+      > Emulation of CRT related artifacts:
+        ::glass inner+outer reflection and chromatic aberration, convergence, rolling shutter, shaking.
+      > Stack just before scanlines. Works better with curved geometry modes.
 
    Author: Dogway
    License: Public domain
@@ -35,7 +37,8 @@ layout(push_constant) uniform Push
 
 #pragma parameter g_csize "Corner size" 0.0 0.0 0.07 0.01
 #pragma parameter g_bsize "Border smoothness" 600.0 100.0 600.0 25.0
-#pragma parameter g_flicker "Screen Flicker" 0.0 0.0 1.0 0.01
+#pragma parameter g_flicker "Screen Flicker" 0.25 0.0 1.0 0.01
+#pragma parameter g_shaker "Screen Shake" 0.03 0.0 0.5 0.01
 #pragma parameter g_refltog "Reflection Toggle" 1.0 0.0 1.0 1.00
 #pragma parameter g_reflstr "Refl. Brightness" 0.25 0.0 1.0 0.01
 #pragma parameter g_fresnel "Refl. Fresnel" 1.0 0.0 1.0 0.10
@@ -53,7 +56,6 @@ layout(push_constant) uniform Push
 #pragma parameter goxb "Shift-X Blue" 0.0 -1.0 1.0 0.01
 #pragma parameter goyb "Shift-Y Blue" 0.0 -1.0 1.0 0.01
 
-#define reflblur params.g_reflblur
 
 layout(std140, set = 0, binding = 0) uniform UBO
 {
@@ -62,7 +64,14 @@ layout(std140, set = 0, binding = 0) uniform UBO
     vec4 OriginalSize;
     vec4 SourceSize;
     uint FrameCount;
+#include "../include/img/param_floats.h"
 } global;
+
+#include "../include/img/helper_macros.h"
+#include "../include/img/white_point.h"
+#define temperature global.temperature
+
+#define reflblur params.g_reflblur
 
 #pragma stage vertex
 layout(location = 0) in vec4 Position;
@@ -109,8 +118,8 @@ float corner(vec2 coord)
 }
 
 
-float rand(float co){
-    return fract(sin(dot(co, 12.9898)) * 43758.5453);
+float rand(float co, float size){
+    return fract(sin(dot(co, 12.9898)) * size);
 }
 
 
@@ -120,17 +129,28 @@ void main()
     vec2 c_dist = (vec2(0.5) * global.SourceSize.xy) / global.OutputSize.xy;
     vec2 vpos = vTexCoord * (global.OutputSize.xy / global.SourceSize.xy);
 
-    float zoom   = fract(params.gz)/10.;
-    vec2 coords  = vec2(params.gx, params.gy);
-    vec2 coordsr = vec2(params.goxr, params.goyr);
-    vec2 coordsg = vec2(params.goxg, params.goyg);
-    vec2 coordsb = vec2(params.goxb, params.goyb);
+    float vert = vpos.y;
+    float vert_msk = abs(1. - vert);
+    float center_msk = abs(1. - (vTexCoord.x + 0.1) * global.SourceSize.x / global.OutputSize.x - c_dist.x);
+    float horiz_msk = max(center_msk - 0.2, 0.0) + 0.1;
 
+    float zoom   = fract(params.gz)/10.;
+
+// Screen Jitter
+    float shaker  = rand(      float(global.FrameCount), 43758.5453)                   * \
+                    rand(      float(global.FrameCount), 4.37585453) * params.g_shaker * \
+                    round(rand(float(global.FrameCount), 53.7585453) * 1.0);
+
+    vec2 coords  = vec2(params.gx, params.gy+shaker*0.5);
+    vec2 coordsr = vec2(params.goxr, params.goyr+shaker);
+    vec2 coordsg = vec2(params.goxg, params.goyg+shaker);
+    vec2 coordsb = vec2(params.goxb, params.goyb+shaker);
+
+// Screen Zoom
     float cr = texture(Source, (vTexCoord.xy - c_dist) / (fract(params.gzr)/20. + 1.) + c_dist + coordsr/40.).r;
     float cg = texture(Source, (vTexCoord.xy - c_dist) / (fract(params.gzg)/20. + 1.) + c_dist + coordsg/40.).g;
     float cb = texture(Source, (vTexCoord.xy - c_dist) / (fract(params.gzb)/20. + 1.) + c_dist + coordsb/40.).b;
     vec4 color = vec4(cr,cg,cb,1.0);
-
 
     float rA = texture(Source, (t1.xw - c_dist) / (fract(params.gzr)/10. + zoom + 1.) + c_dist + (coordsr + coords)/20.).x;
     float rB = texture(Source, (t1.yw - c_dist) / (fract(params.gzr)/10. + zoom + 1.) + c_dist + (coordsr + coords)/20.).x;
@@ -175,10 +195,6 @@ void main()
 
     vec3 blurred = (sumE+sumA+sumC+sumD+sumF+sumG+sumI+sumB+sumH)/9.0;
 
-    float vert = vpos.y;
-    float vert_msk = abs(1. - vert);
-    float center_msk = abs(1. - (vTexCoord.x + 0.1) * global.SourceSize.x / global.OutputSize.x - c_dist.x);
-    float horiz_msk = max(center_msk - 0.2, 0.0) + 0.1;
 
     vpos *= 1. - vpos.xy;
     float vig = vpos.x * vpos.y * 10.;
@@ -187,10 +203,11 @@ void main()
 
     blurred = min((vig_msk + (1. - params.g_fresnel)), 1.0) * blurred;
     vig = clamp(vig * params.g_fresnel, 0.001, 1.0);
-    vec3 vig_c = vec3(vig) * vec3(0.75, 0.93, 1.0);
+    vec3 vig_c = white_point(vec3(vig));
 
 // Reflection in
     vec4 reflection = clamp(vec4((1. - (1. - color.rgb ) * (1. - blurred.rgb * params.g_reflstr)) / (1. + params.g_reflstr / 3.), 1.), 0.0, 1.0);
+
 // Reflection out
     reflection = clamp(vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 3.)), 1.), 0.0, 1.0);
 
@@ -198,7 +215,7 @@ void main()
     vpos *= (global.SourceSize.xy/global.OutputSize.xy);
 
 // Screen Flicker
-    float flicker = mix(1. - params.g_flicker / 10., 1.0, rand(float(global.FrameCount)));
+    float flicker = (params.g_flicker == 0.0) ? 1.0 : mix(1. - params.g_flicker / 10., 1.0, rand(float(global.FrameCount), 4.37585453));
 
-    FragColor = (params.g_refltog == 0.0) ? texture(Source, vTexCoord.xy)*corner(vpos)*flicker : reflection*corner(vpos)*flicker;
+    FragColor = (params.g_refltog == 0.0) ? clamp(texture(Source, vTexCoord.xy)*corner(vpos)*flicker, 0.0, 1.0) : clamp(reflection*corner(vpos)*flicker, 0.0, 1.0);
 }
