@@ -6,15 +6,15 @@ layout(push_constant) uniform Push
     float g_gamma_out;
     float g_gamma_in;
     float g_gamma_type;
-    float g_vignette;
-    float g_vstr;
-    float g_vpower;
     float g_crtgamut;
     float g_hue_degrees;
     float g_I_SHIFT;
     float g_Q_SHIFT;
     float g_I_MUL;
     float g_Q_MUL;
+    float g_vignette;
+    float g_vstr;
+    float g_vpower;
     float g_sat;
     float g_vibr;
     float g_lum;
@@ -58,15 +58,15 @@ layout(push_constant) uniform Push
     ###      NTSC-U                                                                        ###
     ###          Gamut: SMPTE-C (#1) (or a NTSC-U based CRT gamut)                         ###
     ###          WP: D65 (6504K)                                                           ###
-    ###          TRC: 2.22 SMPTE-C Gamma (automatically mapped from 2.40 in code)          ###
+    ###          TRC: 2.22 SMPTE-C Gamma (use 2.40 for actual CRTs)                        ###
     ###                                                                                    ###
     ###      NTSC-J (Default)                                                              ###
     ###          Gamut: NTSC-J (#2) (or a NTSC-J based CRT gamut)                          ###
     ###          WP: D93 (9305K)                                                           ###
     ###          TRC: 2.4 Gamma(?) (POW or sRGB)*                                          ###
     ###                                                                                    ###
-    ###      *POW may crush dark tones, a good approximation faithful to CRT is            ###
-    ###       ... to use sRGB gamma type with a value of 2.40 as crt_gamma                 ###
+    ###      *A good faithful approximation to CRT is to use SMPTE-C gamma type...         ###
+    ###       ...with a value of 2.40 as crt_gamma                                         ###
     ###                                                                                    ###
     ###                                                                                    ###
     ##########################################################################################
@@ -75,18 +75,18 @@ layout(push_constant) uniform Push
 
 
 #pragma parameter g_space_out "LCD Color Space" 0.0 0.0 2.0 1.0
-#pragma parameter g_gamma_out "LCD Gamma" 2.20 0.0 3.0 0.05
-#pragma parameter g_gamma_in "CRT Gamma" 2.40 0.0 3.0 0.05
-#pragma parameter g_gamma_type "CRT Gamma (POW:0, sRGB:1, SMPTE-C:2)" 1.0 0.0 2.0 1.0
-#pragma parameter g_vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
-#pragma parameter g_vstr "Vignette Strength" 40.0 0.0 50.0 1.0
-#pragma parameter g_vpower "Vignette Power" 0.20 0.0 0.5 0.01
+#pragma parameter g_gamma_out "LCD Gamma" 2.20 1.80 3.0 0.05
+#pragma parameter g_gamma_in "CRT Gamma" 2.40 1.01 3.0 0.05
+#pragma parameter g_gamma_type "CRT Gamma (POW:0, sRGB:1, SMPTE-C:2)" 2.0 0.0 2.0 1.0
 #pragma parameter g_crtgamut "Gamut (1:NTSC-U 2:NTSC-J 3:PAL)" 2.0 -4.0 3.0 1.0
 #pragma parameter g_hue_degrees "Hue" 0.0 -360.0 360.0 1.0
 #pragma parameter g_I_SHIFT "I/U Shift" 0.0 -1.0 1.0 0.01
 #pragma parameter g_Q_SHIFT "Q/V Shift" 0.0 -1.0 1.0 0.01
 #pragma parameter g_I_MUL "I/U Multiplier" 1.0 0.0 2.0 0.01
 #pragma parameter g_Q_MUL "Q/V Multiplier" 1.0 0.0 2.0 0.01
+#pragma parameter g_vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
+#pragma parameter g_vstr "Vignette Strength" 40.0 0.0 50.0 1.0
+#pragma parameter g_vpower "Vignette Power" 0.20 0.0 0.5 0.01
 #pragma parameter wp_temperature "White Point" 9305.0 1621.0 12055.0 50.0
 #pragma parameter g_sat "Saturation" 0.0 -1.0 2.0 0.02
 #pragma parameter g_vibr "Dullness/Vibrance" 0.0 -1.0 1.0 0.05
@@ -457,8 +457,65 @@ vec3 FCC_RGB(vec3 FCC)
     return FCC.xyz * conv_mat;
  }
 
-// gamma space full range
+
+// in linear space full range
+vec3 r709_r601(vec3 RGB)
+ {
+    const mat3 conv_mat = mat3(
+    0.9578, 0.0422, 0.0000,
+    0.0000, 1.0000, 0.0000,
+    0.0000, 0.0118, 0.9882);
+    return RGB.rgb * conv_mat;
+ }
+
+// PAL YUV - gamma space in (full range?)
+vec3 YUV_r709(vec3 YUV)
+ {
+    const mat3 conv_mat = mat3(
+    1.0000000,  0.0000000000000000,  1.14025092124938960,
+    1.0000000, -0.2047683298587799, -0.33895039558410645,
+    1.0000001,  2.0283975601196290,  0.00000024094399364);
+
+    return YUV.rgb * conv_mat;
+ }
+
+// PAL YUV - gamma space in (full range?)
+vec3 r709_YUV(vec3 RGB)
+ {
+    const mat3 conv_mat = mat3(
+    0.2126000,  0.715200,   0.0722000,
+   -0.1048118, -0.3525936,  0.4574054,
+    0.6905498, -0.6272304, -0.0633194);
+
+    return RGB.rgb * conv_mat;
+ }
+
+
+// PAL YUV - gamma space in (full range?)
 vec3 r601_YUV(vec3 RGB)
+ {
+    const mat3 conv_mat = mat3(
+    0.299000,  0.587000,  0.114000,
+   -0.147407, -0.289391,  0.436798,
+    0.614777, -0.514799, -0.099978);
+
+    return RGB.rgb * conv_mat;
+ }
+
+// PAL YUV - gamma space in (full range?)
+vec3 YUV_r601(vec3 RGB)
+ {
+    const mat3 conv_mat = mat3(
+    1.0000000,  0.00000000000000000,  1.14025080204010000,
+    1.0000000, -0.39393067359924316, -0.58080917596817020,
+    1.0000000,  2.02839756011962900, -0.00000029356581166);
+
+    return RGB.rgb * conv_mat;
+ }
+
+
+// gamma space full range
+vec3 r601_YCC(vec3 RGB)
  {
     const mat3 conv_mat = mat3(
     0.299,                   0.587,                   0.114,
@@ -469,7 +526,7 @@ vec3 r601_YUV(vec3 RGB)
  }
 
 // gamma space full range
-vec3 YUV_r601(vec3 YUV)
+vec3 YCC_r601(vec3 YUV)
  {
     const mat3 conv_mat = mat3(
     1.0,  0.000,                   1.402,
@@ -480,7 +537,7 @@ vec3 YUV_r601(vec3 YUV)
  }
 
 // gamma space full range
-vec3 r709_YUV(vec3 RGB)
+vec3 r709_YCC(vec3 RGB)
  {
     const mat3 conv_mat = mat3(
     0.2126,                  0.7152,                  0.0722,
@@ -491,7 +548,7 @@ vec3 r709_YUV(vec3 RGB)
  }
 
 // gamma space full range
-vec3 YUV_r709(vec3 YUV)
+vec3 YCC_r709(vec3 YUV)
  {
     const mat3 conv_mat = mat3(
     1.0,  0.00000000000000000000,  1.5748,
@@ -500,6 +557,7 @@ vec3 YUV_r709(vec3 YUV)
 
     return YUV.rgb * conv_mat;
  }
+
 
 
 
@@ -590,12 +648,18 @@ void main()
 
     vec3 src = texture(Source, vTexCoord.xy).rgb;
 
-    vec3 col = r709_YUV(src);
-         col = (crtgamut ==  3.0) ?       r601_YUV(YUV_r601(col))        : \
-               (crtgamut ==  2.0) ? RGB_YIQ(PCtoTV(YUV_r601(col), true)) : \
-               (crtgamut == -3.0) ? RGB_FCC(       YUV_r601(col))        : \
-               (crtgamut == -4.0) ? RGB_FCC(       YUV_r601(col))        : \
-                                    RGB_YIQ(PCtoTV(YUV_r601(col), true)) ;
+    vec3 gamma_fix = moncurve_f_f3(src, 2.40, 0.055);
+         gamma_fix = (gamma_type == 2.0) ? moncurve_r_f3(gamma_fix,         gamma_in,   0.099)     : \
+                     (gamma_type == 1.0) ? moncurve_r_f3(gamma_fix,         gamma_in,   0.055)     : \
+                                               clamp(pow(gamma_fix, vec3(1./gamma_in)), 0.0, 1.0)  ;
+
+    vec3 col = r709_YCC(gamma_fix);
+
+         col = (crtgamut ==  3.0) ?       r601_YUV(YCC_r601(col))        : \
+               (crtgamut ==  2.0) ? RGB_YIQ(PCtoTV(YCC_r601(col), true)) : \
+               (crtgamut == -3.0) ? RGB_FCC(       YCC_r601(col))        : \
+               (crtgamut == -4.0) ? RGB_FCC(       YCC_r601(col))        : \
+                                    RGB_YIQ(PCtoTV(YCC_r601(col), true)) ;
 
 // YIQ/YUV Analogue Color Controls
     float hue_radians = hue_degrees * (M_PI / 180.0);
@@ -603,15 +667,12 @@ void main()
     float chroma = sqrt(col.z * col.z + col.y * col.y);
     col = vec3(col.x, chroma * cos(hue), chroma * sin(hue));
 
-    col.y = mod((col.y + 1.0) + I_SHIFT, 2.0) - 1.0;
-    col.z = mod((col.z + 1.0) + Q_SHIFT, 2.0) - 1.0;
+    col.y = (mod((col.y + 1.0) + I_SHIFT, 2.0) - 1.0) * I_MUL;
+    col.z = (mod((col.z + 1.0) + Q_SHIFT, 2.0) - 1.0) * Q_MUL;
 
-    col.z *= Q_MUL;
-    col.y *= I_MUL;
-
-
+ 
 // Clipping Logic / Gamut Limiting
-    vec2 UV_range = (crtgamut ==  3.0) ? vec2(((240.-16.)/255.)/2., ((240.-16.)/255.)/2.) : \
+    vec2 UV_range = (crtgamut ==  3.0) ? vec2(0.436798,             0.614777)             : \
                     (crtgamut == -4.0) ? vec2(((240.-16.)/255.)/2., ((240.-16.)/255.)/2.) : \
                     (crtgamut == -3.0) ? vec2(((240.-16.)/255.)/2., ((240.-16.)/255.)/2.) : \
                                          vec2(0.599, 0.5251)                              ;
@@ -627,15 +688,20 @@ void main()
                                       TVtoPC(YIQ_RGB(col), true) ;
 
 // 8-bit Quantization
-    col = r601_YUV(floor(col * 255.)/255.);
+    col = r601_YCC(floor(col * 255.)/255.);
     col = clamp(col.xyz, vec3(0.0, -0.5, -0.5), vec3(1.0, 0.5, 0.5));
 
-    col = (crtgamut == 0.0) ? src : clamp(YUV_r709(col), 0.0, 1.0);
+    col = clamp(YCC_r601(col), 0.0, 1.0);
 
 // OETF - Opto-Electronic Transfer Function
-    vec3 imgColor = (gamma_type == 2.0) ? moncurve_f_f3(col,  gamma_in -  0.17778, 0.099) : \
-                    (gamma_type == 1.0) ? moncurve_f_f3(col,  gamma_in,   0.055)          : \
-                                          clamp(pow(col, vec3(gamma_in)), 0.0, 1.0)       ;
+
+    vec3 imgColor = (crtgamut == 0.0) ?                                                   \
+                         (SPC == 2.0) ? moncurve_f_f3(src,  gamma_in + 0.02222, 0.0993) : \
+                         (SPC == 1.0) ? pow(src, vec3(gamma_in + 0.20))                 : \
+                                        moncurve_f_f3(src, gamma_in, 0.055)             : \
+                         (SPC == 2.0) ? moncurve_f_f3(col,  gamma_in + 0.02222, 0.0993) : \
+                         (SPC == 1.0) ? pow(col, vec3(gamma_in + 0.20))                 : \
+                                        moncurve_f_f3(col, gamma_in, 0.055)             ;
 
 
 // Look LUT - (in sRGB space)
@@ -740,7 +806,7 @@ void main()
 // EOTF - Electro-Optical Transfer Function
     vec3 TRC = (gamma_out == 1.0) ?               LUT2_output                               : \
                      (SPC == 2.0) ? moncurve_r_f3(LUT2_output, gamma_out + 0.22222, 0.0993) : \
-                     (SPC == 1.0) ?           pow(LUT2_output, vec3(1./gamma_out + 0.20))   : \
+                     (SPC == 1.0) ?           pow(LUT2_output, vec3(1./(gamma_out + 0.40))) : \
                                     moncurve_r_f3(LUT2_output, gamma_out + 0.20, 0.055)     ;
 
     FragColor = vec4(TRC, 1.0);
