@@ -74,10 +74,10 @@ layout(push_constant) uniform Push
 */
 
 
-#pragma parameter g_space_out "LCD Color Space" 0.0 0.0 2.0 1.0
-#pragma parameter g_gamma_out "LCD Gamma" 2.20 1.80 3.0 0.05
-#pragma parameter g_gamma_in "CRT Gamma" 2.40 1.01 3.0 0.05
-#pragma parameter g_gamma_type "CRT Gamma (POW:0, sRGB:1, SMPTE-C:2)" 2.0 0.0 2.0 1.0
+#pragma parameter g_space_out "Diplay Color Space" 0.0 0.0 2.0 1.0
+#pragma parameter g_gamma_out "Diplay Gamma" 2.20 1.80 3.0 0.05
+#pragma parameter g_gamma_in "CRT Gamma" 2.40 1.80 3.0 0.05
+#pragma parameter g_gamma_type "Signal Gamma (POW:0, sRGB:1, SMPTE-C:2)" 2.0 0.0 2.0 1.0
 #pragma parameter g_crtgamut "Gamut (1:NTSC-U 2:NTSC-J 3:PAL)" 2.0 -4.0 3.0 1.0
 #pragma parameter g_hue_degrees "Hue" 0.0 -360.0 360.0 1.0
 #pragma parameter g_I_SHIFT "I/U Shift" 0.0 -1.0 1.0 0.01
@@ -647,11 +647,11 @@ void main()
 {
 
     vec3 src = texture(Source, vTexCoord.xy).rgb;
+         src = moncurve_f_f3(src, 2.40, 0.055);
 
-    vec3 gamma_fix = moncurve_f_f3(src, 2.40, 0.055);
-         gamma_fix = (gamma_type == 2.0) ? moncurve_r_f3(gamma_fix,         gamma_in,   0.099)     : \
-                     (gamma_type == 1.0) ? moncurve_r_f3(gamma_fix,         gamma_in,   0.055)     : \
-                                               clamp(pow(gamma_fix, vec3(1./gamma_in)), 0.0, 1.0)  ;
+    vec3 gamma_fix = (gamma_type == 2.0) ? moncurve_r_f3(src,         gamma_in - 0.177778,  0.099)  : \
+                     (gamma_type == 1.0) ? moncurve_r_f3(src,         gamma_in,             0.055)  : \
+                                               clamp(pow(src, vec3(1./gamma_in)), 0.0, 1.0)         ;
 
     vec3 col = r709_YCC(gamma_fix);
 
@@ -670,7 +670,7 @@ void main()
     col.y = (mod((col.y + 1.0) + I_SHIFT, 2.0) - 1.0) * I_MUL;
     col.z = (mod((col.z + 1.0) + Q_SHIFT, 2.0) - 1.0) * Q_MUL;
 
- 
+
 // Clipping Logic / Gamut Limiting
     vec2 UV_range = (crtgamut ==  3.0) ? vec2(0.436798,             0.614777)             : \
                     (crtgamut == -4.0) ? vec2(((240.-16.)/255.)/2., ((240.-16.)/255.)/2.) : \
@@ -693,15 +693,13 @@ void main()
 
     col = clamp(YCC_r601(col), 0.0, 1.0);
 
-// OETF - Opto-Electronic Transfer Function
 
-    vec3 imgColor = (crtgamut == 0.0) ?                                                   \
-                         (SPC == 2.0) ? moncurve_f_f3(src,  gamma_in + 0.02222, 0.0993) : \
-                         (SPC == 1.0) ? pow(src, vec3(gamma_in + 0.20))                 : \
-                                        moncurve_f_f3(src, gamma_in, 0.055)             : \
-                         (SPC == 2.0) ? moncurve_f_f3(col,  gamma_in + 0.02222, 0.0993) : \
-                         (SPC == 1.0) ? pow(col, vec3(gamma_in + 0.20))                 : \
-                                        moncurve_f_f3(col, gamma_in, 0.055)             ;
+
+// OETF - Opto-Electronic Transfer Function
+    vec3 imgColor = (crtgamut == 0.0) ? src                                               : \
+                         (SPC == 2.0) ? moncurve_f_f3(col,  gamma_out + 0.022222, 0.0993) : \
+                         (SPC == 1.0) ? pow(col, vec3(      gamma_out + 0.40))            : \
+                                        moncurve_f_f3(col,  gamma_out + 0.20,     0.055)  ;
 
 
 // Look LUT - (in sRGB space)
@@ -804,10 +802,9 @@ void main()
     LUT2_output = (global.LUT2_toggle == 0.0) ? adjusted : LUT2_output;
 
 // EOTF - Electro-Optical Transfer Function
-    vec3 TRC = (gamma_out == 1.0) ?               LUT2_output                               : \
-                     (SPC == 2.0) ? moncurve_r_f3(LUT2_output, gamma_out + 0.22222, 0.0993) : \
-                     (SPC == 1.0) ?           pow(LUT2_output, vec3(1./(gamma_out + 0.40))) : \
-                                    moncurve_r_f3(LUT2_output, gamma_out + 0.20, 0.055)     ;
+    vec3 TRC = (SPC == 2.0) ? moncurve_r_f3(LUT2_output,          gamma_out + 0.022222, 0.0993)   : \
+               (SPC == 1.0) ?     clamp(pow(LUT2_output, vec3(1./(gamma_out + 0.40))),  0.0, 1.0) : \
+                              moncurve_r_f3(LUT2_output,          gamma_out + 0.20,     0.055)    ;
 
     FragColor = vec4(TRC, 1.0);
 }
