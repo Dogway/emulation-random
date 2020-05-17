@@ -727,7 +727,7 @@ void main()
 
 
 // Retroarch is ITU.601 agnostic so explicit conversion (LCD assumed)
-    col = r601_YCC(YCC_r709(col));
+    col = YCC_r709(r601_YCC(col));
     col = clamp(col, 0.0, 1.0);
 
 // OETF - Opto-Electronic Transfer Function
