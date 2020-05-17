@@ -725,10 +725,10 @@ void main()
           (crtgamut == -4.0) ?      FCC_RGB(col)    : \
                                     YIQ_RGB(col)    ;
 
-    col = clamp(col, 0.0, 1.0);
 
 // Retroarch is ITU.601 agnostic so explicit conversion (LCD assumed)
     col = r601_YCC(YCC_r709(col));
+    col = clamp(col, 0.0, 1.0);
 
 // OETF - Opto-Electronic Transfer Function
     vec3 imgColor = (crtgamut == 0.0) ? src                                          : \
