@@ -44,6 +44,9 @@ layout(push_constant) uniform Push
    Author: Dogway
    License: Public domain
 
+   **Thanks to those that helped me out keep motivated by continuous feedback and bug reports.
+   **Syh, nesguy, hunterk, and the libretro members.
+
 
     ######################################...PRESETS...#######################################
     ##########################################################################################
