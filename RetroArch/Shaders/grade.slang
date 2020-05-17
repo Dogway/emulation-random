@@ -37,10 +37,10 @@ layout(push_constant) uniform Push
 
 /*
    Grade
-   > Ubershader grouping some color related monolithic shaders like:
+   > Ubershader grouping some monolithic color related shaders:
     ::color-mangler (hunterk), ntsc color tuning knobs (Doriphor), white_point (hunterk, Dogway), lut_x2 (Guest, Dr. Venom).
    > and the addition of:
-    ::analogue color emulation, vibrance, crt phosphor gamut, color space + TRC support, vignette, black level, rolled gain and sigmoidal contrast.
+    ::analogue color emulation, phosphor gamut, color space + TRC support, vibrance, vignette (shared by Syh), black level, rolled gain and sigmoidal contrast.
 
    Author: Dogway
    License: Public domain
@@ -56,17 +56,17 @@ layout(push_constant) uniform Push
     ###          Saturation: -0.02                                                         ###
     ###                                                                                    ###
     ###      NTSC-U                                                                        ###
-    ###          Gamut: SMPTE-C (#1) (or a NTSC-U based CRT gamut)                         ###
-    ###          WP: D65 (6504K)                                                           ###
-    ###          TRC: 2.22 SMPTE-C Gamma (use 2.40 for actual CRTs)                        ###
+    ###          Gamut: SMPTE-C (#1)     (or a NTSC-U based CRT gamut)                     ###
+    ###          WP: D65 (6504K)         (in practice more like ~8000K)                    ###
+    ###          TRC: 2.22 SMPTE-C Gamma (in practice more like 2.35-2.55)                 ###
     ###                                                                                    ###
     ###      NTSC-J (Default)                                                              ###
-    ###          Gamut: NTSC-J (#2) (or a NTSC-J based CRT gamut)                          ###
-    ###          WP: D93 (9305K)                                                           ###
-    ###          TRC: 2.4 Gamma(?) (POW or sRGB)*                                          ###
+    ###          Gamut: NTSC-J (#2)      (or a NTSC-J based CRT gamut)                     ###
+    ###          WP: D93 (9305K)         (or keep D65 and set "I/Q = -0.04")               ###
+    ###          TRC: 2.22 SMPTE-C Gamma (in practice more like 2.35-2.55)                 ###
     ###                                                                                    ###
-    ###      *A good faithful approximation to CRT is to use SMPTE-C gamma type...         ###
-    ###       ...with a value of 2.40 as crt_gamma                                         ###
+    ###      *Despite the standard of 2.22, a good faithful approximation to CRT...        ###
+    ###       ...is to use SMPTE-C gamma type with a value of 2.40-2.55 as "CRT Gamma".    ###
     ###                                                                                    ###
     ###                                                                                    ###
     ##########################################################################################
@@ -176,7 +176,7 @@ layout(set = 0, binding = 3) uniform sampler2D SamplerLUT1;
 layout(set = 0, binding = 4) uniform sampler2D SamplerLUT2;
 
 
-/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////Color Space Transformations////////////////////////////
 
 
 
@@ -244,7 +244,7 @@ vec3 YxytoXYZ(vec3 Yxy){
     return XYZ;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 //
 // White Point Mapping function
 //
@@ -255,8 +255,8 @@ vec3 YxytoXYZ(vec3 Yxy){
 // Inspired itself by Tanner Helland's work
 //      http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
 //
-// PAL: ~D65 NTSC-U: D65  NTSC-J: D93  NTSC-FCC: C
-// PAL: 6489 NTSC-U: 6504 NTSC-J: 9305 NTSC-FCC: 6779.65 *correlated from (0.310, 0.316)
+// PAL: D65  NTSC-U: D65  NTSC-J: D93  NTSC-FCC: C
+// PAL: 6504 NTSC-U: 6504 NTSC-J: 9305 NTSC-FCC: 6779.65 *correlated from (0.310, 0.316)
 
 vec3 wp_adjust(vec3 color){
 
@@ -284,7 +284,11 @@ vec3 wp_adjust(vec3 color){
     return color * XYZ_to_RGB(RGB_to_XYZ(wp, 0.), SPC);
 }
 
-/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+
+// Monitor Curve Functions: https://github.com/ampas/aces-dev
+//----------------------------------------------------------------------
 
 
 float moncurve_f( float color, float gamma, float offs)
@@ -329,6 +333,9 @@ vec3 moncurve_r_f3( vec3 color, float gamma, float offs)
 }
 
 
+//-------------------------- Luma Functions ----------------------------
+
+
 //  Performs better in gamma encoded space
 float contrast_sigmoid(float color, float cont, float pivot){
 
@@ -371,6 +378,7 @@ float rolled_gain(float color, float gain){
     return color;
 }
 
+
 vec4 rolled_gain_v4(vec4 color, float gain){
 
     color.r = rolled_gain(color.r, gain);
@@ -390,243 +398,6 @@ float SatMask(float color_r, float color_g, float color_b)
 }
 
 
-// to Studio Swing or Broadcast Safe/SMPTE legal
-vec3 PCtoTV(vec3 col, bool rgb_in)
-{
-   col *= 255.;
-   col.x = ((col.x * 219.) / 255.) + 16.;
-   col.y = rgb_in ? ((col.y * 219.) / 255.) + 16. : (((col.y - 128.) * 224.) / 255.) + 112.;
-   col.z = rgb_in ? ((col.z * 219.) / 255.) + 16. : (((col.z - 128.) * 224.) / 255.) + 112.;
-   return col.xyz / 255.;
-}
-
-
-// to Full Swing
-vec3 TVtoPC(vec3 col, bool rgb_in)
-{
-   col *= 255.;
-   float colx = ((col.x - 16.) / 219.) * 255.;
-   float coly = rgb_in ? ((col.y - 16.) / 219.) * 255. : (((col.y - 112.) / 224.) * 255.) + 128.;
-   float colz = rgb_in ? ((col.z - 16.) / 219.) * 255. : (((col.z - 112.) / 224.) * 255.) + 128.;
-   return vec3(colx,coly,colz) / 255.;
-}
-
-
-
-// Sanctioned YIQ matrix
-vec3 RGB_YIQ(vec3 col)
- {
-    const mat3 conv_mat = mat3(
-    0.299996928307425,  0.590001575542717,  0.110001496149858,
-    0.599002392519453, -0.277301256521204, -0.321701135998249,
-    0.213001700342824, -0.52510120528935,   0.312099504946526);
-
-    return col.rgb * conv_mat;
- }
-
-// Sanctioned YIQ matrix (inverse)
-vec3 YIQ_RGB(vec3 col)
- {
-    const mat3 conv_mat = mat3(
-    1.0,  0.946882217090069,  0.623556581986143,
-    1.0, -0.274787646298978, -0.635691079187380,
-    1.0, -1.108545034642030,  1.709006928406470);
-
-    return col.rgb * conv_mat;
- }
-
-// gamma space PC in TV out
-vec3 RGB_FCC(vec3 RGB)
- {
-    const mat3 conv_mat = mat3(
-    0.25764705882352941176,  0.50670588235294117647,  0.09447058823529411765,
-   -0.14805023132848645076, -0.29116545494602335316,  0.43921568627450980392,
-    0.43921568627450980392, -0.37019607843137254900, -0.06901960784313725490);
-
-    return RGB.rgb * conv_mat;
- }
-
-// gamma space TV in PC out
-vec3 FCC_RGB(vec3 FCC)
- {
-    const mat3 conv_mat = mat3(
-    1.16438356164383561644,  0.000,                   1.59375,
-    1.16438356164383561644, -0.37779207021791767554, -0.81038135593220338983,
-    1.16438356164383561644,  2.02633928571428571429,  0.000);
-
-    return FCC.xyz * conv_mat;
- }
-
-
-// in linear space full range
-vec3 r709_r601(vec3 RGB)
- {
-    const mat3 conv_mat = mat3(
-    0.9578, 0.0422, 0.0000,
-    0.0000, 1.0000, 0.0000,
-    0.0000, 0.0118, 0.9882);
-    return RGB.rgb * conv_mat;
- }
-
-// PAL YUV - gamma space in (full range?)
-vec3 YUV_r709(vec3 YUV)
- {
-    const mat3 conv_mat = mat3(
-    1.0000000,  0.0000000000000000,  1.14025092124938960,
-    1.0000000, -0.2047683298587799, -0.33895039558410645,
-    1.0000001,  2.0283975601196290,  0.00000024094399364);
-
-    return YUV.rgb * conv_mat;
- }
-
-// PAL YUV - gamma space in (full range?)
-vec3 r709_YUV(vec3 RGB)
- {
-    const mat3 conv_mat = mat3(
-    0.2126000,  0.715200,   0.0722000,
-   -0.1048118, -0.3525936,  0.4574054,
-    0.6905498, -0.6272304, -0.0633194);
-
-    return RGB.rgb * conv_mat;
- }
-
-
-// PAL YUV - gamma space in (full range?)
-vec3 r601_YUV(vec3 RGB)
- {
-    const mat3 conv_mat = mat3(
-    0.299000,  0.587000,  0.114000,
-   -0.147407, -0.289391,  0.436798,
-    0.614777, -0.514799, -0.099978);
-
-    return RGB.rgb * conv_mat;
- }
-
-// PAL YUV - gamma space in (full range?)
-vec3 YUV_r601(vec3 RGB)
- {
-    const mat3 conv_mat = mat3(
-    1.0000000,  0.00000000000000000,  1.14025080204010000,
-    1.0000000, -0.39393067359924316, -0.58080917596817020,
-    1.0000000,  2.02839756011962900, -0.00000029356581166);
-
-    return RGB.rgb * conv_mat;
- }
-
-
-// gamma space full range
-vec3 r601_YCC(vec3 RGB)
- {
-    const mat3 conv_mat = mat3(
-    0.299,                   0.587,                   0.114,
-   -0.16873589164785553047, -0.33126410835214446953,  0.500,
-    0.500,                  -0.41868758915834522111, -0.08131241084165477889);
-
-    return RGB.rgb * conv_mat;
- }
-
-// gamma space full range
-vec3 YCC_r601(vec3 YUV)
- {
-    const mat3 conv_mat = mat3(
-    1.0,  0.000,                   1.402,
-    1.0, -0.34413628620102214651, -0.71413628620102214651,
-    1.0,  1.772,                   0.000);
-
-    return YUV.rgb * conv_mat;
- }
-
-// gamma space full range
-vec3 r709_YCC(vec3 RGB)
- {
-    const mat3 conv_mat = mat3(
-    0.2126,                  0.7152,                  0.0722,
-   -0.11457210605733994395, -0.38542789394266005605,  0.5000,
-    0.5000,                 -0.45415290830581661163, -0.04584709169418338837);
-
-    return RGB.rgb * conv_mat;
- }
-
-// gamma space full range
-vec3 YCC_r709(vec3 YUV)
- {
-    const mat3 conv_mat = mat3(
-    1.0,  0.00000000000000000000,  1.5748,
-    1.0, -0.18732427293064876957, -0.46812427293064876957,
-    1.0,  1.8556,                  0.00000000000000000000);
-
-    return YUV.rgb * conv_mat;
- }
-
-
-
-
-
-// in XYZ space
-const mat3 C_D65_Brad =
-mat3(
- 1.0062731504440308000, 0.0028941007331013680, -0.0070838485844433310,
- 0.0036507491022348404, 0.9992200732231140000, -0.0023814644664525986,
--0.0013438384048640728, 0.0022154981270432472,  0.9643852710723877000);
-
-// in XYZ space
-const mat3 D93_D65_Brad =
-mat3(
- 1.047182083129882800, 0.019761435687541960, -0.047600898891687390,
- 0.025015428662300110, 0.998820304870605500, -0.016028285026550293,
--0.008994228206574917, 0.014804697595536709,  0.765806019306182900);
-
-
-// use with Illuminant C white point
-const mat3 NTSC_FCC_transform =
-mat3(
- 0.60699284076690670, 0.2989666163921356, 0.00000000000000000,
- 0.17344850301742554, 0.5864211320877075, 0.06607561558485031,
- 0.20057128369808197, 0.1146121546626091, 1.11746847629547120);
-
-// Generic CRT NTSC Standard Phosphor
-const mat3 P22_transform =
-mat3(
- 0.4665636420249939, 0.25661000609397890, 0.005832045804709196,
- 0.3039233088493347, 0.66820019483566280, 0.105618737637996670,
- 0.1799621731042862, 0.07518967241048813, 0.977465748786926300);
-
-// Conrac phosphor gamut
-const mat3 SMPTE_transform =
-mat3(
- 0.39354196190834045, 0.21238772571086884, 0.01874009333550930,
- 0.36525884270668030, 0.70106136798858640, 0.11193416267633438,
- 0.19164848327636720, 0.08655092865228653, 0.95824241638183590);
-
-// NTSC-J (use with D93 white point)
-const mat3 NTSC_J_transform =
-mat3(
- 0.39603787660598755, 0.22429330646991730, 0.02050681784749031,
- 0.31201449036598206, 0.67417418956756590, 0.12814880907535553,
- 0.24496731162071228, 0.10153251141309738, 1.26512730121612550);
-
-// EBU PAL phosphor gamut (matches ITU 601)
-const mat3 EBU_transform =
-mat3(
- 0.43057379126548767, 0.22201462090015410, 0.020183145999908447,
- 0.34154993295669556, 0.70665508508682250, 0.129553422331810000,
- 0.17832535505294800, 0.07133013755083084, 0.939180195331573500);
-
-// Sony Trinitron KV-20M20 (use with D93 white point)
-const mat3 Sony20_20_transform =
-mat3(
- 0.38629359006881714, 0.21014373004436493, 0.021632442250847816,
- 0.31906270980834960, 0.67800831794738770, 0.153833806514740000,
- 0.24766337871551514, 0.11184798181056976, 1.238316893577575700);
-
-// SMPTE compliant Conrad 7211N19 CRT
-const mat3 Conrad_transform =
-mat3(
- 0.55842006206512450, 0.28580552339553833, 0.03517606481909752,
- 0.20613566040992737, 0.63714659214019780, 0.09369802474975586,
- 0.18589359521865845, 0.07704800367355347, 0.96004259586334230);
-
-
 //  This shouldn't be necessary but it seems some undefined values can
 //  creep in and each GPU vendor handles that differently. This keeps
 //  all values within a safe range
@@ -642,6 +413,264 @@ vec4 mixfix_v4(vec4 a, vec4 b, float c)
 }
 
 
+//---------------------- Range Expansion/Compression -------------------
+
+
+//  to Studio Swing/Broadcast Safe/SMPTE legal
+vec3 PCtoTV(vec3 col, float luma_swing, float Umax, float Vmax, float max_swing, bool rgb_in)
+{
+   col *= 255.;
+   Umax = (max_swing == 1.0) ? Umax * 224. : Umax * 239.;
+   Vmax = (max_swing == 1.0) ? Vmax * 224. : Vmax * 239.;
+
+   col.x = (luma_swing == 1.0) ? ((col.x * 219.) / 255.) + 16. : col.x;
+   col.y = (rgb_in == true) ? ((col.y * 219.) / 255.) + 16. : (((col.y - 128.) * (Umax * 2.)) / 255.) + Umax;
+   col.z = (rgb_in == true) ? ((col.z * 219.) / 255.) + 16. : (((col.z - 128.) * (Vmax * 2.)) / 255.) + Vmax;
+   return col.xyz / 255.;
+}
+
+
+//  to Full Swing
+vec3 TVtoPC(vec3 col, float luma_swing, float Umax, float Vmax, float max_swing, bool rgb_in)
+{
+   col *= 255.;
+   Umax = (max_swing == 1.0) ? Umax * 224. : Umax * 239.;
+   Vmax = (max_swing == 1.0) ? Vmax * 224. : Vmax * 239.;
+
+   float colx = (luma_swing == 1.0) ? ((col.x - 16.) / 219.) * 255. : col.x;
+   float coly = (rgb_in == true) ? ((col.y - 16.) / 219.) * 255. : (((col.y - Umax) / (Umax * 2.)) * 255.) + 128.;
+   float colz = (rgb_in == true) ? ((col.z - 16.) / 219.) * 255. : (((col.z - Vmax) / (Vmax * 2.)) * 255.) + 128.;
+   return vec3(colx,coly,colz) / 255.;
+}
+
+
+//*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
+
+
+//--------------------- ITU-R BT.470/601 (M) (1953) --------------------
+
+
+//  FCC (Sanctioned) YIQ matrix
+vec3 RGB_FCC(vec3 col)
+ {
+    const mat3 conv_mat = mat3(
+    0.299996928307425,  0.590001575542717,  0.110001496149858,
+    0.599002392519453, -0.277301256521204, -0.321701135998249,
+    0.213001700342824, -0.525101205289350,  0.312099504946526);
+
+    return col.rgb * conv_mat;
+ }
+
+//  FCC (Sanctioned) YIQ matrix (inverse)
+vec3 FCC_RGB(vec3 col)
+ {
+    const mat3 conv_mat = mat3(
+    1.0000000,  0.946882217090069,  0.623556581986143,
+    1.0000000, -0.274787646298978, -0.635691079187380,
+    1.0000000, -1.108545034642030,  1.709006928406470);
+
+    return col.rgb * conv_mat;
+ }
+
+
+//--------------------- SMPTE RP 145 (C), 170M (1987) ------------------
+
+
+vec3 RGB_YIQ(vec3 col)
+ {
+    const mat3 conv_mat = mat3(
+    0.2990,  0.5870,  0.1140,
+    0.5959, -0.2746, -0.3213,
+    0.2115, -0.5227,  0.3112);
+
+    return col.rgb * conv_mat;
+ }
+
+vec3 YIQ_RGB(vec3 col)
+ {
+    const mat3 conv_mat = mat3(
+    1.0000000,  0.956,  0.619,
+    1.0000000, -0.272, -0.647,
+    1.0000000, -1.106,  1.703);
+
+    return col.rgb * conv_mat;
+ }
+
+//----------------------- ITU-R BT.470/601 (B/G) -----------------------
+
+
+vec3 r601_YUV(vec3 RGB)
+ {
+    const mat3 conv_mat = mat3(
+    0.299000,  0.587000,  0.114000,
+   -0.147407, -0.289391,  0.436798,
+    0.614777, -0.514799, -0.099978);
+
+    return RGB.rgb * conv_mat;
+ }
+
+vec3 YUV_r601(vec3 RGB)
+ {
+    const mat3 conv_mat = mat3(
+    1.0000000,  0.00000000000000000,  1.14025080204010000,
+    1.0000000, -0.39393067359924316, -0.58080917596817020,
+    1.0000000,  2.02839756011962900, -0.00000029356581166);
+
+    return RGB.rgb * conv_mat;
+ }
+
+//  Custom - not Standard
+vec3 YUV_r709(vec3 YUV)
+ {
+    const mat3 conv_mat = mat3(
+    1.0000000,  0.0000000000000000,  1.14025092124938960,
+    1.0000000, -0.2047683298587799, -0.33895039558410645,
+    1.0000001,  2.0283975601196290,  0.00000024094399364);
+
+    return YUV.rgb * conv_mat;
+ }
+
+//  Custom - not Standard
+vec3 r709_YUV(vec3 RGB)
+ {
+    const mat3 conv_mat = mat3(
+    0.2126000,  0.715200,   0.0722000,
+   -0.1048118, -0.3525936,  0.4574054,
+    0.6905498, -0.6272304, -0.0633194);
+
+    return RGB.rgb * conv_mat;
+ }
+
+
+//------------------------- SMPTE-240M Y’PbPr --------------------------
+
+
+//  RGB to YPbPr with Rec.601 primaries
+vec3 r601_YCC(vec3 RGB)
+ {
+    const mat3 conv_mat = mat3(
+    0.299,                   0.587,                   0.114,
+   -0.16873589164785553047, -0.33126410835214446953,  0.500,
+    0.500,                  -0.41868758915834522111, -0.08131241084165477889);
+
+    return RGB.rgb * conv_mat;
+ }
+
+//  YPbPr to RGB with Rec.601 primaries
+vec3 YCC_r601(vec3 YUV)
+ {
+    const mat3 conv_mat = mat3(
+    1.0000000,  0.000,                   1.402,
+    1.0000000, -0.34413628620102214651, -0.71413628620102214651,
+    1.0000000,  1.772,                   0.000);
+
+    return YUV.rgb * conv_mat;
+ }
+
+//  RGB to YPbPr with Rec.709 primaries
+vec3 r709_YCC(vec3 RGB)
+ {
+    const mat3 conv_mat = mat3(
+    0.2126,                  0.7152,                  0.0722,
+   -0.11457210605733994395, -0.38542789394266005605,  0.5000,
+    0.5000,                 -0.45415290830581661163, -0.04584709169418338837);
+
+    return RGB.rgb * conv_mat;
+ }
+
+//  YPbPr to RGB with Rec.709 primaries
+vec3 YCC_r709(vec3 YUV)
+ {
+    const mat3 conv_mat = mat3(
+    1.0000000,  0.00000000000000000000,  1.5748,
+    1.0000000, -0.18732427293064876957, -0.46812427293064876957,
+    1.0000000,  1.8556,                  0.00000000000000000000);
+
+    return YUV.rgb * conv_mat;
+ }
+
+
+
+//*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
+
+
+
+const mat3 C_D65_Brad =
+mat3(
+ 1.0062731504440308000, 0.0028941007331013680, -0.0070838485844433310,
+ 0.0036507491022348404, 0.9992200732231140000, -0.0023814644664525986,
+-0.0013438384048640728, 0.0022154981270432472,  0.9643852710723877000);
+
+const mat3 D93_D65_Brad =
+mat3(
+ 1.047182083129882800, 0.019761435687541960, -0.047600898891687390,
+ 0.025015428662300110, 0.998820304870605500, -0.016028285026550293,
+-0.008994228206574917, 0.014804697595536709,  0.765806019306182900);
+
+
+//----------------------------------------------------------------------
+
+
+// ITU-R BT.470/601 (M) (proof of concept, actually never used)
+// NTSC-FCC 1953 Standard Phosphor (use with temperature C: 6780K)
+const mat3 NTSC_FCC_transform =
+mat3(
+ 0.60699284076690670, 0.2989666163921356, 0.00000000000000000,
+ 0.17344850301742554, 0.5864211320877075, 0.06607561558485031,
+ 0.20057128369808197, 0.1146121546626091, 1.11746847629547120);
+
+// ITU-R BT.470/601 (M)
+// Conrac 7211N19 CRT Phosphor
+const mat3 Conrac_transform =
+mat3(
+ 0.55842006206512450, 0.28580552339553833, 0.03517606481909752,
+ 0.20613566040992737, 0.63714659214019780, 0.09369802474975586,
+ 0.18589359521865845, 0.07704800367355347, 0.96004259586334230);
+
+// NTSC-J (use with D93 white point)
+// Sony Trinitron KV-20M20
+const mat3 Sony20_20_transform =
+mat3(
+ 0.38629359006881714, 0.21014373004436493, 0.021632442250847816,
+ 0.31906270980834960, 0.67800831794738770, 0.153833806514740000,
+ 0.24766337871551514, 0.11184798181056976, 1.238316893577575700);
+
+// SMPTE RP 145 (C), 170M
+// SMPTE-C - Measured Average Phosphor
+const mat3 P22_transform =
+mat3(
+ 0.4665636420249939, 0.25661000609397890, 0.005832045804709196,
+ 0.3039233088493347, 0.66820019483566280, 0.105618737637996670,
+ 0.1799621731042862, 0.07518967241048813, 0.977465748786926300);
+
+// SMPTE RP 145 (C), 170M
+// SMPTE-C - Standard Phosphor
+const mat3 SMPTE_transform =
+mat3(
+ 0.39354196190834045, 0.21238772571086884, 0.01874009333550930,
+ 0.36525884270668030, 0.70106136798858640, 0.11193416267633438,
+ 0.19164848327636720, 0.08655092865228653, 0.95824241638183590);
+
+// NTSC-J (use with D93 white point)
+// NTSC-J - Standard Phosphor
+const mat3 NTSC_J_transform =
+mat3(
+ 0.39603787660598755, 0.22429330646991730, 0.02050681784749031,
+ 0.31201449036598206, 0.67417418956756590, 0.12814880907535553,
+ 0.24496731162071228, 0.10153251141309738, 1.26512730121612550);
+
+// ITU-R BT.470/601 (B/G)
+// EBU PAL - Standard Phosphor
+const mat3 EBU_transform =
+mat3(
+ 0.43057379126548767, 0.22201462090015410, 0.020183145999908447,
+ 0.34154993295669556, 0.70665508508682250, 0.129553422331810000,
+ 0.17832535505294800, 0.07133013755083084, 0.939180195331573500);
+
+
+
+
+
 
 void main()
 {
@@ -649,17 +678,32 @@ void main()
     vec3 src = texture(Source, vTexCoord.xy).rgb;
          src = moncurve_f_f3(src, 2.40, 0.055);
 
-    vec3 gamma_fix = (gamma_type == 2.0) ? moncurve_r_f3(src,         gamma_in - 0.177778,  0.099)  : \
+    vec3 gamma_fix = (gamma_type == 2.0) ? moncurve_r_f3(src,         gamma_in + 0.077778,  0.099)  : \
                      (gamma_type == 1.0) ? moncurve_r_f3(src,         gamma_in,             0.055)  : \
                                                clamp(pow(src, vec3(1./gamma_in)), 0.0, 1.0)         ;
 
     vec3 col = r709_YCC(gamma_fix);
 
-         col = (crtgamut ==  3.0) ?       r601_YUV(YCC_r601(col))        : \
-               (crtgamut ==  2.0) ? RGB_YIQ(PCtoTV(YCC_r601(col), true)) : \
-               (crtgamut == -3.0) ? RGB_FCC(       YCC_r601(col))        : \
-               (crtgamut == -4.0) ? RGB_FCC(       YCC_r601(col))        : \
-                                    RGB_YIQ(PCtoTV(YCC_r601(col), true)) ;
+    col = (crtgamut ==  3.0) ? r601_YUV(YCC_r601(col))   : \
+          (crtgamut ==  2.0) ?  RGB_YIQ(YCC_r601(col))   : \
+          (crtgamut == -3.0) ?  RGB_FCC(YCC_r601(col))   : \
+          (crtgamut == -4.0) ?  RGB_FCC(YCC_r601(col))   : \
+                                RGB_YIQ(YCC_r601(col))   ;
+
+// Clipping Logic / Gamut Limiting
+    vec2 UVmax = (crtgamut ==  3.0) ? vec2(0.436798,          0.614777)          : \
+                 (crtgamut == -4.0) ? vec2(0.599002392519453, 0.312099504946526) : \
+                 (crtgamut == -3.0) ? vec2(0.599002392519453, 0.312099504946526) : \
+                                      vec2(0.5959,            0.3112)            ;
+
+    col = clamp(col.xyz, vec3(0.0, -UVmax.x, -UVmax.y), vec3(1.0, UVmax.x, UVmax.y));
+
+
+    col = (crtgamut ==  3.0) ?        col                                       : \
+          (crtgamut ==  2.0) ?        col                                       : \
+          (crtgamut == -3.0) ? PCtoTV(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   : \
+          (crtgamut == -4.0) ? PCtoTV(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   : \
+                               PCtoTV(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   ;
 
 // YIQ/YUV Analogue Color Controls
     float hue_radians = hue_degrees * (M_PI / 180.0);
@@ -671,27 +715,29 @@ void main()
     col.z = (mod((col.z + 1.0) + Q_SHIFT, 2.0) - 1.0) * Q_MUL;
 
 
-// Clipping Logic / Gamut Limiting
-    vec2 UV_range = (crtgamut ==  3.0) ? vec2(0.436798,             0.614777)             : \
-                    (crtgamut == -4.0) ? vec2(((240.-16.)/255.)/2., ((240.-16.)/255.)/2.) : \
-                    (crtgamut == -3.0) ? vec2(((240.-16.)/255.)/2., ((240.-16.)/255.)/2.) : \
-                                         vec2(0.599, 0.5251)                              ;
+// 8-bit Quantization #1
+    col = vec3(floor(clamp(col.x, 0.0, 1.0)*255.)/255.      , \
+               floor(col.y * (UVmax.x*255.))/(UVmax.x*255.) , \
+               floor(col.z * (UVmax.y*255.))/(UVmax.y*255.));
 
-    col = (crtgamut == 2.0) ? clamp(col.xyz, vec3(0.0, -UV_range.x+((16./2.)/255.), -UV_range.y+((16./2.)/255.)), vec3(1.0, UV_range.x-(1.-(240./255.))/2., UV_range.y-(1.-(240./255.))/2.)) : \
-                              clamp(col.xyz, vec3(0.0, -UV_range.x,                 -UV_range.y),                 vec3(1.0, UV_range.x,                     UV_range.y))                     ;
+    col = (crtgamut ==  3.0) ?        col                                       : \
+          (crtgamut ==  2.0) ?        col                                       : \
+          (crtgamut == -3.0) ? TVtoPC(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   : \
+          (crtgamut == -4.0) ? TVtoPC(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   : \
+                               TVtoPC(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   ;
 
-// YCbCr roundtrip to clamp out of gamut sRGB values
-    col = (crtgamut ==  3.0) ?              YUV_r601(col)        : \
-          (crtgamut ==  2.0) ?        TVtoPC(YIQ_RGB(col), true) : \
-          (crtgamut == -3.0) ?               FCC_RGB(col)        : \
-          (crtgamut == -4.0) ?               FCC_RGB(col)        : \
-                                      TVtoPC(YIQ_RGB(col), true) ;
+// 8-bit Quantization #2 and Gamut Limiting
+    col = (crtgamut ==  3.0) ?     YUV_r601(col)    : \
+          (crtgamut ==  2.0) ?      YIQ_RGB(col)    : \
+          (crtgamut == -3.0) ?      FCC_RGB(col)    : \
+          (crtgamut == -4.0) ?      FCC_RGB(col)    : \
+                                    YIQ_RGB(col)    ;
 
-// 8-bit Quantization
     col = r601_YCC(floor(col * 255.)/255.);
     col = clamp(col.xyz, vec3(0.0, -0.5, -0.5), vec3(1.0, 0.5, 0.5));
 
-    col = clamp(YCC_r601(col), 0.0, 1.0);
+// Retroarch is ITU.601 agnostic so explicit conversion
+    col = clamp(YCC_r709(col), 0.0, 1.0);
 
 
 
@@ -760,7 +806,9 @@ void main()
 
     screen = clamp(rolled_gain_v4(screen, lum * 2.0), 0.0, 1.0);
     screen = color * screen;
-    float sat_msk = (vibr > 0.0) ? clamp(1.0 - (SatMask(screen.r, screen.g, screen.b) * vibr), 0.0, 1.0) : clamp(1.0 - abs(SatMask(screen.r, screen.g, screen.b) - 1.0) * abs(vibr), 0.0, 1.0);
+    float sat_msk = (vibr > 0.0) ? clamp(1.0 -    (SatMask(screen.r, screen.g, screen.b) * vibr),            0.0, 1.0) : \
+                                   clamp(1.0 - abs(SatMask(screen.r, screen.g, screen.b) - 1.0) * abs(vibr), 0.0, 1.0) ;
+
     screen = mixfix_v4(screen, clamp(adjust * screen, 0.0, 1.0), sat_msk);
 
 
@@ -768,7 +816,7 @@ void main()
     mat3 m_in;
 
     if (crtgamut == -4.0) { m_in = NTSC_FCC_transform;          } else
-    if (crtgamut == -3.0) { m_in = Conrad_transform;            } else
+    if (crtgamut == -3.0) { m_in = Conrac_transform;            } else
     if (crtgamut == -2.0) { m_in = Sony20_20_transform;         } else
     if (crtgamut == -1.0) { m_in = P22_transform;               } else
     if (crtgamut ==  1.0) { m_in = SMPTE_transform;             } else
@@ -781,7 +829,7 @@ void main()
                  (crtgamut ==  2.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
                                        m_in*screen.rgb;
 
-// Color Temperature
+// White Point Mapping
     vec3 adjusted =  (crtgamut == 0.0) ?           wp_adjust(screen.rgb)       : wp_adjust(XYZ_to_RGB(gamut, SPC));
     vec3 base_luma = (crtgamut == 0.0) ? XYZtoYxy(RGB_to_XYZ(screen.rgb, SPC)) :             XYZtoYxy(gamut);
     vec3 adjusted_luma =                 XYZtoYxy(RGB_to_XYZ(adjusted,   SPC)) ;
