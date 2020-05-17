@@ -3,7 +3,6 @@
 layout(push_constant) uniform Push
 {
     float g_space_out;
-    float g_gamma_out;
     float g_gamma_in;
     float g_gamma_type;
     float g_crtgamut;
@@ -75,7 +74,6 @@ layout(push_constant) uniform Push
 
 
 #pragma parameter g_space_out "Diplay Color Space" 0.0 0.0 2.0 1.0
-#pragma parameter g_gamma_out "Diplay Gamma" 2.20 1.80 3.0 0.05
 #pragma parameter g_gamma_in "CRT Gamma" 2.40 1.80 3.0 0.05
 #pragma parameter g_gamma_type "Signal Gamma (POW:0, sRGB:1, SMPTE-C:2)" 2.0 0.0 2.0 1.0
 #pragma parameter g_crtgamut "Gamut (1:NTSC-U 2:NTSC-J 3:PAL)" 2.0 -4.0 3.0 1.0
@@ -695,8 +693,6 @@ void main()
                  (crtgamut == -3.0) ? vec2(0.599002392519453, 0.312099504946526) : \
                                       vec2(0.5959,            0.3112)            ;
 
-    col = clamp(col.xyz, vec3(0.0, -UVmax.x, -UVmax.y), vec3(1.0, UVmax.x, UVmax.y));
-
 
     col = (crtgamut ==  3.0) ?        col                                       : \
           (crtgamut ==  2.0) ?        col                                       : \
@@ -714,10 +710,7 @@ void main()
     col.z = (mod((col.z + 1.0) + Q_SHIFT, 2.0) - 1.0) * Q_MUL;
 
 
-// 8-bit Quantization #1
-    col = vec3(floor(clamp(col.x, 0.0, 1.0)*255.)/255.      , \
-               floor(col.y * (UVmax.x*255.))/(UVmax.x*255.) , \
-               floor(col.z * (UVmax.y*255.))/(UVmax.y*255.));
+// Back to RGB
 
     col = (crtgamut ==  3.0) ?        col                                       : \
           (crtgamut ==  2.0) ?        col                                       : \
@@ -725,26 +718,23 @@ void main()
           (crtgamut == -4.0) ? TVtoPC(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   : \
                                TVtoPC(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   ;
 
-// 8-bit Quantization #2 and Gamut Limiting
+// Gamut Clipping (todo: study other "intents")
     col = (crtgamut ==  3.0) ?     YUV_r601(col)    : \
           (crtgamut ==  2.0) ?      YIQ_RGB(col)    : \
           (crtgamut == -3.0) ?      FCC_RGB(col)    : \
           (crtgamut == -4.0) ?      FCC_RGB(col)    : \
                                     YIQ_RGB(col)    ;
 
-    col = r601_YCC(floor(col * 255.)/255.);
-    col = clamp(col.xyz, vec3(0.0, -0.5, -0.5), vec3(1.0, 0.5, 0.5));
+    col = clamp(col, 0.0, 1.0);
 
 // Retroarch is ITU.601 agnostic so explicit conversion (LCD assumed)
-    col = clamp(YCC_r709(col), 0.0, 1.0);
-
-
+    col = r601_YCC(YCC_r709(col));
 
 // OETF - Opto-Electronic Transfer Function
-    vec3 imgColor = (crtgamut == 0.0) ? src                                               : \
-                         (SPC == 2.0) ? moncurve_f_f3(col,  gamma_out + 0.022222, 0.0993) : \
-                         (SPC == 1.0) ? pow(col, vec3(      gamma_out + 0.40))            : \
-                                        moncurve_f_f3(col,  gamma_out + 0.20,     0.055)  ;
+    vec3 imgColor = (crtgamut == 0.0) ? src                                          : \
+                         (SPC == 2.0) ? moncurve_f_f3(col,  2.20 + 0.022222, 0.0993) : \
+                         (SPC == 1.0) ? pow(col, vec3(      2.20 + 0.40))            : \
+                                        moncurve_f_f3(col,  2.20 + 0.20,     0.055)  ;
 
 
 // Look LUT - (in sRGB space)
@@ -849,9 +839,9 @@ void main()
     LUT2_output = (global.LUT2_toggle == 0.0) ? adjusted : LUT2_output;
 
 // EOTF - Electro-Optical Transfer Function
-    vec3 TRC = (SPC == 2.0) ? moncurve_r_f3(LUT2_output,          gamma_out + 0.022222, 0.0993)   : \
-               (SPC == 1.0) ?     clamp(pow(LUT2_output, vec3(1./(gamma_out + 0.40))),  0.0, 1.0) : \
-                              moncurve_r_f3(LUT2_output,          gamma_out + 0.20,     0.055)    ;
+    vec3 TRC = (SPC == 2.0) ? moncurve_r_f3(LUT2_output,          2.20 + 0.022222, 0.0993)   : \
+               (SPC == 1.0) ?     clamp(pow(LUT2_output, vec3(1./(2.20 + 0.40))),  0.0, 1.0) : \
+                              moncurve_r_f3(LUT2_output,          2.20 + 0.20,     0.055)    ;
 
     FragColor = vec4(TRC, 1.0);
 }
