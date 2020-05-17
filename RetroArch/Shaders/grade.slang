@@ -176,7 +176,7 @@ layout(set = 0, binding = 3) uniform sampler2D SamplerLUT1;
 layout(set = 0, binding = 4) uniform sampler2D SamplerLUT2;
 
 
-/////////////////////////Color Space Transformations////////////////////////////
+///////////////////////// Color Space Transformations //////////////////////////
 
 
 
@@ -244,16 +244,15 @@ vec3 YxytoXYZ(vec3 Yxy){
     return XYZ;
 }
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////// White Point Mapping function /////////////////////////
 //
-// White Point Mapping function
 //
 // From the first comment post (sRGB primaries and linear light compensated)
-//      http://www.zombieprototypes.com/?p=210#comment-4695029660
+//    >> http://www.zombieprototypes.com/?p=210#comment-4695029660
 // Based on the Neil Bartlett's blog update
-//      http://www.zombieprototypes.com/?p=210
+//    >> http://www.zombieprototypes.com/?p=210
 // Inspired itself by Tanner Helland's work
-//      http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
+//    >> http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
 //
 // PAL: D65  NTSC-U: D65  NTSC-J: D93  NTSC-FCC: C
 // PAL: 6504 NTSC-U: 6504 NTSC-J: 9305 NTSC-FCC: 6779.65 *correlated from (0.310, 0.316)
@@ -736,7 +735,7 @@ void main()
     col = r601_YCC(floor(col * 255.)/255.);
     col = clamp(col.xyz, vec3(0.0, -0.5, -0.5), vec3(1.0, 0.5, 0.5));
 
-// Retroarch is ITU.601 agnostic so explicit conversion
+// Retroarch is ITU.601 agnostic so explicit conversion (LCD assumed)
     col = clamp(YCC_r709(col), 0.0, 1.0);
 
 
