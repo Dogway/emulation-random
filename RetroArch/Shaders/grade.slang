@@ -718,15 +718,14 @@ void main()
           (crtgamut == -4.0) ? TVtoPC(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   : \
                                TVtoPC(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   ;
 
-// Gamut Clipping (todo: study other "intents")
     col = (crtgamut ==  3.0) ?     YUV_r601(col)    : \
           (crtgamut ==  2.0) ?      YIQ_RGB(col)    : \
           (crtgamut == -3.0) ?      FCC_RGB(col)    : \
           (crtgamut == -4.0) ?      FCC_RGB(col)    : \
                                     YIQ_RGB(col)    ;
 
-
-// Retroarch is ITU.601 agnostic so explicit conversion (LCD assumed)
+// Gamut Clipping and Conversion to Rec.709 (todo: study other "intents")
+    col = clamp(col, 0.0, 1.0);
     col = YCC_r709(r601_YCC(col));
     col = clamp(col, 0.0, 1.0);
 
