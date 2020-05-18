@@ -45,7 +45,7 @@ layout(push_constant) uniform Push
    License: Public domain
 
    **Thanks to those that helped me out keep motivated by continuous feedback and bug reports.
-   **Syh, nesguy, hunterk, and the libretro members.
+   **Syh, Nesguy, hunterk, and the libretro forum members.
 
 
     ######################################...PRESETS...#######################################
@@ -78,7 +78,7 @@ layout(push_constant) uniform Push
 
 #pragma parameter g_space_out "Diplay Color Space" 0.0 0.0 2.0 1.0
 #pragma parameter g_gamma_in "CRT Gamma" 2.40 1.80 3.0 0.05
-#pragma parameter g_gamma_type "Signal Gamma (POW:0, sRGB:1, SMPTE-C:2)" 2.0 0.0 2.0 1.0
+#pragma parameter g_gamma_type "Signal Gamma Type (sRGB:1, SMPTE-C:2)" 2.0 1.0 2.0 1.0
 #pragma parameter g_crtgamut "Gamut (1:NTSC-U 2:NTSC-J 3:PAL)" 2.0 -4.0 3.0 1.0
 #pragma parameter g_hue_degrees "Hue" 0.0 -360.0 360.0 1.0
 #pragma parameter g_I_SHIFT "I/U Shift" 0.0 -1.0 1.0 0.01
@@ -545,7 +545,7 @@ vec3 r709_YUV(vec3 RGB)
 //------------------------- SMPTE-240M Y’PbPr --------------------------
 
 
-//  RGB to YPbPr with Rec.601 primaries
+//  RGB to YPbPr -full to limited range- with Rec.601 primaries
 vec3 r601_YCC(vec3 RGB)
  {
     const mat3 conv_mat = mat3(
@@ -556,7 +556,7 @@ vec3 r601_YCC(vec3 RGB)
     return RGB.rgb * conv_mat;
  }
 
-//  YPbPr to RGB with Rec.601 primaries
+//  YPbPr to RGB  -limited to full range- with Rec.601 primaries
 vec3 YCC_r601(vec3 YUV)
  {
     const mat3 conv_mat = mat3(
@@ -567,7 +567,9 @@ vec3 YCC_r601(vec3 YUV)
     return YUV.rgb * conv_mat;
  }
 
-//  RGB to YPbPr with Rec.709 primaries
+// Umax 0.53890924768269023496443198965294
+// Vmax 0.63500127000254000508001016002032
+//  RGB to YPbPr -full range in-gamut- with Rec.709 primaries
 vec3 r709_YCC(vec3 RGB)
  {
     const mat3 conv_mat = mat3(
@@ -578,7 +580,7 @@ vec3 r709_YCC(vec3 RGB)
     return RGB.rgb * conv_mat;
  }
 
-//  YPbPr to RGB with Rec.709 primaries
+//  YPbPr to RGB -full range in-gamut- with Rec.709 primaries
 vec3 YCC_r709(vec3 YUV)
  {
     const mat3 conv_mat = mat3(
@@ -669,6 +671,9 @@ mat3(
 
 
 
+//*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
+
+
 
 
 
@@ -678,17 +683,18 @@ void main()
     vec3 src = texture(Source, vTexCoord.xy).rgb;
          src = moncurve_f_f3(src, 2.40, 0.055);
 
-    vec3 gamma_fix = (gamma_type == 2.0) ? moncurve_r_f3(src,         gamma_in + 0.077778,  0.099)  : \
-                     (gamma_type == 1.0) ? moncurve_r_f3(src,         gamma_in,             0.055)  : \
-                                               clamp(pow(src, vec3(1./gamma_in)), 0.0, 1.0)         ;
+    vec3 gamma_fix = (gamma_type == 2.0) ? moncurve_r_f3(src, gamma_in + 0.077778, 0.099)  : \
+                                           moncurve_r_f3(src, gamma_in,            0.055)  ;
 
-    vec3 col = r709_YCC(gamma_fix);
 
-    col = (crtgamut ==  3.0) ? r601_YUV(YCC_r601(col))   : \
-          (crtgamut ==  2.0) ?  RGB_YIQ(YCC_r601(col))   : \
-          (crtgamut == -3.0) ?  RGB_FCC(YCC_r601(col))   : \
-          (crtgamut == -4.0) ?  RGB_FCC(YCC_r601(col))   : \
-                                RGB_YIQ(YCC_r601(col))   ;
+    vec3 col = YCC_r601(r709_YCC(gamma_fix));
+
+// make a YUV * NTSC Phosphor option too
+    col = (crtgamut ==  3.0) ? r601_YUV(col)   : \
+          (crtgamut ==  2.0) ?  RGB_YIQ(col)   : \
+          (crtgamut == -3.0) ?  RGB_FCC(col)   : \
+          (crtgamut == -4.0) ?  RGB_FCC(col)   : \
+                                RGB_YIQ(col)   ;
 
 // Clipping Logic / Gamut Limiting
     vec2 UVmax = (crtgamut ==  3.0) ? vec2(0.436798,          0.614777)          : \
@@ -721,13 +727,13 @@ void main()
           (crtgamut == -4.0) ? TVtoPC(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   : \
                                TVtoPC(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   ;
 
-    col = (crtgamut ==  3.0) ?     YUV_r601(col)    : \
-          (crtgamut ==  2.0) ?      YIQ_RGB(col)    : \
-          (crtgamut == -3.0) ?      FCC_RGB(col)    : \
-          (crtgamut == -4.0) ?      FCC_RGB(col)    : \
-                                    YIQ_RGB(col)    ;
+    col = (crtgamut ==  3.0) ?     YUV_r601(col)                : \
+          (crtgamut ==  2.0) ?      YIQ_RGB(col)*(255./239.)    : \
+          (crtgamut == -3.0) ?      FCC_RGB(col)*(255./239.)    : \
+          (crtgamut == -4.0) ?      FCC_RGB(col)*(255./239.)    : \
+                                    YIQ_RGB(col)*(255./239.)    ;
 
-// Gamut Clipping and Conversion to Rec.709 (todo: study other "intents")
+// Gamut Clipping and Conversion to Rec.709
     col = clamp(col, 0.0, 1.0);
     col = YCC_r709(r601_YCC(col));
     col = clamp(col, 0.0, 1.0);
@@ -820,7 +826,7 @@ void main()
                  (crtgamut ==  2.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
                                        m_in*screen.rgb;
 
-// White Point Mapping
+// White Point Mapping (it's adding gain, needs fix)
     vec3 adjusted =  (crtgamut == 0.0) ?           wp_adjust(screen.rgb)       : wp_adjust(XYZ_to_RGB(gamut, SPC));
     vec3 base_luma = (crtgamut == 0.0) ? XYZtoYxy(RGB_to_XYZ(screen.rgb, SPC)) :             XYZtoYxy(gamut);
     vec3 adjusted_luma =                 XYZtoYxy(RGB_to_XYZ(adjusted,   SPC)) ;
