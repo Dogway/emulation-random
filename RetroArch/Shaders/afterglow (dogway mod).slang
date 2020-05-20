@@ -1,7 +1,7 @@
 #version 450
 
 /*
-   Phosphor Afterglow Shader
+   Phosphor Afterglow Shader (mod by Dogway)
 
    Copyright (C) 2018 guest(r) - guest.r@gmail.com
 
@@ -102,7 +102,6 @@ vec3 afterglow(float Pho, float decay)
 	float decr = clamp((log(1./p_res.r)+0.2)/(decay),0.0,1.0);
 	float decg = clamp((log(1./p_res.g)+0.2)/(decay),0.0,1.0);
 	float decb = clamp((log(1./p_res.b)+0.2)/(decay),0.0,1.0);
-	float decmax = max(max(decr,decg),decb);
 
 	return vec3(decr, decg, decb);
 }
