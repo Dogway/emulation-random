@@ -65,11 +65,11 @@ layout(push_constant) uniform Push
     ###                                                                                    ###
     ###      NTSC-J (Default)                                                              ###
     ###          Gamut: NTSC-J (#2)      (or a NTSC-J based CRT gamut)                     ###
-    ###          WP: D93 (9305K)         (or keep D65 and set "I/Q = -0.04")               ###
+    ###          WP: D93 (9305K)         (or keep D65 and set "I/U Shift = -0.04")         ###
     ###          TRC: 2.22 SMPTE-C Gamma (in practice more like 2.35-2.55)                 ###
     ###                                                                                    ###
     ###      *Despite the standard of 2.22, a good faithful approximation to CRT...        ###
-    ###       ...is to use a gamma (SMPTE-C type) with a value of 2.40-2.55 as "CRT Gamma" ###
+    ###       ...is to use a gamma (SMPTE-C type) with a value of 2.35-2.55 as "CRT Gamma" ###
     ###                                                                                    ###
     ###                                                                                    ###
     ##########################################################################################
@@ -673,7 +673,6 @@ mat3(
  0.43057379126548767, 0.22201462090015410, 0.020183145999908447,
  0.34154993295669556, 0.70665508508682250, 0.129553422331810000,
  0.17832535505294800, 0.07133013755083084, 0.939180195331573500);
-
 
 
 
