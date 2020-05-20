@@ -53,13 +53,13 @@ layout(push_constant) uniform Push
     ##########################################################################################
     ###                                                                                    ###
     ###      PAL                                                                           ###
-    ###          Gamut: EBU (#3) (or an EBU based CRT gamut)                               ###
+    ###          Gamut: EBU (#3) (or an EBU T3213 based CRT gamut)                         ###
     ###          WP: D65 (6504K)                                                           ###
     ###          TRC: 2.8 SMPTE-C Gamma                                                    ###
     ###          Saturation: -0.02                                                         ###
     ###                                                                                    ###
     ###      NTSC-U                                                                        ###
-    ###          Gamut: SMPTE-C (#1)     (or a NTSC-U based CRT gamut)                     ###
+    ###          Gamut: SMPTE-C (#1)     (or a SMPTE-C based CRT gamut)                    ###
     ###          WP: D65 (6504K)         (in practice more like ~8000K)                    ###
     ###          TRC: 2.22 SMPTE-C Gamma (in practice more like 2.35-2.55)                 ###
     ###                                                                                    ###
@@ -68,8 +68,8 @@ layout(push_constant) uniform Push
     ###          WP: D93 (9305K)         (or keep D65 and set "I/U Shift = -0.04")         ###
     ###          TRC: 2.22 SMPTE-C Gamma (in practice more like 2.35-2.55)                 ###
     ###                                                                                    ###
-    ###      *Despite the standard of 2.22, a good faithful approximation to CRT...        ###
-    ###       ...is to use a gamma (SMPTE-C type) with a value of 2.35-2.55 as "CRT Gamma" ###
+    ###      *Despite the standard of 2.22, a more faithful approximation to CRT...        ###
+    ###       ...is to use a gamma (SMPTE-C type) with a value of 2.35-2.55.               ###
     ###                                                                                    ###
     ###                                                                                    ###
     ##########################################################################################
@@ -79,7 +79,7 @@ layout(push_constant) uniform Push
 
 #pragma parameter g_space_out "Diplay Color Space (0:sRGB 1:DCI 2:2020)" 0.0 0.0 2.0 1.0
 #pragma parameter g_gamma_in "CRT Gamma" 2.40 1.80 3.0 0.05
-#pragma parameter g_gamma_type "Signal Gamma Type (sRGB:1, SMPTE-C:2)" 2.0 1.0 2.0 1.0
+#pragma parameter g_gamma_type "Signal Gamma Type (0:sRGB 1:SMPTE-C)" 1.0 0.0 1.0 1.0
 #pragma parameter g_crtgamut "Gamut (1:NTSC-U 2:NTSC-J 3:PAL)" 2.0 -4.0 3.0 1.0
 #pragma parameter g_hue_degrees "Hue" 0.0 -360.0 360.0 1.0
 #pragma parameter g_I_SHIFT "I/U Shift" 0.0 -1.0 1.0 0.01
@@ -676,6 +676,8 @@ mat3(
 
 
 
+
+
 //*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 
 
@@ -692,7 +694,7 @@ void main()
          src = (crtgamut == 0.0) ? moncurve_f_f3(src * lum_exp, 2.40, 0.055) : \
                                    moncurve_f_f3(src,           2.40, 0.055) ;
 
-    vec3 gamma_fix = (gamma_type == 2.0) ? moncurve_r_f3(src, gamma_in + 0.077778, 0.099)  : \
+    vec3 gamma_fix = (gamma_type == 1.0) ? moncurve_r_f3(src, gamma_in + 0.077778, 0.099)  : \
                                            moncurve_r_f3(src, gamma_in,            0.055)  ;
 
 
@@ -718,7 +720,7 @@ void main()
           (crtgamut == -4.0) ? PCtoTV(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   : \
                                PCtoTV(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   ;
 
-// YIQ/YUV Analogue Color Controls (Color Shift + Color Burst)
+// YIQ/YUV Analogue Color Controls (HUE + Color Shift + Color Burst)
     float hue_radians = hue_degrees * (M_PI / 180.0);
     float hue = atan(col.z, col.y) + hue_radians;
     float chroma = sqrt(col.z * col.z + col.y * col.y);
@@ -799,9 +801,9 @@ void main()
                       blr/20., blg/20., blb/20., 0.0);  //black tint
 
 
-    vec3 coeff = (SPC == 2.) ? vec3(0.20949168503284454, 0.7215951681137085,  0.0689130499958992000) : \
-                 (SPC == 1.) ? vec3(0.29749885201454160, 0.7059980034828186, -0.0034969625994563103) : \
-                               vec3(0.21263903379440308, 0.7151687145233154,  0.0721923187375068700) ;
+    vec3 coeff = (SPC == 2.0) ? vec3(0.24840137362480164, 0.67799961566925050,  0.03913172334432602) : \
+                 (SPC == 1.0) ? vec3(0.33465281128883360, 0.72159516811370850, -0.06274740397930145) : \
+                                vec3(0.21264933049678802, 0.71516913175582890,  0.07218152284622192) ;
 
 
     mat4 adjust = mat4((1.0 - sat) * coeff.x + sat, (1.0 - sat) * coeff.x, (1.0 - sat) * coeff.x, 1.0,
