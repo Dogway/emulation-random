@@ -11,6 +11,7 @@ layout(push_constant) uniform Push
     float g_Q_SHIFT;
     float g_I_MUL;
     float g_Q_MUL;
+    float g_lum_fix;
     float g_vignette;
     float g_vstr;
     float g_vpower;
@@ -54,7 +55,7 @@ layout(push_constant) uniform Push
     ###      PAL                                                                           ###
     ###          Gamut: EBU (#3) (or an EBU based CRT gamut)                               ###
     ###          WP: D65 (6504K)                                                           ###
-    ###          TRC: 2.8 Gamma (POW or sRGB)*                                             ###
+    ###          TRC: 2.8 SMPTE-C Gamma                                                    ###
     ###          Saturation: -0.02                                                         ###
     ###                                                                                    ###
     ###      NTSC-U                                                                        ###
@@ -68,7 +69,7 @@ layout(push_constant) uniform Push
     ###          TRC: 2.22 SMPTE-C Gamma (in practice more like 2.35-2.55)                 ###
     ###                                                                                    ###
     ###      *Despite the standard of 2.22, a good faithful approximation to CRT...        ###
-    ###       ...is to use SMPTE-C gamma type with a value of 2.40-2.55 as "CRT Gamma".    ###
+    ###       ...is to use a gamma (SMPTE-C type) with a value of 2.40-2.55 as "CRT Gamma" ###
     ###                                                                                    ###
     ###                                                                                    ###
     ##########################################################################################
@@ -76,7 +77,7 @@ layout(push_constant) uniform Push
 */
 
 
-#pragma parameter g_space_out "Diplay Color Space" 0.0 0.0 2.0 1.0
+#pragma parameter g_space_out "Diplay Color Space (0:sRGB 1:DCI 2:2020)" 0.0 0.0 2.0 1.0
 #pragma parameter g_gamma_in "CRT Gamma" 2.40 1.80 3.0 0.05
 #pragma parameter g_gamma_type "Signal Gamma Type (sRGB:1, SMPTE-C:2)" 2.0 1.0 2.0 1.0
 #pragma parameter g_crtgamut "Gamut (1:NTSC-U 2:NTSC-J 3:PAL)" 2.0 -4.0 3.0 1.0
@@ -85,10 +86,11 @@ layout(push_constant) uniform Push
 #pragma parameter g_Q_SHIFT "Q/V Shift" 0.0 -1.0 1.0 0.01
 #pragma parameter g_I_MUL "I/U Multiplier" 1.0 0.0 2.0 0.01
 #pragma parameter g_Q_MUL "Q/V Multiplier" 1.0 0.0 2.0 0.01
+#pragma parameter g_lum_fix "Sega Luma Fix" 0.0 0.0 1.0 1.0
 #pragma parameter g_vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
 #pragma parameter g_vstr "Vignette Strength" 40.0 0.0 50.0 1.0
 #pragma parameter g_vpower "Vignette Power" 0.20 0.0 0.5 0.01
-#pragma parameter wp_temperature "White Point" 9305.0 1621.0 12055.0 50.0
+#pragma parameter wp_temperature "White Point" 6505.0 5005.0 12055.0 100.0
 #pragma parameter g_sat "Saturation" 0.0 -1.0 2.0 0.02
 #pragma parameter g_vibr "Dullness/Vibrance" 0.0 -1.0 1.0 0.05
 #pragma parameter g_lum "Brightness" 0.0 -0.5 1.0 0.01
@@ -114,18 +116,18 @@ layout(push_constant) uniform Push
 
 #define M_PI            3.1415926535897932384626433832795
 #define SPC             params.g_space_out
-#define gamma_out       params.g_gamma_out
 #define gamma_in        params.g_gamma_in
 #define gamma_type      params.g_gamma_type
-#define vignette        params.g_vignette
-#define vstr            params.g_vstr
-#define vpower          params.g_vpower
 #define crtgamut        params.g_crtgamut
 #define hue_degrees     params.g_hue_degrees
 #define I_SHIFT         params.g_I_SHIFT
 #define Q_SHIFT         params.g_Q_SHIFT
 #define I_MUL           params.g_I_MUL
 #define Q_MUL           params.g_Q_MUL
+#define lum_fix         params.g_lum_fix
+#define vignette        params.g_vignette
+#define vstr            params.g_vstr
+#define vpower          params.g_vpower
 #define g_sat           params.g_sat
 #define vibr            params.g_vibr
 #define lum             params.g_lum
@@ -258,10 +260,10 @@ vec3 YxytoXYZ(vec3 Yxy){
 // PAL: D65  NTSC-U: D65  NTSC-J: D93  NTSC-FCC: C
 // PAL: 6504 NTSC-U: 6504 NTSC-J: 9305 NTSC-FCC: 6779.65 *correlated from (0.310, 0.316)
 
-vec3 wp_adjust(vec3 color){
+vec3 wp_adjust(float temperature){
 
-    float temp = global.wp_temperature / 100.;
-    float k = global.wp_temperature / 10000.;
+    float temp = temperature / 100.;
+    float k = temperature / 10000.;
     float lk = log(k);
 
     vec3 wp = vec3(1.);
@@ -280,8 +282,8 @@ vec3 wp_adjust(vec3 color){
     // clamp
     wp.rgb = clamp(wp.rgb, vec3(0.), vec3(1.));
 
-    // Linear color input
-    return color * XYZ_to_RGB(RGB_to_XYZ(wp, 0.), SPC);
+   // Linear color input
+    return wp;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -545,6 +547,8 @@ vec3 r709_YUV(vec3 RGB)
 //------------------------- SMPTE-240M Y’PbPr --------------------------
 
 
+//  Umax 0.886
+//  Vmax 0.700
 //  RGB to YPbPr -full to limited range- with Rec.601 primaries
 vec3 r601_YCC(vec3 RGB)
  {
@@ -567,8 +571,8 @@ vec3 YCC_r601(vec3 YUV)
     return YUV.rgb * conv_mat;
  }
 
-// Umax 0.53890924768269023496443198965294
-// Vmax 0.63500127000254000508001016002032
+//  Umax 0.53890924768269023496443198965294
+//  Vmax 0.63500127000254000508001016002032
 //  RGB to YPbPr -full range in-gamut- with Rec.709 primaries
 vec3 r709_YCC(vec3 RGB)
  {
@@ -614,6 +618,7 @@ mat3(
 
 
 // ITU-R BT.470/601 (M) (proof of concept, actually never used)
+// SMPTE 170M-1999
 // NTSC-FCC 1953 Standard Phosphor (use with temperature C: 6780K)
 const mat3 NTSC_FCC_transform =
 mat3(
@@ -637,7 +642,7 @@ mat3(
  0.31906270980834960, 0.67800831794738770, 0.153833806514740000,
  0.24766337871551514, 0.11184798181056976, 1.238316893577575700);
 
-// SMPTE RP 145 (C), 170M
+// SMPTE RP 145-1994 (SMPTE-C), 170M-1999
 // SMPTE-C - Measured Average Phosphor
 const mat3 P22_transform =
 mat3(
@@ -645,7 +650,7 @@ mat3(
  0.3039233088493347, 0.66820019483566280, 0.105618737637996670,
  0.1799621731042862, 0.07518967241048813, 0.977465748786926300);
 
-// SMPTE RP 145 (C), 170M
+// SMPTE RP 145-1994 (SMPTE-C), 170M-1999
 // SMPTE-C - Standard Phosphor
 const mat3 SMPTE_transform =
 mat3(
@@ -653,8 +658,8 @@ mat3(
  0.36525884270668030, 0.70106136798858640, 0.11193416267633438,
  0.19164848327636720, 0.08655092865228653, 0.95824241638183590);
 
-// NTSC-J (use with D93 white point)
-// NTSC-J - Standard Phosphor
+// SMPTE RP 145-1994 (SMPTE-C), 170M-1999
+// NTSC-J - Standard Phosphor (use with D93 white point)
 const mat3 NTSC_J_transform =
 mat3(
  0.39603787660598755, 0.22429330646991730, 0.02050681784749031,
@@ -662,12 +667,13 @@ mat3(
  0.24496731162071228, 0.10153251141309738, 1.26512730121612550);
 
 // ITU-R BT.470/601 (B/G)
-// EBU PAL - Standard Phosphor
+// EBU Tech.3213 PAL - Standard Phosphor
 const mat3 EBU_transform =
 mat3(
  0.43057379126548767, 0.22201462090015410, 0.020183145999908447,
  0.34154993295669556, 0.70665508508682250, 0.129553422331810000,
  0.17832535505294800, 0.07133013755083084, 0.939180195331573500);
+
 
 
 
@@ -680,8 +686,12 @@ mat3(
 void main()
 {
 
+// Retro Sega Systems: Genesis, 32x, CD and Saturn 2D had color palettes designed in TV levels to save on transformations.
+    float lum_exp = (lum_fix ==  1.0) ? (255./239.) : 1.;
+
     vec3 src = texture(Source, vTexCoord.xy).rgb;
-         src = moncurve_f_f3(src, 2.40, 0.055);
+         src = (crtgamut == 0.0) ? moncurve_f_f3(src * lum_exp, 2.40, 0.055) : \
+                                   moncurve_f_f3(src,           2.40, 0.055) ;
 
     vec3 gamma_fix = (gamma_type == 2.0) ? moncurve_r_f3(src, gamma_in + 0.077778, 0.099)  : \
                                            moncurve_r_f3(src, gamma_in,            0.055)  ;
@@ -690,17 +700,17 @@ void main()
     vec3 col = YCC_r601(r709_YCC(gamma_fix));
 
 // make a YUV * NTSC Phosphor option too
-    col = (crtgamut ==  3.0) ? r601_YUV(col)   : \
-          (crtgamut ==  2.0) ?  RGB_YIQ(col)   : \
-          (crtgamut == -3.0) ?  RGB_FCC(col)   : \
-          (crtgamut == -4.0) ?  RGB_FCC(col)   : \
-                                RGB_YIQ(col)   ;
+    col = (crtgamut ==  3.0) ? r601_YUV(col*lum_exp)   : \
+          (crtgamut ==  2.0) ?  RGB_YIQ(col*lum_exp)   : \
+          (crtgamut == -3.0) ?  RGB_FCC(col*lum_exp)   : \
+          (crtgamut == -4.0) ?  RGB_FCC(col*lum_exp)   : \
+                                RGB_YIQ(col*lum_exp)   ;
 
 // Clipping Logic / Gamut Limiting
-    vec2 UVmax = (crtgamut ==  3.0) ? vec2(0.436798,          0.614777)          : \
-                 (crtgamut == -4.0) ? vec2(0.599002392519453, 0.312099504946526) : \
-                 (crtgamut == -3.0) ? vec2(0.599002392519453, 0.312099504946526) : \
-                                      vec2(0.5959,            0.3112)            ;
+    vec2 UVmax = (crtgamut ==  3.0) ? vec2(0.436798,          0.614777)         : \
+                 (crtgamut == -4.0) ? vec2(0.599002392519453, 0.52510120528935) : \
+                 (crtgamut == -3.0) ? vec2(0.599002392519453, 0.52510120528935) : \
+                                      vec2(0.5959,            0.5227)           ;
 
 
     col = (crtgamut ==  3.0) ?        col                                       : \
@@ -709,7 +719,7 @@ void main()
           (crtgamut == -4.0) ? PCtoTV(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   : \
                                PCtoTV(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   ;
 
-// YIQ/YUV Analogue Color Controls
+// YIQ/YUV Analogue Color Controls (Color Shift + Color Burst)
     float hue_radians = hue_degrees * (M_PI / 180.0);
     float hue = atan(col.z, col.y) + hue_radians;
     float chroma = sqrt(col.z * col.z + col.y * col.y);
@@ -727,11 +737,11 @@ void main()
           (crtgamut == -4.0) ? TVtoPC(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   : \
                                TVtoPC(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   ;
 
-    col = (crtgamut ==  3.0) ?     YUV_r601(col)                : \
-          (crtgamut ==  2.0) ?      YIQ_RGB(col)*(255./239.)    : \
-          (crtgamut == -3.0) ?      FCC_RGB(col)*(255./239.)    : \
-          (crtgamut == -4.0) ?      FCC_RGB(col)*(255./239.)    : \
-                                    YIQ_RGB(col)*(255./239.)    ;
+    col = (crtgamut ==  3.0) ?     YUV_r601(col)    : \
+          (crtgamut ==  2.0) ?      YIQ_RGB(col)    : \
+          (crtgamut == -3.0) ?      FCC_RGB(col)    : \
+          (crtgamut == -4.0) ?      FCC_RGB(col)    : \
+                                    YIQ_RGB(col)    ;
 
 // Gamut Clipping and Conversion to Rec.709
     col = clamp(col, 0.0, 1.0);
@@ -826,12 +836,13 @@ void main()
                  (crtgamut ==  2.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
                                        m_in*screen.rgb;
 
-// White Point Mapping (it's adding gain, needs fix)
-    vec3 adjusted =  (crtgamut == 0.0) ?           wp_adjust(screen.rgb)       : wp_adjust(XYZ_to_RGB(gamut, SPC));
-    vec3 base_luma = (crtgamut == 0.0) ? XYZtoYxy(RGB_to_XYZ(screen.rgb, SPC)) :             XYZtoYxy(gamut);
-    vec3 adjusted_luma =                 XYZtoYxy(RGB_to_XYZ(adjusted,   SPC)) ;
-    adjusted = adjusted_luma + (vec3(base_luma.r, 0.0, 0.0) - vec3(adjusted_luma.r, 0.0, 0.0));
-    adjusted = clamp(XYZ_to_RGB(YxytoXYZ(adjusted), SPC), 0.0, 1.0);
+// White Point Mapping
+    vec3 wp       = RGB_to_XYZ(wp_adjust(global.wp_temperature), 0.);
+    vec3 base     = (crtgamut == 0.0) ? RGB_to_XYZ(screen.rgb, SPC)      : gamut;
+         base     = XYZtoYxy(base);
+    vec3 adjusted = (crtgamut == 0.0) ? RGB_to_XYZ(screen.rgb, SPC) * wp : gamut * wp;
+         adjusted = XYZtoYxy(adjusted);
+         adjusted = clamp(XYZ_to_RGB(YxytoXYZ(vec3(base.x , adjusted.y , adjusted.z)), SPC), 0.0, 1.0);
 
 
 // Technical LUT - (in SPC space)
@@ -847,9 +858,9 @@ void main()
     LUT2_output = (global.LUT2_toggle == 0.0) ? adjusted : LUT2_output;
 
 // EOTF - Electro-Optical Transfer Function
-    vec3 TRC = (SPC == 2.0) ? moncurve_r_f3(LUT2_output,          2.20 + 0.022222, 0.0993)   : \
-               (SPC == 1.0) ?     clamp(pow(LUT2_output, vec3(1./(2.20 + 0.40))),  0.0, 1.0) : \
-                              moncurve_r_f3(LUT2_output,          2.20 + 0.20,     0.055)    ;
+    vec3 TRC = (SPC == 2.0) ? moncurve_r_f3(LUT2_output,          2.20 + 0.022222, 0.0993) : \
+               (SPC == 1.0) ?     clamp(pow(LUT2_output, vec3(1./(2.20 + 0.40))),  0., 1.) : \
+                              moncurve_r_f3(LUT2_output,          2.20 + 0.20,     0.0550) ;
 
     FragColor = vec4(TRC, 1.0);
 }
