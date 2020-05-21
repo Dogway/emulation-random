@@ -23,25 +23,26 @@
 
 layout(push_constant) uniform Push
 {
-   float PH, SW, PER, sat;
+   float PH, TO, PER, ASAT;
 } params;
 
-// PER = 3.0 for realistic, Phosphor index it's the same as in the "grade" shader
+// https://www.desmos.com/calculator/1nfq4uubnx
+// PER = 3.0 for realistic (1% after first frame), Phosphor index it's the same as in the "grade" shader
 #pragma parameter PH "Phosphor" -1.0 -1.0 3.0 1.0
-#pragma parameter SW "Afterglow switch ON/OFF" 1.0 0.0 1.0 1.0
-#pragma parameter PER "Persistence (more is less)" 3.0 0.5 3.0 0.1
-#pragma parameter sat "Afterglow saturation" 0.20 0.0 1.0 0.01
+#pragma parameter TO "Afterglow switch ON/OFF" 1.0 0.0 1.0 1.0
+#pragma parameter PER "Persistence (more is less)" 1.0 0.5 3.0 0.1
+#pragma parameter ASAT "Afterglow saturation" 0.25 0.0 1.0 0.01
 
 #define PH params.PH
-#define SW params.SW
+#define SW params.TO
 #define PER params.PER
-#define sat params.sat
+#define sat params.ASAT
 
 #define COMPAT_TEXTURE(c,d) texture(c,d)
 
 layout(std140, set = 0, binding = 0) uniform UBO
 {
-	mat4 MVP;
+    mat4 MVP;
 } global;
 
 #pragma stage vertex
@@ -87,7 +88,7 @@ const vec3 NTSC = vec3(0.310, 0.595, 0.095);
 const vec3 P22 = vec3(0.282, 0.620, 0.098);
 
 
-vec3 afterglow(float Pho, float decay)
+vec3 afterglow(float Pho, vec3 decay)
 {
     vec3 p_in;
 
@@ -97,32 +98,32 @@ vec3 afterglow(float Pho, float decay)
     if (Pho ==  3.0) { p_in = PAL;            }
 
 // Phosphor Response / Cone Response
-	vec3 p_res = (p_in / (vec3(0.21264933049678802, 0.71516913175582890,  0.07218152284622192))/10.0);
+    vec3 p_res = (p_in / (vec3(0.21264933049678802, 0.71516913175582890,  0.07218152284622192))/10.0);
 
-	float decr = clamp((log(1./p_res.r)+0.2)/(decay),0.0,1.0);
-	float decg = clamp((log(1./p_res.g)+0.2)/(decay),0.0,1.0);
-	float decb = clamp((log(1./p_res.b)+0.2)/(decay),0.0,1.0);
+    float decr = clamp((log(1./p_res.r)+0.2)/(decay.r),0.0,1.0);
+    float decg = clamp((log(1./p_res.g)+0.2)/(decay.g),0.0,1.0);
+    float decb = clamp((log(1./p_res.b)+0.2)/(decay.b),0.0,1.0);
 
-	return vec3(decr, decg, decb);
+    return vec3(decr, decg, decb);
 }
 
 void main()
 {
-	vec3 color = COMPAT_TEXTURE(Source, TEX0.xy).rgb;
-	vec3 color1 = COMPAT_TEXTURE(Prev1Texture, TEX0.xy).rgb * afterglow(PH, PER*10.0);
-	vec3 color2 = COMPAT_TEXTURE(Prev2Texture, TEX0.xy).rgb * afterglow(PH, PER*20.0);
-	vec3 color3 = COMPAT_TEXTURE(Prev3Texture, TEX0.xy).rgb * afterglow(PH, PER*30.0);
-	vec3 color4 = COMPAT_TEXTURE(Prev4Texture, TEX0.xy).rgb * afterglow(PH, PER*40.0);
-	vec3 color5 = COMPAT_TEXTURE(Prev5Texture, TEX0.xy).rgb * afterglow(PH, PER*50.0);
-	vec3 color6 = COMPAT_TEXTURE(Prev6Texture, TEX0.xy).rgb * afterglow(PH, PER*60.0);
+    vec3 color = COMPAT_TEXTURE(Source, TEX0.xy).rgb;
+    vec3 color1 = COMPAT_TEXTURE(Prev1Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*10.0);
+    vec3 color2 = COMPAT_TEXTURE(Prev2Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*20.0);
+    vec3 color3 = COMPAT_TEXTURE(Prev3Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*30.0);
+    vec3 color4 = COMPAT_TEXTURE(Prev4Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*40.0);
+    vec3 color5 = COMPAT_TEXTURE(Prev5Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*50.0);
+    vec3 color6 = COMPAT_TEXTURE(Prev6Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*60.0);
 
-	vec3 glow = color1 + color2 + color3 + color4 + color5 + color6;
+    vec3 glow = max(max(max(max(max(color1, color2), color3), color4), color5), color6);
 
-	float l = length(glow);
-	glow = normalize(pow(glow + vec3(eps), vec3(sat)))*l;
+    float l = length(glow);
+    glow = normalize(pow(glow + vec3(eps), vec3(sat)))*l;
+    float maxR = max(color.r, glow.r);
+    float maxG = max(color.g, glow.g);
+    float maxB = max(color.b, glow.b);
 
-	float w = 1.0;
-	if ((color.r + color.g + color.b) > 7.0/255.0) w = 0.0;
-
-	FragColor = vec4(clamp(color + SW*w*glow,0.0,1.0),1.0);
+    FragColor = (SW == 0) ? vec4(color,1.0) : vec4(clamp(vec3(maxR,maxG,maxB),0.0,1.0),1.0);
 }
