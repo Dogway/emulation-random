@@ -749,13 +749,12 @@ void main()
 // Gamut Clipping and Conversion to Rec.709
     col = clamp(col, 0.0, 1.0);
     col = YCC_r709(r601_YCC(col));
-    col = clamp(col, 0.0, 1.0);
+    col = (signal == 0.0) ? gamma_fix : clamp(col, 0.0, 1.0);
 
 // OETF - Opto-Electronic Transfer Function
-    vec3 imgColor = (signal == 0.0) ? src                                          : \
-                       (SPC == 2.0) ? moncurve_f_f3(col,  2.20 + 0.022222, 0.0993) : \
-                       (SPC == 1.0) ? pow(col, vec3(      2.20 + 0.40))            : \
-                                      moncurve_f_f3(col,  2.20 + 0.20,     0.055)  ;
+    vec3 imgColor = (SPC == 2.0) ? moncurve_f_f3(col,  2.20 + 0.022222, 0.0993) : \
+                    (SPC == 1.0) ? pow(col, vec3(      2.20 + 0.40))            : \
+                                   moncurve_f_f3(col,  2.20 + 0.20,     0.055)  ;
 
 
 // Look LUT - (in sRGB space)
