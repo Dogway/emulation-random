@@ -715,6 +715,8 @@ void main()
                  (crtgamut == -3.0) ? vec2(0.599002392519453, 0.52510120528935) : \
                                       vec2(0.5959,            0.5227)           ;
 
+    col = clamp(col.xyz, vec3(0.0, -UVmax.x, -UVmax.y), vec3(1.0, UVmax.x, UVmax.y));
+
 
     col = (crtgamut ==  3.0) ?        col                                       : \
           (crtgamut ==  2.0) ?        col                                       : \
