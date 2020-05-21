@@ -16,18 +16,18 @@
     ##########################################################################################
     ###                                                                                    ###
     ###      PAL                                                                           ###
-    ###          Gamut: EBU (#3) (or an EBU T3213 based CRT gamut)                         ###
+    ###          Phosphor: EBU (#3) (or an EBU T3213 based CRT phosphor gamut)             ###
     ###          WP: D65 (6504K)                                                           ###
     ###          TRC: 2.8 SMPTE-C Gamma                                                    ###
     ###          Saturation: -0.02                                                         ###
     ###                                                                                    ###
     ###      NTSC-U                                                                        ###
-    ###          Gamut: SMPTE-C (#1)     (or a SMPTE-C based CRT gamut)                    ###
+    ###          Phosphor: SMPTE-C (#1)     (or a SMPTE-C based CRT phosphor gamut)        ###
     ###          WP: D65 (6504K)         (in practice more like ~8000K)                    ###
     ###          TRC: 2.22 SMPTE-C Gamma (in practice more like 2.35-2.55)                 ###
     ###                                                                                    ###
     ###      NTSC-J (Default)                                                              ###
-    ###          Gamut: NTSC-J (#2)      (or a NTSC-J based CRT gamut)                     ###
+    ###          Phosphor: NTSC-J (#2)      (or a NTSC-J based CRT phosphor gamut)         ###
     ###          WP: D93 (9305K)         (or keep D65 and set "I/U Shift = -0.04")         ###
     ###          TRC: 2.22 SMPTE-C Gamma (in practice more like 2.35-2.55)                 ###
     ###                                                                                    ###
@@ -40,10 +40,11 @@
 */
 
 
-#pragma parameter g_space_out "Diplay Color Space (0:sRGB 1:DCI 2:2020)" 0.0 0.0 2.0 1.0
 #pragma parameter g_gamma_in "CRT Gamma" 2.40 1.80 3.0 0.05
+#pragma parameter g_signal_type "Signal Type (0:RGB 1:Composite)" 1.0 0.0 1.0 1.0
 #pragma parameter g_gamma_type "Signal Gamma Type (0:sRGB 1:SMPTE-C)" 1.0 0.0 1.0 1.0
-#pragma parameter g_crtgamut "Gamut (1:NTSC-U 2:NTSC-J 3:PAL)" 2.0 -4.0 3.0 1.0
+#pragma parameter g_crtgamut "Phosphor (1:NTSC-U 2:NTSC-J 3:PAL)" 2.0 -4.0 3.0 1.0
+#pragma parameter g_space_out "Diplay Color Space (0:sRGB 1:DCI 2:2020)" 0.0 0.0 2.0 1.0
 #pragma parameter g_hue_degrees "Hue" 0.0 -360.0 360.0 1.0
 #pragma parameter g_I_SHIFT "I/U Shift" 0.0 -1.0 1.0 0.01
 #pragma parameter g_Q_SHIFT "Q/V Shift" 0.0 -1.0 1.0 0.01
@@ -81,6 +82,7 @@
 #define SPC             g_space_out
 #define gamma_in        g_gamma_in
 #define gamma_type      g_gamma_type
+#define signal          g_signal_type
 #define crtgamut        g_crtgamut
 #define hue_degrees     g_hue_degrees
 #define I_SHIFT         g_I_SHIFT
@@ -183,6 +185,7 @@ COMPAT_VARYING vec4 TEX0;
 uniform COMPAT_PRECISION float SPC;
 uniform COMPAT_PRECISION float gamma_in;
 uniform COMPAT_PRECISION float gamma_type;
+uniform COMPAT_PRECISION float signal;
 uniform COMPAT_PRECISION float crtgamut;
 uniform COMPAT_PRECISION float hue_degrees;
 uniform COMPAT_PRECISION float I_SHIFT;
@@ -219,6 +222,7 @@ uniform COMPAT_PRECISION float LUT2_toggle;
 #else
 #define SPC 1.00
 #define gamma_in 2.40
+#define signal 1.0
 #define gamma_type 1.0
 #define vignette 1.0
 #define vstr 40.0
@@ -323,7 +327,7 @@ vec3 YxytoXYZ(vec3 Yxy){
     return XYZ;
 }
 
-///////////////////////// White Point Mapping function /////////////////////////
+///////////////////////// White Point Mapping /////////////////////////
 //
 //
 // From the first comment post (sRGB primaries and linear light compensated)
@@ -766,8 +770,8 @@ void main()
     float lum_exp = (lum_fix ==  1.0) ? (255./239.) : 1.;
 
     vec3 src = COMPAT_TEXTURE(Source, vTexCoord).rgb;
-         src = (crtgamut == 0.0) ? moncurve_f_f3(src * lum_exp, 2.40, 0.055) : \
-                                   moncurve_f_f3(src,           2.40, 0.055) ;
+         src = (signal == 0.0) ? moncurve_f_f3(src * lum_exp, 2.40, 0.055) : \
+                                 moncurve_f_f3(src,           2.40, 0.055) ;
 
     vec3 gamma_fix = (gamma_type == 1.0) ? moncurve_r_f3(src, gamma_in + 0.077778, 0.099)  : \
                                            moncurve_r_f3(src, gamma_in,            0.055)  ;
@@ -775,7 +779,7 @@ void main()
 
     vec3 col = YCC_r601(r709_YCC(gamma_fix));
 
-// make a YUV * NTSC Phosphor option too
+// make a YUV * NTSC Phosphor option too and a FCC * NTSC phosphor
     col = (crtgamut ==  3.0) ? r601_YUV(col*lum_exp)   : \
           (crtgamut ==  2.0) ?  RGB_YIQ(col*lum_exp)   : \
           (crtgamut == -3.0) ?  RGB_FCC(col*lum_exp)   : \
@@ -825,10 +829,10 @@ void main()
     col = clamp(col, 0.0, 1.0);
 
 // OETF - Opto-Electronic Transfer Function
-    vec3 imgColor = (crtgamut == 0.0) ? src                                          : \
-                         (SPC == 2.0) ? moncurve_f_f3(col,  2.20 + 0.022222, 0.0993) : \
-                         (SPC == 1.0) ? pow(col, vec3(      2.20 + 0.40))            : \
-                                        moncurve_f_f3(col,  2.20 + 0.20,     0.055)  ;
+    vec3 imgColor = (signal == 0.0) ? src                                          : \
+                       (SPC == 2.0) ? moncurve_f_f3(col,  2.20 + 0.022222, 0.0993) : \
+                       (SPC == 1.0) ? pow(col, vec3(      2.20 + 0.40))            : \
+                                      moncurve_f_f3(col,  2.20 + 0.20,     0.055)  ;
 
 
 // Look LUT - (in sRGB space)
