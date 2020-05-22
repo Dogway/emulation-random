@@ -46,15 +46,15 @@
 #pragma parameter g_crtgamut "Phosphor (1:NTSC-U 2:NTSC-J 3:PAL)" 2.0 -4.0 3.0 1.0
 #pragma parameter g_space_out "Diplay Color Space (0:sRGB 1:DCI 2:2020)" 0.0 0.0 2.0 1.0
 #pragma parameter g_hue_degrees "Hue" 0.0 -360.0 360.0 1.0
-#pragma parameter g_I_SHIFT "I/U Shift" 0.0 -1.0 1.0 0.01
-#pragma parameter g_Q_SHIFT "Q/V Shift" 0.0 -1.0 1.0 0.01
+#pragma parameter g_I_SHIFT "I/U Shift" 0.0 -0.2 0.2 0.01
+#pragma parameter g_Q_SHIFT "Q/V Shift" 0.0 -0.2 0.2 0.01
 #pragma parameter g_I_MUL "I/U Multiplier" 1.0 0.0 2.0 0.01
 #pragma parameter g_Q_MUL "Q/V Multiplier" 1.0 0.0 2.0 0.01
 #pragma parameter g_lum_fix "Sega Luma Fix" 0.0 0.0 1.0 1.0
 #pragma parameter g_vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
 #pragma parameter g_vstr "Vignette Strength" 40.0 0.0 50.0 1.0
 #pragma parameter g_vpower "Vignette Power" 0.20 0.0 0.5 0.01
-#pragma parameter wp_temperature "White Point" 6505.0 5005.0 12055.0 100.0
+#pragma parameter wp_temperature "White Point" 6505.0 5005.0 12005.0 100.0
 #pragma parameter g_sat "Saturation" 0.0 -1.0 2.0 0.02
 #pragma parameter g_vibr "Dullness/Vibrance" 0.0 -1.0 1.0 0.05
 #pragma parameter g_lum "Brightness" 0.0 -0.5 1.0 0.01
