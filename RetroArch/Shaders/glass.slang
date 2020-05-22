@@ -65,7 +65,7 @@ layout(push_constant) uniform Push
 // https://www.desmos.com/calculator/1nfq4uubnx
 // PER = 2.0 for realistic (1.0 or less when using scanlines). Phosphor Index; it's the same as in the "grade" shader
 #pragma parameter TO "Afterglow OFF/ON" 1.0 0.0 1.0 1.0
-#pragma parameter PH "Phosphor Index" -1.0 -1.0 3.0 1.0
+#pragma parameter PH "Phosphor Index" 2.0 -1.0 3.0 1.0
 #pragma parameter PER "Persistence (more is less)" 0.75 0.5 2.0 0.1
 #pragma parameter ASAT "Afterglow saturation" 0.20 0.0 1.0 0.01
 
@@ -142,17 +142,17 @@ layout(set = 0, binding = 8) uniform sampler2D OriginalHistory6;
 // update the state. Assumes the texture was hooked.
 float mod289(float x)
 {
-	return x - floor(x / 289.0) * 289.0;
+    return x - floor(x / 289.0) * 289.0;
 }
 
 float permute(float x)
 {
-	return mod289((34.0 * x + 1.0) * x);
+    return mod289((34.0 * x + 1.0) * x);
 }
 
 float randg(float x)
 {
-	return fract(x * 0.024390243);
+    return fract(x * 0.024390243);
 }
 
 
@@ -255,11 +255,15 @@ void main()
 
     float len = length(glow);
     glow = normalize(pow(glow + vec3(0.001), vec3(sat)))*len;
-    float maxR = max(color.r, glow.r);
-    float maxG = max(color.g, glow.g);
-    float maxB = max(color.b, glow.b);
 
-    color = (SW == 0.0) ? color : clamp(vec3(maxR,maxG,maxB),0.0,1.0);
+	vec3 glowl  = pow(glow,  vec3(2.2));
+	vec3 colorl = pow(color, vec3(2.2));
+	float glowY  = glowl.r  * 0.21265 + glowl.g  * 0.71517 + glowl.b  * 0.07218;
+	float colorY = colorl.r * 0.21265 + colorl.g * 0.71517 + colorl.b * 0.07218;
+
+	vec3 colormax = (colorY > glowY)  ? color : glow;
+
+    color = (SW == 0.0) ? color : clamp(colormax,0.0,1.0);
 
 //--------------------------------------
 
@@ -321,18 +325,18 @@ void main()
 
 
 // Reflection-out noise dithering, from deband.slang
-	// Initialize the PRNG by hashing the position + a random uniform
-	vec3 m = vec3(vTexCoord, randg(sin(vTexCoord.x / vTexCoord.y) * mod(global.FrameCount, 79) + 22.759)) + vec3(1.0);
-	float h = permute(permute(permute(m.x) + m.y) + m.z);
-		
-	if (GRAIN > 0.0)
-		{
-			vec3 noise;
-			noise.x = randg(h); h = permute(h);
-			noise.y = randg(h); h = permute(h);
-			noise.z = randg(h); h = permute(h);
-			vig_c.rgb += GRAIN * (noise - vec3(0.5));
-		}
+    // Initialize the PRNG by hashing the position + a random uniform
+    vec3 m = vec3(vTexCoord, randg(sin(vTexCoord.x / vTexCoord.y) * mod(global.FrameCount, 79) + 22.759)) + vec3(1.0);
+    float h = permute(permute(permute(m.x) + m.y) + m.z);
+        
+    if (GRAIN > 0.0)
+        {
+            vec3 noise;
+            noise.x = randg(h); h = permute(h);
+            noise.y = randg(h); h = permute(h);
+            noise.z = randg(h); h = permute(h);
+            vig_c.rgb += GRAIN * (noise - vec3(0.5));
+        }
 
 // Reflection out
     reflection = clamp(vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 7.)), 1.), 0.0, 1.0);
