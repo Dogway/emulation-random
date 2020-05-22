@@ -24,8 +24,8 @@ layout(push_constant) uniform Push
 // https://forums.libretro.com/t/please-show-off-what-crt-shaders-can-do/19193/1482
 
 // Other NTSC
-// Y:4.2   I: 0.60   Q: 0.60 (1993-2020) (for FCC NTSC Broadcast analogue standard) (band limited)
 // Y:2.0   I: 0.30   Q: 0.30 (1993-2020) (for FCC NTSC VHS analogue standard) (band limited)
+// Y:4.2   I: 0.60   Q: 0.60 (1993-2020) (for FCC NTSC Broadcast analogue standard) (band limited)
 
 // Suggestions (NTSC):
 // Y:4.20   I: 1.30   Q: 0.40 (1953-1993) (for FCC NTSC analogue standard -old-)
@@ -33,9 +33,15 @@ layout(push_constant) uniform Push
 // Y:4.20   U: 1.30   V: 1.30 (1998-2020) (for FCC NTSC digital standard 4:1:1) (chroma band limited)
 // Y:4.20   U: 1.79   V: 1.79 (1998-2020) (for FCC NTSC S-Video & digital -new- 4:2:2) (max subcarrier width)
 
+// Suggestions (NTSC-J):
+// Y:4.20   I: 1.30   Q: 0.40  (for NTSC-J analogue standard -old-)
+// Y:4.20   I: 1.30   Q: 1.30  (for NTSC-J digital standard 4:1:1) (chroma band limited)
+// Y:4.20   I: 1.79   Q: 1.79  (for NTSC-J S-Video & digital -new- 4:2:2) (max subcarrier width)
+
 // Suggestions (PAL):
 // PAL should be a little bit more desaturated than NTSC
 // PAL chroma is also band limited -in analogue- to 1.30Mhz despite using a wider subcarrier than NTSC (4.4336)
+// Y:5.0   U: 0.60   V: 0.60  PAL-B (for EBU 601 VHS analogue standard) (band limited)
 // Y:5.5   U: 1.30   V: 1.30  PAL-A (for EBU 601 analogue standard -old-) (System I: UK, Italy, Australia)
 // Y:5.0   U: 1.30   V: 1.30  PAL-B (for EBU 601 analogue standard -old-) (chroma band limited)
 // Y:5.5   U: 1.80   V: 1.80  PAL-A (for EBU 601 digital standard 4:2:2)  (chroma band limited)
@@ -44,7 +50,7 @@ layout(push_constant) uniform Push
 
 
 #pragma parameter SPLIT "Split" 0.0 -1.0 1.0 0.1
-#pragma parameter S_PRESET "0:CUS|1:PALA|2:PALB|3:NTSC|4:NTSC411|5:NTSC422" 0.0 0.0 5.0 1.0
+#pragma parameter S_PRESET "1:PALA|2:PALB|3:NTSC|4:NTSCJ|5:NTSC411|0:NTSC422" 0.0 0.0 5.0 1.0
 #pragma parameter PAL "0:NTSC 1:PAL" 0.0 0.0 1.0 1.0
 #pragma parameter CH_SPC "YIQ/YUV" 0.0 0.0 1.0 1.0
 #pragma parameter Y_RES "Y Mhz" 4.2 2.5 6.0 0.01
@@ -156,7 +162,7 @@ void main()
     float max_lum_res = 0.0;
 
     //  88 Mhz is VHF FM modulation (NTSC-M and PAL-AB. NTSC-J uses 90 Mhz)
-    //  Luma signal runs over 4.2Mhz (5.0 PAL), whereas Chroma does on 3.5795 (4.4336 PAL)
+    //  Luma signal runs over 4.2Mhz (5.0 PAL), whereas Chroma does on 3.579545 (4.43361875 PAL)
     if (params.S_PRESET == 0.0)
     {
         float blank =   (params.PAL==1.0) ? 12.0                      : 10.9;
@@ -184,17 +190,23 @@ void main()
     }
     if (params.S_PRESET == 3.0)
     {
-        max_col_res_I = (1.30 / 2.0) * 52.6 ms * 315.0/88.0 MHz;
-        max_col_res_Q = (0.40 / 2.0) * 52.6 ms * 315.0/88.0 MHz;
+        max_col_res_I = (1.50 / 2.0) * 52.6 ms * 315.0/88.0 MHz;
+        max_col_res_Q = (0.50 / 2.0) * 52.6 ms * 315.0/88.0 MHz;
         max_lum_res = 52.6 ms * 369.6/88.0 MHz;
     }
     if (params.S_PRESET == 4.0)
+    {
+        max_col_res_I = (1.30 / 2.0) * 52.6 ms * 315.0/90.0 MHz;
+        max_col_res_Q = (1.30 / 2.0) * 52.6 ms * 315.0/90.0 MHz;
+        max_lum_res = 52.6 ms * 369.6/90.0 MHz;
+    }
+    if (params.S_PRESET == 5.0)
     {
         max_col_res_I = (1.30 / 2.0) * 52.6 ms * 315.0/88.0 MHz;
         max_col_res_Q = (1.30 / 2.0) * 52.6 ms * 315.0/88.0 MHz;
         max_lum_res = 52.6 ms * 369.6/88.0 MHz;
     }
-    if (params.S_PRESET == 5.0)
+    if (params.S_PRESET == 6.0)
     {
         max_col_res_I = (1.79 / 2.0) * 52.6 ms * 315.0/88.0 MHz;
         max_col_res_Q = (1.79 / 2.0) * 52.6 ms * 315.0/88.0 MHz;
