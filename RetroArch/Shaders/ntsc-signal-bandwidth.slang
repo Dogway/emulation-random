@@ -50,7 +50,7 @@ layout(push_constant) uniform Push
 
 
 #pragma parameter SPLIT "Split" 0.0 -1.0 1.0 0.1
-#pragma parameter S_PRESET "1:PALA|2:PALB|3:NTSC|4:NTSCJ|5:NTSC411|0:NTSC422" 0.0 0.0 5.0 1.0
+#pragma parameter S_PRESET "1:PALA|2:PALB|3:NTSC|4:NTSCJ|5:NTSC411|6:NTSC422" 0.0 0.0 6.0 1.0
 #pragma parameter PAL "0:NTSC 1:PAL" 0.0 0.0 1.0 1.0
 #pragma parameter CH_SPC "YIQ/YUV" 0.0 0.0 1.0 1.0
 #pragma parameter Y_RES "Y Mhz" 4.2 2.5 6.0 0.01
@@ -83,73 +83,90 @@ layout(location = 0) in vec2 vTexCoord;
 layout(location = 0) out vec4 FragColor;
 layout(set = 0, binding = 2) uniform sampler2D Source;
 
+
+//--------------------- SMPTE RP 145 (C), 170M (1987) ------------------
+
+
 vec4 RGB_YIQ(vec4 col)
-{
-    mat3 conv_mat = mat3(
-    0.299996928307425,  0.590001575542717,  0.110001496149858,
-    0.599002392519453, -0.277301256521204, -0.321701135998249,
-    0.213001700342824, -0.52510120528935,  0.312099504946526);
-
-    col.rgb *= conv_mat;
-
-    return vec4(col.rgb, 1.0);
-}
-
-vec4 YIQ_RGB(vec4 col)
-{
-    mat3 conv_mat = mat3(
-    1.0,  0.946882217090069,  0.623556581986143,
-    1.0, -0.274787646298978, -0.635691079187380,
-    1.0, -1.108545034642030,  1.709006928406470);
-
-    col.rgb *= conv_mat;
-
-    return vec4(col.rgb, 1.0);
-}
-
-vec4 RGBtoYUV(vec4 RGB)
  {
-     mat3 conv_mat = mat3(
-     0.299,    0.587,   0.114,
-    -0.14713,-0.28886,  0.436,
-     0.615, -0.514991, -0.10001);
- 
-    RGB.rgb *= conv_mat;
-    return vec4(RGB.rgb, 1.0);
+    const mat3 conv_mat = mat3(
+    0.2990,  0.5870,  0.1140,
+    0.5959, -0.2746, -0.3213,
+    0.2115, -0.5227,  0.3112);
+
+    return vec4(col.rgb * conv_mat,1.0);
  }
 
-vec4 YUVtoRGB(vec4 YUV)
+vec4 YIQ_RGB(vec4 col)
  {
-     mat3 conv_mat = mat3(
-     1.000, 0.000,   1.13983,
-     1.000,-0.39465,-0.58060,
-     1.000, 2.03211, 0.00000);
- 
-    YUV.rgb *= conv_mat;
-    return vec4(YUV.rgb, 1.0);
-  }
+    const mat3 conv_mat = mat3(
+    1.0000000,  0.956,  0.619,
+    1.0000000, -0.272, -0.647,
+    1.0000000, -1.106,  1.703);
+
+    return vec4(col.rgb * conv_mat,1.0);
+ }
 
 
-// to Studio Swing (in YIQ space) (for footroom and headroom)
-vec4 PCtoTV(vec4 col)
+//----------------------- ITU-R BT.470/601 (B/G) -----------------------
+
+
+vec4 r601_YUV(vec4 RGB)
+ {
+    const mat3 conv_mat = mat3(
+    0.299000,  0.587000,  0.114000,
+   -0.147407, -0.289391,  0.436798,
+    0.614777, -0.514799, -0.099978);
+
+    return vec4(RGB.rgb * conv_mat,1.0);
+ }
+
+vec4 YUV_r601(vec4 RGB)
+ {
+    const mat3 conv_mat = mat3(
+    1.0000000,  0.00000000000000000,  1.14025080204010000,
+    1.0000000, -0.39393067359924316, -0.58080917596817020,
+    1.0000000,  2.02839756011962900, -0.00000029356581166);
+
+    return vec4(RGB.rgb * conv_mat,1.0);
+ }
+
+
+//---------------------- Range Expansion/Compression -------------------
+
+
+//  to Studio Swing/Broadcast Safe/SMPTE legal
+vec4 PCtoTV(vec4 col, float luma_swing, float Umax, float Vmax, float max_swing, bool rgb_in)
 {
    col *= 255.;
-   col.x = ((col.x * 219.) / 255.) + 16.;
-   col.y = (((col.y - 128.) * 224.) / 255.) + 112.;
-   col.z = (((col.z - 128.) * 224.) / 255.) + 112.;
-   return vec4(col.xyz, 1.0) / 255.;
+   Umax = (max_swing == 1.0) ? Umax * 224. : Umax * 239.;
+   Vmax = (max_swing == 1.0) ? Vmax * 224. : Vmax * 239.;
+
+   col.x = (luma_swing == 1.0) ? ((col.x * 219.) / 255.) + 16. : col.x;
+   col.y = (rgb_in == true) ? ((col.y * 219.) / 255.) + 16. : (((col.y - 128.) * (Umax * 2.)) / 255.) + Umax;
+   col.z = (rgb_in == true) ? ((col.z * 219.) / 255.) + 16. : (((col.z - 128.) * (Vmax * 2.)) / 255.) + Vmax;
+   return vec4(col.xyz / 255.,1.0);
 }
 
 
-// to Full Swing (in YIQ space)
-vec4 TVtoPC(vec4 col)
+//  to Full Swing
+vec4 TVtoPC(vec4 col, float luma_swing, float Umax, float Vmax, float max_swing, bool rgb_in)
 {
    col *= 255.;
-   float colx = ((col.x - 16.) / 219.) * 255.;
-   float coly = (((col.y - 112.) / 224.) * 255.) + 128.;
-   float colz = (((col.z - 112.) / 224.) * 255.) + 128.;
-   return vec4(colx,coly,colz, 1.0) / 255.;
+   Umax = (max_swing == 1.0) ? Umax * 224. : Umax * 239.;
+   Vmax = (max_swing == 1.0) ? Vmax * 224. : Vmax * 239.;
+
+   float colx = (luma_swing == 1.0) ? ((col.x - 16.) / 219.) * 255. : col.x;
+   float coly = (rgb_in == true) ? ((col.y - 16.) / 219.) * 255. : (((col.y - Umax) / (Umax * 2.)) * 255.) + 128.;
+   float colz = (rgb_in == true) ? ((col.z - 16.) / 219.) * 255. : (((col.z - Vmax) / (Vmax * 2.)) * 255.) + 128.;
+   return vec4(colx,coly,colz,1.0) / 255.;
 }
+
+
+
+
+//*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
+
 
 
 void main()
@@ -224,8 +241,9 @@ void main()
     else
     {
         vec4 col = vec4(0.0, 0.0, 0.0, 1.0);
+        float Region = (params.CH_SPC == 1.0) || (params.S_PRESET == 1.0) || (params.S_PRESET == 2.0) ? 1.0 : 0.0 ;
 
-        if ((params.S_PRESET == 0.0) || (params.S_PRESET == 3.0) || (params.CH_SPC == 0.0))
+        if (Region == 0.0)
         {
             col += RGB_YIQ(texture(Source, vTexCoord));
 
@@ -244,19 +262,19 @@ void main()
         }
         else
         {
-            col += RGBtoYUV(texture(Source, vTexCoord));
+            col += r601_YUV(texture(Source, vTexCoord));
 
             for(int i = 1; i < viewport_col_resy; i++)
             {
-                col.y += RGBtoYUV(texture(Source, vTexCoord - vec2((i - viewport_col_resy/2) * params.OutputSize.z, 0.0))).y;
+                col.y += r601_YUV(texture(Source, vTexCoord - vec2((i - viewport_col_resy/2) * params.OutputSize.z, 0.0))).y;
             }
             for(int i = 1; i < viewport_col_resz; i++)
             {
-                col.z += RGBtoYUV(texture(Source, vTexCoord - vec2((i - viewport_col_resz/2) * params.OutputSize.z, 0.0))).z;
+                col.z += r601_YUV(texture(Source, vTexCoord - vec2((i - viewport_col_resz/2) * params.OutputSize.z, 0.0))).z;
             }
             for(int i = 1; i < viewport_lum_res; i++)
             {
-                col.x += RGBtoYUV(texture(Source, vTexCoord - vec2((i - viewport_col_resy/2) * params.OutputSize.z, 0.0))).x;
+                col.x += r601_YUV(texture(Source, vTexCoord - vec2((i - viewport_col_resy/2) * params.OutputSize.z, 0.0))).x;
             }
         }
 
@@ -264,9 +282,17 @@ void main()
         col.y /= viewport_col_resy;
         col.z /= viewport_col_resz;
         col.x /= viewport_lum_res;
-        col = PCtoTV(col);
 
 
+// Clipping Logic / Gamut Limiting
+        vec2 UVmax = (Region == 1.0) ? vec2(0.436798, 0.614777) : \
+                                       vec2(0.5959,   0.5227)   ;
+
+        col = vec4(clamp(col.xyz, vec3(0.0, -UVmax.x, -UVmax.y), vec3(1.0, UVmax.x, UVmax.y)),1.0);
+        col = (Region == 1.0) ? col : PCtoTV(col, 1.0, UVmax.x, UVmax.y, 1.0, false);
+
+
+// Analogue Color Controls
         col.y = mod((col.y + 1.0) + params.I_SHIFT, 2.0) - 1.0;
 //      col.y = 0.9 * col.y + 0.1 * col.y * col.x;
 //
@@ -278,16 +304,7 @@ void main()
         col.y *= params.I_MUL;
         col.x *= params.Y_MUL;
 
-        if ((params.S_PRESET == 0.0) || (params.S_PRESET == 3.0) || (params.CH_SPC == 0.0))
-        {
-            col = clamp(col,vec4(0.0627,-0.5957,-0.5226,0.0),vec4(0.92157,0.5957,0.5226,1.0));
-            col = YIQ_RGB(TVtoPC(col));
-        }
-        else
-        {
-            col = clamp(col,vec4(0.0627,0.0627-0.5,0.0627-0.5,0.0),vec4(0.92157,0.94118-0.5,0.94118-0.5,1.0));
-            col = YUVtoRGB(TVtoPC(col));
-        }
+        col = (Region == 1.0) ? YUV_r601(col) : YIQ_RGB(TVtoPC(col, 1.0, UVmax.x, UVmax.y, 1.0, false));
 
         FragColor = clamp(col,0.0,1.0);
 
