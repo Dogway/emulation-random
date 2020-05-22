@@ -183,7 +183,8 @@ float rand(float co, float size){
 void main()
 {
 
-    vec2 c_dist = (vec2(0.5) * global.SourceSize.xy) / global.OutputSize.xy;
+
+    vec2 c_dist = (vTexCoord * global.SourceSize.xy) / global.OutputSize.xy;
     vec2 vpos = vTexCoord * (global.OutputSize.xy / global.SourceSize.xy);
 
     float vert = vpos.y;
@@ -295,7 +296,7 @@ void main()
     vec4 reflection = clamp(vec4((1. - (1. - color ) * (1. - blurred.rgb * params.g_reflstr)) / (1. + params.g_reflstr / 3.), 1.), 0.0, 1.0);
 
 // Reflection out
-    reflection = clamp(vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 3.)), 1.), 0.0, 1.0);
+    reflection = clamp(vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 7.)), 1.), 0.0, 1.0);
 
 // Corner Size
     vpos *= (global.SourceSize.xy/global.OutputSize.xy);
