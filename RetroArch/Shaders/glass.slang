@@ -22,13 +22,17 @@ layout(push_constant) uniform Push
     float goyg;
     float goxb;
     float goyb;
+    float TO;
+    float PH;
+    float PER;
+    float ASAT;
 }params;
 
 
 /*
    CRT Glass shader
-      > Emulation of CRT related artifacts:
-        ::glass inner+outer reflection and chromatic aberration, convergence, rolling shutter, shaking.
+      > CRT related artifacts:
+        ::glass inner+outer reflection, chromatic aberration, screen flicker+jitter, afterglow (dr-venom's mod).
       > Stack just before scanlines. Works better with curved geometry modes.
 
    Author: Dogway
@@ -38,7 +42,7 @@ layout(push_constant) uniform Push
 #pragma parameter g_csize "Corner size" 0.0 0.0 0.07 0.01
 #pragma parameter g_bsize "Border smoothness" 600.0 100.0 600.0 25.0
 #pragma parameter g_flicker "Screen Flicker" 0.25 0.0 1.0 0.01
-#pragma parameter g_shaker "Screen Shake" 0.03 0.0 0.5 0.01
+#pragma parameter g_shaker "Screen Shake" 0.02 0.0 0.5 0.01
 #pragma parameter g_refltog "Reflection Toggle" 1.0 0.0 1.0 1.00
 #pragma parameter g_reflstr "Refl. Brightness" 0.25 0.0 1.0 0.01
 #pragma parameter g_fresnel "Refl. Fresnel" 1.0 0.0 1.0 0.10
@@ -56,6 +60,17 @@ layout(push_constant) uniform Push
 #pragma parameter goxb "Shift-X Blue" 0.0 -1.0 1.0 0.01
 #pragma parameter goyb "Shift-Y Blue" 0.0 -1.0 1.0 0.01
 
+// https://www.desmos.com/calculator/1nfq4uubnx
+// PER = 2.0 for realistic (1.0 or less when using scanlines). Phosphor Index; it's the same as in the "grade" shader
+#pragma parameter TO "Afterglow OFF/ON" 1.0 0.0 1.0 1.0
+#pragma parameter PH "Phosphor Index" -1.0 -1.0 3.0 1.0
+#pragma parameter PER "Persistence (more is less)" 0.75 0.5 2.0 0.1
+#pragma parameter ASAT "Afterglow saturation" 0.20 0.0 1.0 0.01
+
+#define SW params.TO
+#define PH params.PH
+#define PER params.PER
+#define sat params.ASAT
 
 layout(std140, set = 0, binding = 0) uniform UBO
 {
@@ -102,8 +117,50 @@ layout(location = 2) in vec4 t2;
 layout(location = 3) in vec4 t3;
 layout(location = 0) out vec4 FragColor;
 layout(set = 0, binding = 2) uniform sampler2D Source;
+layout(set = 0, binding = 3) uniform sampler2D OriginalHistory1;
+layout(set = 0, binding = 4) uniform sampler2D OriginalHistory2;
+layout(set = 0, binding = 5) uniform sampler2D OriginalHistory3;
+layout(set = 0, binding = 6) uniform sampler2D OriginalHistory4;
+layout(set = 0, binding = 7) uniform sampler2D OriginalHistory5;
+layout(set = 0, binding = 8) uniform sampler2D OriginalHistory6;
+
+#define Prev1Texture OriginalHistory1
+#define Prev2Texture OriginalHistory2
+#define Prev3Texture OriginalHistory3
+#define Prev4Texture OriginalHistory4
+#define Prev5Texture OriginalHistory5
+#define Prev6Texture OriginalHistory6
+#define TEX0 vTexCoord
 
 
+
+vec3 afterglow(float Pho, vec3 decay)
+{
+    // PAL
+    vec3 PAL = vec3(0.290, 0.600, 0.110);
+    // JAP
+    vec3 NTSC_J = vec3(0.280, 0.605, 0.115);
+    // SMPTE
+    vec3 NTSC = vec3(0.310, 0.595, 0.095);
+    // P22
+    vec3 P22 = vec3(0.282, 0.620, 0.098);
+
+    vec3 p_in;
+
+    if (Pho == -1.0) { p_in = P22;            } else
+    if (Pho ==  1.0) { p_in = NTSC;           } else
+    if (Pho ==  2.0) { p_in = NTSC_J;         } else
+    if (Pho ==  3.0) { p_in = PAL;            }
+
+// Phosphor Response / Cone Response
+    vec3 p_res = (p_in / (vec3(0.21264933049678802, 0.71516913175582890,  0.07218152284622192))/10.0);
+
+    float decr = clamp((log(1./p_res.r)+0.2)/(decay.r),0.0,1.0);
+    float decg = clamp((log(1./p_res.g)+0.2)/(decay.g),0.0,1.0);
+    float decb = clamp((log(1./p_res.b)+0.2)/(decay.b),0.0,1.0);
+
+    return vec3(decr, decg, decb);
+}
 
 //  Borrowed from cgwg's crt-geom, under GPL
 float corner(vec2 coord)
@@ -136,9 +193,11 @@ void main()
 
     float zoom   = fract(params.gz)/10.;
 
-// Screen Jitter
-    float scale   = 2.0 + params.g_shaker/0.03;
-    float prob    = 0.5 + params.g_shaker/3.;
+
+// Screen Jitter ------------------------------------
+
+    float scale   = 2.0 + params.g_shaker/0.05;
+    float prob    = 0.5 + params.g_shaker/3.0;
     float shaker  = rand(      float(global.FrameCount), 43758.5453)                   * \
                     rand(      float(global.FrameCount), 4.37585453) * params.g_shaker;
                     
@@ -149,11 +208,35 @@ void main()
     vec2 coordsg = vec2(params.goxg, params.goyg + shaker);
     vec2 coordsb = vec2(params.goxb, params.goyb + shaker);
 
-// Screen Zoom
+
+// Screen Zoom ------------------------------------
+
     float cr = texture(Source, (vTexCoord.xy - c_dist) / (fract(params.gzr)/20. + 1.) + c_dist + coordsr/40.).r;
     float cg = texture(Source, (vTexCoord.xy - c_dist) / (fract(params.gzg)/20. + 1.) + c_dist + coordsg/40.).g;
     float cb = texture(Source, (vTexCoord.xy - c_dist) / (fract(params.gzb)/20. + 1.) + c_dist + coordsb/40.).b;
-    vec4 color = vec4(cr,cg,cb,1.0);
+
+    vec3 color = vec3(cr,cg,cb);
+
+// AfterGlow --------------------------------------
+
+    vec3 color1 = texture(Prev1Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*10.0);
+    vec3 color2 = texture(Prev2Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*20.0);
+    vec3 color3 = texture(Prev3Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*30.0);
+    vec3 color4 = texture(Prev4Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*40.0);
+    vec3 color5 = texture(Prev5Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*50.0);
+    vec3 color6 = texture(Prev6Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*60.0);
+
+    vec3 glow = max(max(max(max(max(color1, color2), color3), color4), color5), color6);
+
+    float len = length(glow);
+    glow = normalize(pow(glow + vec3(0.001), vec3(sat)))*len;
+    float maxR = max(color.r, glow.r);
+    float maxG = max(color.g, glow.g);
+    float maxB = max(color.b, glow.b);
+
+    color = (SW == 0.0) ? color : clamp(vec3(maxR,maxG,maxB),0.0,1.0);
+
+//--------------------------------------
 
     float rA = texture(Source, (t1.xw - c_dist) / (fract(params.gzr)/10. + zoom + 1.) + c_dist + (coordsr + coords)/20.).x;
     float rB = texture(Source, (t1.yw - c_dist) / (fract(params.gzr)/10. + zoom + 1.) + c_dist + (coordsr + coords)/20.).x;
@@ -209,7 +292,7 @@ void main()
     vec3 vig_c = white_point(vec3(vig));
 
 // Reflection in
-    vec4 reflection = clamp(vec4((1. - (1. - color.rgb ) * (1. - blurred.rgb * params.g_reflstr)) / (1. + params.g_reflstr / 3.), 1.), 0.0, 1.0);
+    vec4 reflection = clamp(vec4((1. - (1. - color ) * (1. - blurred.rgb * params.g_reflstr)) / (1. + params.g_reflstr / 3.), 1.), 0.0, 1.0);
 
 // Reflection out
     reflection = clamp(vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 3.)), 1.), 0.0, 1.0);
