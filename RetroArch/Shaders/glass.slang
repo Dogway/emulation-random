@@ -8,6 +8,7 @@ layout(push_constant) uniform Push
     float g_shaker;
     float g_refltog;
     float g_reflstr;
+    float g_reflgrain;
     float g_fresnel;
     float g_reflblur;
     float gz;
@@ -32,7 +33,7 @@ layout(push_constant) uniform Push
 /*
    CRT Glass shader
       > CRT related artifacts:
-        ::glass inner+outer reflection, chromatic aberration, screen flicker+jitter, afterglow (dr-venom's mod).
+        ::glass inner+outer reflection, chromatic aberration, screen flicker+jitter, noise, afterglow (dr-venom's mod).
       > Stack just before scanlines. Works better with curved geometry modes.
 
    Author: Dogway
@@ -44,6 +45,7 @@ layout(push_constant) uniform Push
 #pragma parameter g_flicker "Screen Flicker" 0.25 0.0 1.0 0.01
 #pragma parameter g_shaker "Screen Shake" 0.02 0.0 0.5 0.01
 #pragma parameter g_refltog "Reflection Toggle" 1.0 0.0 1.0 1.00
+#pragma parameter g_reflgrain "Refl. Deband Grain" 0.0 0.0 2.0 0.01
 #pragma parameter g_reflstr "Refl. Brightness" 0.25 0.0 1.0 0.01
 #pragma parameter g_fresnel "Refl. Fresnel" 1.0 0.0 1.0 0.10
 #pragma parameter g_reflblur "Refl. Blur" 0.6 0.0 1.0 0.10
@@ -71,6 +73,7 @@ layout(push_constant) uniform Push
 #define PH params.PH
 #define PER params.PER
 #define sat params.ASAT
+#define GRAIN params.g_reflgrain
 
 layout(std140, set = 0, binding = 0) uniform UBO
 {
@@ -134,6 +137,30 @@ layout(set = 0, binding = 8) uniform sampler2D OriginalHistory6;
 
 
 
+// Wide usage friendly PRNG, shamelessly stolen from a GLSL tricks forum post.
+// Obtain random numbers by calling rand(h), followed by h = permute(h) to
+// update the state. Assumes the texture was hooked.
+float mod289(float x)
+{
+	return x - floor(x / 289.0) * 289.0;
+}
+
+float permute(float x)
+{
+	return mod289((34.0 * x + 1.0) * x);
+}
+
+float randg(float x)
+{
+	return fract(x * 0.024390243);
+}
+
+
+float rand(float co, float size){
+    return fract(sin(dot(co, 12.9898)) * size);
+}
+
+
 vec3 afterglow(float Pho, vec3 decay)
 {
     // PAL
@@ -175,9 +202,6 @@ float corner(vec2 coord)
 }
 
 
-float rand(float co, float size){
-    return fract(sin(dot(co, 12.9898)) * size);
-}
 
 
 void main()
@@ -189,7 +213,7 @@ void main()
 
     float vert = vpos.y;
     float vert_msk = abs(1. - vert);
-    float center_msk = abs(1. - (vTexCoord.x + 0.1) * global.SourceSize.x / global.OutputSize.x - c_dist.x);
+    float center_msk = abs(1. - (vTexCoord.x) * global.SourceSize.x / global.OutputSize.x - c_dist.x);
     float horiz_msk = max(center_msk - 0.2, 0.0) + 0.1;
 
     float zoom   = fract(params.gz)/10.;
@@ -294,6 +318,21 @@ void main()
 
 // Reflection in
     vec4 reflection = clamp(vec4((1. - (1. - color ) * (1. - blurred.rgb * params.g_reflstr)) / (1. + params.g_reflstr / 3.), 1.), 0.0, 1.0);
+
+
+// Reflection-out noise dithering, from deband.slang
+	// Initialize the PRNG by hashing the position + a random uniform
+	vec3 m = vec3(vTexCoord, randg(sin(vTexCoord.x / vTexCoord.y) * mod(global.FrameCount, 79) + 22.759)) + vec3(1.0);
+	float h = permute(permute(permute(m.x) + m.y) + m.z);
+		
+	if (GRAIN > 0.0)
+		{
+			vec3 noise;
+			noise.x = randg(h); h = permute(h);
+			noise.y = randg(h); h = permute(h);
+			noise.z = randg(h); h = permute(h);
+			vig_c.rgb += GRAIN * (noise - vec3(0.5));
+		}
 
 // Reflection out
     reflection = clamp(vec4(1. - (1. - reflection.rgb ) * (1. - vec3(vig_c / 7.)), 1.), 0.0, 1.0);
