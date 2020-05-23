@@ -171,10 +171,13 @@ vec3 afterglow(float Pho, vec3 decay)
     vec3 NTSC = vec3(0.310, 0.595, 0.095);
     // P22
     vec3 P22 = vec3(0.282, 0.620, 0.098);
+    // r601
+    vec3 r601 = vec3(0.299, 0.587, 0.114);
 
     vec3 p_in;
 
     if (Pho == -1.0) { p_in = P22;            } else
+    if (Pho ==  0.0) { p_in = r601;           } else
     if (Pho ==  1.0) { p_in = NTSC;           } else
     if (Pho ==  2.0) { p_in = NTSC_J;         } else
     if (Pho ==  3.0) { p_in = PAL;            }
