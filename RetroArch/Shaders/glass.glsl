@@ -269,7 +269,7 @@ void main()
 {
 
     vec2 c_dist = (vec2(0.5) * InputSize) / TextureSize;
-    vec2 ch_dist = (vTexCoord * InputSize) / TextureSize;
+    vec2 ch_dist = (InputSize / TextureSize) / 2.;
     vec2 vpos = vTexCoord * (TextureSize.xy / InputSize.xy);
 
     float vert = vpos.y;

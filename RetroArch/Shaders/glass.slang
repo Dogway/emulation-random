@@ -212,7 +212,7 @@ void main()
 
 
     vec2 c_dist = (vec2(0.5) * global.SourceSize.xy) / global.OutputSize.xy;
-    vec2 ch_dist = (vTexCoord * global.SourceSize.xy) / global.OutputSize.xy;
+    vec2 ch_dist = (global.SourceSize.xy / global.OutputSize.xy) / 2.;
     vec2 vpos = vTexCoord * (global.OutputSize.xy / global.SourceSize.xy);
 
     float vert = vpos.y;
