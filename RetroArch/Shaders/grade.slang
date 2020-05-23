@@ -709,6 +709,7 @@ void main()
           (crtgamut == -4.0) ?  RGB_FCC(col*lum_exp)   : \
                                 RGB_YIQ(col*lum_exp)   ;
 
+
 // Clipping Logic / Gamut Limiting
     vec2 UVmax = (crtgamut ==  3.0) ? vec2(0.436798,          0.614777)         : \
                  (crtgamut == -4.0) ? vec2(0.599002392519453, 0.52510120528935) : \
@@ -723,6 +724,7 @@ void main()
           (crtgamut == -3.0) ? PCtoTV(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   : \
           (crtgamut == -4.0) ? PCtoTV(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   : \
                                PCtoTV(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   ;
+
 
 // YIQ/YUV Analogue Color Controls (HUE + Color Shift + Color Burst)
     float hue_radians = hue_degrees * (M_PI / 180.0);
@@ -752,6 +754,12 @@ void main()
     col = clamp(col, 0.0, 1.0);
     col = YCC_r709(r601_YCC(col));
     col = (signal == 0.0) ? gamma_fix : clamp(col, 0.0, 1.0);
+
+
+//_   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   
+// \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \
+
+
 
 // OETF - Opto-Electronic Transfer Function
     vec3 imgColor = (SPC == 2.0) ? moncurve_f_f3(col,  2.20 + 0.022222, 0.0993) : \
