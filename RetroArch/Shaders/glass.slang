@@ -208,12 +208,13 @@ void main()
 {
 
 
-    vec2 c_dist = (vTexCoord * global.SourceSize.xy) / global.OutputSize.xy;
+    vec2 c_dist = (vec2(0.5) * global.SourceSize.xy) / global.OutputSize.xy;
+    vec2 ch_dist = (vTexCoord * global.SourceSize.xy) / global.OutputSize.xy;
     vec2 vpos = vTexCoord * (global.OutputSize.xy / global.SourceSize.xy);
 
     float vert = vpos.y;
     float vert_msk = abs(1. - vert);
-    float center_msk = abs(1. - (vTexCoord.x) * global.SourceSize.x / global.OutputSize.x - c_dist.x);
+    float center_msk = abs(1. - (vTexCoord.x) * global.SourceSize.x / global.OutputSize.x - ch_dist.x);
     float horiz_msk = max(center_msk - 0.2, 0.0) + 0.1;
 
     float zoom   = fract(params.gz)/10.;
