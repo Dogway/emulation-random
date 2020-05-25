@@ -22,12 +22,12 @@
     ###          Saturation: -0.02                                                         ###
     ###                                                                                    ###
     ###      NTSC-U                                                                        ###
-    ###          Phosphor: SMPTE-C (#1)     (or a SMPTE-C based CRT phosphor gamut)        ###
+    ###          Phosphor: SMPTE-C (#1)  (or a SMPTE-C based CRT phosphor gamut)           ###
     ###          WP: D65 (6504K)         (in practice more like ~8000K)                    ###
     ###          TRC: 2.22 SMPTE-C Gamma (in practice more like 2.35-2.55)                 ###
     ###                                                                                    ###
     ###      NTSC-J (Default)                                                              ###
-    ###          Phosphor: NTSC-J (#2)      (or a NTSC-J based CRT phosphor gamut)         ###
+    ###          Phosphor: NTSC-J (#2)   (or a NTSC-J based CRT phosphor gamut)            ###
     ###          WP: D93 (9305K)         (or keep D65 and set "I/U Shift = -0.04")         ###
     ###          TRC: 2.22 SMPTE-C Gamma (in practice more like 2.35-2.55)                 ###
     ###                                                                                    ###
@@ -54,12 +54,15 @@
 #pragma parameter g_vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
 #pragma parameter g_vstr "Vignette Strength" 40.0 0.0 50.0 1.0
 #pragma parameter g_vpower "Vignette Power" 0.20 0.0 0.5 0.01
-#pragma parameter wp_temperature "White Point" 6505.0 5005.0 12005.0 100.0
-#pragma parameter g_sat "Saturation" 0.0 -1.0 2.0 0.02
-#pragma parameter g_vibr "Dullness/Vibrance" 0.0 -1.0 1.0 0.05
 #pragma parameter g_lum "Brightness" 0.0 -0.5 1.0 0.01
 #pragma parameter g_cntrst "Contrast" 0.0 -1.0 1.0 0.05
 #pragma parameter g_mid "Contrast Pivot" 0.5 0.0 1.0 0.01
+#pragma parameter wp_temperature "White Point" 6505.0 5005.0 12005.0 100.0
+#pragma parameter g_sat "Saturation" 0.0 -1.0 2.0 0.02
+#pragma parameter g_satr "Hue vs Sat Red" 0.0 -1.0 1.0 0.02
+#pragma parameter g_satg "Hue vs Sat Green" 0.0 -1.0 1.0 0.02
+#pragma parameter g_satb "Hue vs Sat Blue" 0.0 -1.0 1.0 0.02
+#pragma parameter g_vibr "Dullness/Vibrance" 0.0 -1.0 1.0 0.05
 #pragma parameter g_lift "Black Level" 0.0 -0.5 0.5 0.01
 #pragma parameter blr "Black-Red Tint" 0.0 0.0 1.0 0.01
 #pragma parameter blg "Black-Green Tint" 0.0 0.0 1.0 0.01
@@ -92,6 +95,9 @@
 #define lum_fix         g_lum_fix
 #define vignette        g_vignette
 #define vstr            g_vstr
+#define satr            g_satr
+#define satg            g_satg
+#define satb            g_satb
 #define vpower          g_vpower
 #define vibr            g_vibr
 #define lum             g_lum
@@ -198,6 +204,9 @@ uniform COMPAT_PRECISION float vignette;
 uniform COMPAT_PRECISION float vstr;
 uniform COMPAT_PRECISION float vpower;
 uniform COMPAT_PRECISION float g_sat;
+uniform COMPAT_PRECISION float satr;
+uniform COMPAT_PRECISION float satg;
+uniform COMPAT_PRECISION float satb;
 uniform COMPAT_PRECISION float vibr;
 uniform COMPAT_PRECISION float lum;
 uniform COMPAT_PRECISION float cntrst;
@@ -236,6 +245,9 @@ uniform COMPAT_PRECISION float LUT2_toggle;
 #define wp_temperature 6505.0
 #define lum_fix 0.0
 #define g_sat 0.0
+#define satr 0.0
+#define satg 0.0
+#define satb 0.0
 #define vibr 0.0
 #define lum 0.0
 #define cntrst 0.0
@@ -786,6 +798,7 @@ void main()
           (crtgamut == -4.0) ?  RGB_FCC(col*lum_exp)   : \
                                 RGB_YIQ(col*lum_exp)   ;
 
+
 // Clipping Logic / Gamut Limiting
     vec2 UVmax = (crtgamut ==  3.0) ? vec2(0.436798,          0.614777)         : \
                  (crtgamut == -4.0) ? vec2(0.599002392519453, 0.52510120528935) : \
@@ -800,6 +813,7 @@ void main()
           (crtgamut == -3.0) ? PCtoTV(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   : \
           (crtgamut == -4.0) ? PCtoTV(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   : \
                                PCtoTV(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   ;
+
 
 // YIQ/YUV Analogue Color Controls (HUE + Color Shift + Color Burst)
     float hue_radians = hue_degrees * (M_PI / 180.0);
@@ -829,6 +843,12 @@ void main()
     col = clamp(col, 0.0, 1.0);
     col = YCC_r709(r601_YCC(col));
     col = (signal == 0.0) ? gamma_fix : clamp(col, 0.0, 1.0);
+
+
+//_   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   
+// \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \
+
+
 
 // OETF - Opto-Electronic Transfer Function
     vec3 imgColor = (SPC == 2.0) ? moncurve_f_f3(col,  2.20 + 0.022222, 0.0993) : \
@@ -873,6 +893,7 @@ void main()
 // RGB Related Transforms
     vec4 screen = vec4(max(contrast, 0.0), 1.0);
     float sat = g_sat + 1.0;
+    vec3 sat_c = clamp(vec3(satr, satg, satb) + g_sat, 0.0, 2.0);
 
                    //  r    g    b  alpha ; alpha does nothing for our purposes
     mat4 color = mat4(wlr, rg,  rb,   0.0,              //red tint
@@ -886,9 +907,9 @@ void main()
                                 vec3(0.21264933049678802, 0.71516913175582890,  0.07218152284622192) ;
 
 
-    mat4 adjust = mat4((1.0 - sat) * coeff.x + sat, (1.0 - sat) * coeff.x, (1.0 - sat) * coeff.x, 1.0,
-                       (1.0 - sat) * coeff.y, (1.0 - sat) * coeff.y + sat, (1.0 - sat) * coeff.y, 1.0,
-                       (1.0 - sat) * coeff.z, (1.0 - sat) * coeff.z, (1.0 - sat) * coeff.z + sat, 1.0,
+    mat4 adjust = mat4((1.0 - sat_c.r) * coeff.x + sat, (1.0 - sat_c.r) * coeff.x, (1.0 - sat_c.r) * coeff.x, 1.0,
+                       (1.0 - sat_c.g) * coeff.y, (1.0 - sat_c.g) * coeff.y + sat, (1.0 - sat_c.g) * coeff.y, 1.0,
+                       (1.0 - sat_c.b) * coeff.z, (1.0 - sat_c.b) * coeff.z, (1.0 - sat_c.b) * coeff.z + sat, 1.0,
                         0.0, 0.0, 0.0, 1.0);
 
 
