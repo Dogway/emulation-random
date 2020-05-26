@@ -58,10 +58,10 @@
 #pragma parameter g_cntrst "Contrast" 0.0 -1.0 1.0 0.05
 #pragma parameter g_mid "Contrast Pivot" 0.5 0.0 1.0 0.01
 #pragma parameter wp_temperature "White Point" 6505.0 5005.0 12005.0 100.0
-#pragma parameter g_sat "Saturation" 0.0 -1.0 2.0 0.02
-#pragma parameter g_satr "Hue vs Sat Red" 0.0 -1.0 1.0 0.02
-#pragma parameter g_satg "Hue vs Sat Green" 0.0 -1.0 1.0 0.02
-#pragma parameter g_satb "Hue vs Sat Blue" 0.0 -1.0 1.0 0.02
+#pragma parameter g_sat "Saturation" 0.0 -1.0 2.0 0.01
+#pragma parameter g_satr "Hue vs Sat Red" 0.0 -1.0 1.0 0.01
+#pragma parameter g_satg "Hue vs Sat Green" 0.0 -1.0 1.0 0.01
+#pragma parameter g_satb "Hue vs Sat Blue" 0.0 -1.0 1.0 0.01
 #pragma parameter g_vibr "Dullness/Vibrance" 0.0 -1.0 1.0 0.05
 #pragma parameter g_lift "Black Level" 0.0 -0.5 0.5 0.01
 #pragma parameter blr "Black-Red Tint" 0.0 0.0 1.0 0.01
@@ -283,7 +283,7 @@ vec3 XYZ_to_RGB(vec3 XYZ, float CSPC){
    -1.53730857372283940,  1.875966310501098600, -0.204007431864738460,
    -0.49858659505844116,  0.041555050760507584,  1.057129383087158200);
 
-    // to DCI-P3
+    // to DCI-P3 -D65-
     const mat3x3 DCIP3 = mat3x3(
      1.7842102050781250, -0.83157867193222050,  0.04736841097474098,
     -0.6664471626281738,  1.76710486412048340, -0.10065787285566330,
@@ -308,7 +308,7 @@ vec3 RGB_to_XYZ(vec3 RGB, float CSPC){
     0.35758456587791443, 0.71516913175582890, 0.119194857776165010,
     0.18045382201671600, 0.07218152284622192, 0.950390160083770800);
 
-    // from DCI-P3
+    // from DCI-P3 -D65-
     const mat3x3 DCIP3 = mat3x3(
     0.48659050464630127, 0.22898375988006592, 0.00000000000000000,
     0.26566821336746216, 0.69173991680145260, 0.04511347413063049,
@@ -893,7 +893,7 @@ void main()
 // RGB Related Transforms
     vec4 screen = vec4(max(contrast, 0.0), 1.0);
     float sat = g_sat + 1.0;
-    vec3 sat_c = clamp(vec3(satr, satg, satb) + g_sat, 0.0, 2.0);
+    vec3 sat_c = clamp(vec3(satr, satg, satb) + sat, 0.0, 2.0);
 
                    //  r    g    b  alpha ; alpha does nothing for our purposes
     mat4 color = mat4(wlr, rg,  rb,   0.0,              //red tint
@@ -903,7 +903,7 @@ void main()
 
 
     vec3 coeff = (SPC == 2.0) ? vec3(0.24840137362480164, 0.67799961566925050,  0.03913172334432602) : \
-                 (SPC == 1.0) ? vec3(0.33465281128883360, 0.72159516811370850, -0.06274740397930145) : \
+                 (SPC == 1.0) ? vec3(0.22898375988006592, 0.69173991680145260,  0.07927616685628891) : \
                                 vec3(0.21264933049678802, 0.71516913175582890,  0.07218152284622192) ;
 
 
