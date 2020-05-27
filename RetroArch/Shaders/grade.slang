@@ -99,7 +99,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #pragma parameter g_signal_type "Signal Type (0:RGB 1:Composite)" 1.0 0.0 1.0 1.0
 #pragma parameter g_gamma_type "Signal Gamma Type (0:sRGB 1:SMPTE-C)" 1.0 0.0 1.0 1.0
 #pragma parameter g_crtgamut "Phosphor (1:NTSC-U 2:NTSC-J 3:PAL)" 2.0 -4.0 3.0 1.0
-#pragma parameter g_space_out "Diplay Color Space (0:sRGB 1:DCI 2:2020)" 0.0 0.0 2.0 1.0
+#pragma parameter g_space_out "Diplay Color Space (0:sRGB 1:DCI 2:2020 3:AdobeRGB)" 0.0 0.0 3.0 1.0
 #pragma parameter g_hue_degrees "Hue" 0.0 -360.0 360.0 1.0
 #pragma parameter g_I_SHIFT "I/U Shift" 0.0 -0.2 0.2 0.01
 #pragma parameter g_Q_SHIFT "Q/V Shift" 0.0 -0.2 0.2 0.01
@@ -206,9 +206,9 @@ vec3 XYZ_to_RGB(vec3 XYZ, float CSPC){
 
     // to DCI-P3 -D65-
     const mat3x3 DCIP3 = mat3x3(
-     1.7842102050781250, -0.83157867193222050,  0.04736841097474098,
-    -0.6664471626281738,  1.76710486412048340, -0.10065787285566330,
-    -0.2881578207015991,  0.023684212937951088, 1.26447343826293950);
+     2.49339652061462400, -0.82948720455169680,  0.035850685089826584,
+    -0.93134605884552000,  1.76266026496887200, -0.076182708144187930,
+    -0.40269458293914795,  0.023624641820788383, 0.957014024257659900);
 
     // to Rec.2020
     const mat3x3 rec2020 = mat3x3(
@@ -216,10 +216,14 @@ vec3 XYZ_to_RGB(vec3 XYZ, float CSPC){
     -0.35566213726997375,  1.61647748947143550, -0.042776308953762054,
     -0.25336012244224550,  0.01576850563287735,  0.942228555679321300);
 
+    // from AdobeRGB
+    const mat3x3 Adobe = mat3x3(
+     2.0415899753570557, -0.96924000978469850,  0.013439999893307686,
+    -0.5650100111961365,  1.87597000598907470, -0.118359997868537900,
+    -0.3447299897670746,  0.04156000167131424,  1.015169978141784700);
 
-   return (CSPC == 2.0) ? rec2020 * XYZ : (CSPC == 1.0) ? DCIP3 * XYZ : sRGB * XYZ;
+   return (CSPC == 3.0) ? Adobe * XYZ : (CSPC == 2.0) ? rec2020 * XYZ : (CSPC == 1.0) ? DCIP3 * XYZ : sRGB * XYZ;
 }
-
 
 vec3 RGB_to_XYZ(vec3 RGB, float CSPC){
 
@@ -233,7 +237,7 @@ vec3 RGB_to_XYZ(vec3 RGB, float CSPC){
     const mat3x3 DCIP3 = mat3x3(
     0.48659050464630127, 0.22898375988006592, 0.00000000000000000,
     0.26566821336746216, 0.69173991680145260, 0.04511347413063049,
-    0.19819043576717377, 0.07927616685628891, 1.0438029766082764);
+    0.19819043576717377, 0.07927616685628891, 1.04380297660827640);
 
     // from Rec.2020
     const mat3x3 rec2020 = mat3x3(
@@ -241,8 +245,15 @@ vec3 RGB_to_XYZ(vec3 RGB, float CSPC){
     0.15294560790061950, 0.67799961566925050, 0.04253686964511871,
     0.11785808950662613, 0.03913172334432602, 1.06084382534027100);
 
-   return (CSPC == 2.0) ? rec2020 * RGB : (CSPC == 1.0) ? DCIP3 * RGB : sRGB * RGB;
+    // from AdobeRGB
+    const mat3x3 Adobe = mat3x3(
+    0.57666999101638790, 0.2973400056362152, 0.02703000046312809,
+    0.18556000292301178, 0.6273599863052368, 0.07068999856710434,
+    0.18822999298572540, 0.0752900019288063, 0.9913399815559387);
+
+   return (CSPC == 3.0) ? Adobe * RGB : (CSPC == 2.0) ? rec2020 * RGB : (CSPC == 1.0) ? DCIP3 * RGB : sRGB * RGB;
 }
+
 
 vec3 XYZtoYxy(vec3 XYZ){
 
@@ -709,8 +720,7 @@ void main()
     vec3 gamma_fix = (gamma_type == 1.0) ? moncurve_r_f3(src, gamma_in + 0.077778, 0.099)  : \
                                            moncurve_r_f3(src, gamma_in,            0.055)  ;
 
-
-    vec3 col = YCC_r601(r709_YCC(gamma_fix));
+    vec3 col = gamma_fix;
 
 // make a YUV * NTSC Phosphor option too and a FCC * NTSC phosphor
     col = (crtgamut ==  3.0) ? r601_YUV(col*lum_exp)   : \
@@ -761,20 +771,20 @@ void main()
                                     YIQ_RGB(col)    ;
 
 // Gamut Clipping and Conversion to Rec.709
-    col = clamp(col, 0.0, 1.0);
-    col = YCC_r709(r601_YCC(col));
-    col = (signal == 0.0) ? gamma_fix : clamp(col, 0.0, 1.0);
+    col = r601_YCC(clamp(col, 0.0, 1.0));
+    col = (signal == 0.0) ? gamma_fix : YCC_r601(clamp(col, vec3(0.0, -.886,-.700), vec3(1.0, .886,.700)));
 
 
-//_   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   
+//_   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _
 // \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \
 
 
 
 // OETF - Opto-Electronic Transfer Function
-    vec3 imgColor = (SPC == 2.0) ? moncurve_f_f3(col,  2.20 + 0.022222, 0.0993) : \
-                    (SPC == 1.0) ? pow(col, vec3(      2.20 + 0.40))            : \
-                                   moncurve_f_f3(col,  2.20 + 0.20,     0.055)  ;
+    vec3 imgColor = (SPC == 3.0) ?     clamp(pow(col, vec3(563./256.)),     0., 1.) : \
+                    (SPC == 2.0) ? moncurve_f_f3(col,      2.20 + 0.022222, 0.0993) : \
+                    (SPC == 1.0) ?     clamp(pow(col, vec3(2.20 + 0.40)),   0., 1.) : \
+                                   moncurve_f_f3(col,      2.20 + 0.20,     0.055)  ;
 
 
 // Look LUT - (in sRGB space)
@@ -823,7 +833,8 @@ void main()
                       blr/20., blg/20., blb/20., 0.0);  //black tint
 
 
-    vec3 coeff = (SPC == 2.0) ? vec3(0.24840137362480164, 0.67799961566925050,  0.03913172334432602) : \
+    vec3 coeff = (SPC == 3.0) ? vec3(0.29734000563621520, 0.62735998630523680,  0.07529000192880630) : \
+                 (SPC == 2.0) ? vec3(0.24840137362480164, 0.67799961566925050,  0.03913172334432602) : \
                  (SPC == 1.0) ? vec3(0.22898375988006592, 0.69173991680145260,  0.07927616685628891) : \
                                 vec3(0.21264933049678802, 0.71516913175582890,  0.07218152284622192) ;
 
@@ -881,7 +892,8 @@ void main()
     LUT2_output = (global.LUT2_toggle == 0.0) ? adjusted : LUT2_output;
 
 // EOTF - Electro-Optical Transfer Function
-    vec3 TRC = (SPC == 2.0) ? moncurve_r_f3(LUT2_output,          2.20 + 0.022222, 0.0993) : \
+    vec3 TRC = (SPC == 3.0) ?     clamp(pow(LUT2_output, vec3(1./(563./256.))),    0., 1.) : \
+               (SPC == 2.0) ? moncurve_r_f3(LUT2_output,          2.20 + 0.022222, 0.0993) : \
                (SPC == 1.0) ?     clamp(pow(LUT2_output, vec3(1./(2.20 + 0.40))),  0., 1.) : \
                               moncurve_r_f3(LUT2_output,          2.20 + 0.20,     0.0550) ;
 
