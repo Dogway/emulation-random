@@ -839,9 +839,9 @@ void main()
                                 vec3(0.21264933049678802, 0.71516913175582890,  0.07218152284622192) ;
 
 
-    mat4 adjust = mat4((1.0 - sat_c.r) * coeff.x + sat, (1.0 - sat_c.r) * coeff.x, (1.0 - sat_c.r) * coeff.x, 1.0,
-                       (1.0 - sat_c.g) * coeff.y, (1.0 - sat_c.g) * coeff.y + sat, (1.0 - sat_c.g) * coeff.y, 1.0,
-                       (1.0 - sat_c.b) * coeff.z, (1.0 - sat_c.b) * coeff.z, (1.0 - sat_c.b) * coeff.z + sat, 1.0,
+    mat4 adjust = mat4((1.0 - sat_c.r) * coeff.x + sat, (1.0 - sat_c.r) * coeff.x,       (1.0 - sat_c.r) * coeff.x,       1.0,
+                       (1.0 - sat_c.g) * coeff.y,       (1.0 - sat_c.g) * coeff.y + sat, (1.0 - sat_c.g) * coeff.y,       1.0,
+                       (1.0 - sat_c.b) * coeff.z,       (1.0 - sat_c.b) * coeff.z,       (1.0 - sat_c.b) * coeff.z + sat, 1.0,
                         0.0, 0.0, 0.0, 1.0);
 
 
