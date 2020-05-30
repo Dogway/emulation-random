@@ -71,7 +71,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
     ##########################################################################################
     ###                                                                                    ###
     ###      PAL                                                                           ###
-    ###          Phosphor: EBU (#3) (or an EBU T3213 based CRT phosphor gamut)             ###
+    ###          Phosphor: EBU (#3)      (or an EBU T3213 based CRT phosphor gamut)        ###
     ###          WP: D65 (6504K)                                                           ###
     ###          TRC: 2.8 SMPTE-C Gamma                                                    ###
     ###          Saturation: -0.02                                                         ###
@@ -717,8 +717,9 @@ void main()
          src = (signal == 0.0) ? moncurve_f_f3(src * lum_exp, 2.40, 0.055) : \
                                  moncurve_f_f3(src,           2.40, 0.055) ;
 
-    vec3 gamma_fix = (gamma_type == 1.0) ? moncurve_r_f3(src, gamma_in + 0.077778, 0.099)  : \
-                                           moncurve_r_f3(src, gamma_in,            0.055)  ;
+    // SMPTE-C gamma at 2.222 approximates to a power law gamma of 2.0
+    vec3 gamma_fix = (gamma_type == 1.0) ? moncurve_r_f3(src, gamma_in + 0.0222, 0.099)  : \
+                                           moncurve_r_f3(src, gamma_in - 0.1222, 0.055)  ;
 
     vec3 col = gamma_fix;
 
