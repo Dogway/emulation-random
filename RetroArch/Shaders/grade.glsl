@@ -16,7 +16,7 @@
     ##########################################################################################
     ###                                                                                    ###
     ###      PAL                                                                           ###
-    ###          Phosphor: EBU (#3) (or an EBU T3213 based CRT phosphor gamut)             ###
+    ###          Phosphor: EBU (#3)      (or an EBU T3213 based CRT phosphor gamut)        ###
     ###          WP: D65 (6504K)                                                           ###
     ###          TRC: 2.8 SMPTE-C Gamma                                                    ###
     ###          Saturation: -0.02                                                         ###
