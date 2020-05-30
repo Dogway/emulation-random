@@ -758,7 +758,6 @@ void main()
 
 
 // Back to RGB
-
     col = (crtgamut ==  3.0) ?        col                                       : \
           (crtgamut ==  2.0) ?        col                                       : \
           (crtgamut == -3.0) ? TVtoPC(col, 1.0, UVmax.x, UVmax.y, 1.0, false)   : \
@@ -771,7 +770,7 @@ void main()
           (crtgamut == -4.0) ?      FCC_RGB(col)    : \
                                     YIQ_RGB(col)    ;
 
-// Gamut Clipping and Conversion to Rec.709
+// Gamut Limiting
     col = r601_YCC(clamp(col, 0.0, 1.0));
     col = (signal == 0.0) ? gamma_fix : YCC_r601(clamp(col, vec3(0.0, -.886,-.700), vec3(1.0, .886,.700)));
 
@@ -826,6 +825,7 @@ void main()
     vec4 screen = vec4(max(contrast, 0.0), 1.0);
     float sat = g_sat + 1.0;
     vec3 sat_c = clamp(vec3(satr, satg, satb) + sat, 0.0, 2.0);
+
 
                    //  r    g    b  alpha ; alpha does nothing for our purposes
     mat4 color = mat4(wlr, rg,  rb,   0.0,              //red tint
@@ -891,6 +891,7 @@ void main()
     vec3 LUT2_output = mixfix(color1_2, color2_2, mixer_2);
 
     LUT2_output = (global.LUT2_toggle == 0.0) ? adjusted : LUT2_output;
+
 
 // EOTF - Electro-Optical Transfer Function
     vec3 TRC = (SPC == 3.0) ?     clamp(pow(LUT2_output, vec3(1./(563./256.))),    0., 1.) : \
