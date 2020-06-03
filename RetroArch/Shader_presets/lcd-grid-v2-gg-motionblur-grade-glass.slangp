@@ -1,5 +1,5 @@
 shaders = "5"
-shader0 = "..\misc\convolution (mod from adaptive-sharpen).slang"
+shader0 = "..\misc\convolution (adaptive-sharpen mod).slang"
 filter_linear0 = "false"
 wrap_mode0 = "clamp_to_border"
 mipmap_input0 = "false"
