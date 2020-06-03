@@ -40,46 +40,47 @@
 */
 
 
-#pragma parameter g_gamma_in "CRT Gamma" 2.40 1.80 3.0 0.05
-#pragma parameter g_signal_type "Signal Type (0:RGB 1:Composite)" 1.0 0.0 1.0 1.0
-#pragma parameter g_gamma_type "Signal Gamma Type (0:sRGB 1:SMPTE-C)" 1.0 0.0 1.0 1.0
-#pragma parameter g_crtgamut "Phosphor (1:NTSC-U 2:NTSC-J 3:PAL)" 2.0 -4.0 3.0 1.0
-#pragma parameter g_space_out "Diplay Color Space (0:sRGB 1:DCI 2:2020 3:AdobeRGB)" 0.0 0.0 3.0 1.0
-#pragma parameter g_hue_degrees "Hue" 0.0 -360.0 360.0 1.0
-#pragma parameter g_I_SHIFT "I/U Shift" 0.0 -0.2 0.2 0.01
-#pragma parameter g_Q_SHIFT "Q/V Shift" 0.0 -0.2 0.2 0.01
-#pragma parameter g_I_MUL "I/U Multiplier" 1.0 0.0 2.0 0.01
-#pragma parameter g_Q_MUL "Q/V Multiplier" 1.0 0.0 2.0 0.01
-#pragma parameter g_lum_fix "Sega Luma Fix" 0.0 0.0 1.0 1.0
-#pragma parameter g_vignette "Vignette Toggle" 1.0 0.0 1.0 1.0
-#pragma parameter g_vstr "Vignette Strength" 40.0 0.0 50.0 1.0
-#pragma parameter g_vpower "Vignette Power" 0.20 0.0 0.5 0.01
-#pragma parameter g_lum "Brightness" 0.0 -0.5 1.0 0.01
-#pragma parameter g_cntrst "Contrast" 0.0 -1.0 1.0 0.05
-#pragma parameter g_mid "Contrast Pivot" 0.5 0.0 1.0 0.01
-#pragma parameter wp_temperature "White Point" 6505.0 5005.0 12005.0 100.0
-#pragma parameter g_sat "Saturation" 0.0 -1.0 2.0 0.01
-#pragma parameter g_satr "Hue vs Sat Red" 0.0 -1.0 1.0 0.01
-#pragma parameter g_satg "Hue vs Sat Green" 0.0 -1.0 1.0 0.01
-#pragma parameter g_satb "Hue vs Sat Blue" 0.0 -1.0 1.0 0.01
-#pragma parameter g_vibr "Dullness/Vibrance" 0.0 -1.0 1.0 0.05
-#pragma parameter g_lift "Black Level" 0.0 -0.5 0.5 0.01
-#pragma parameter blr "Black-Red Tint" 0.0 0.0 1.0 0.01
-#pragma parameter blg "Black-Green Tint" 0.0 0.0 1.0 0.01
-#pragma parameter blb "Black-Blue Tint" 0.0 0.0 1.0 0.01
-#pragma parameter wlr "White-Red Tint" 1.0 0.0 2.0 0.01
-#pragma parameter wlg "White-Green Tint" 1.0 0.0 2.0 0.01
-#pragma parameter wlb "White-Blue Tint" 1.0 0.0 2.0 0.01
-#pragma parameter rg "Red-Green Tint" 0.0 -1.0 1.0 0.005
-#pragma parameter rb "Red-Blue Tint" 0.0 -1.0 1.0 0.005
-#pragma parameter gr "Green-Red Tint" 0.0 -1.0 1.0 0.005
-#pragma parameter gb "Green-Blue Tint" 0.0 -1.0 1.0 0.005
-#pragma parameter br "Blue-Red Tint" 0.0 -1.0 1.0 0.005
-#pragma parameter bg "Blue-Green Tint" 0.0 -1.0 1.0 0.005
-#pragma parameter LUT_Size1 "LUT Size 1" 16.0 8.0 64.0 16.0
-#pragma parameter LUT1_toggle "LUT 1 Toggle" 0.0 0.0 1.0 1.0
-#pragma parameter LUT_Size2 "LUT Size 2" 64.0 0.0 64.0 16.0
-#pragma parameter LUT2_toggle "LUT 2 Toggle" 0.0 0.0 1.0 1.0
+#pragma parameter g_gamma_in     "CRT Gamma"                                           2.40 1.80 3.0 0.05
+#pragma parameter g_signal_type  "Signal Type (0:RGB 1:Composite)"                     1.0 0.0 1.0 1.0
+#pragma parameter g_gamma_type   "Signal Gamma Type (0:sRGB 1:SMPTE-C)"                1.0 0.0 1.0 1.0
+#pragma parameter g_crtgamut     "Phosphor (1:NTSC-U 2:NTSC-J 3:PAL)"                  2.0 -4.0 3.0 1.0
+#pragma parameter g_space_out    "Diplay Color Space (0:sRGB 1:DCI 2:2020 3:AdobeRGB)" 0.0 0.0 3.0 1.0
+
+#pragma parameter g_hue_degrees  "Hue"                  0.0 -360.0 360.0 1.0
+#pragma parameter g_I_SHIFT      "I/U Shift"            0.0 -0.2 0.2 0.01
+#pragma parameter g_Q_SHIFT      "Q/V Shift"            0.0 -0.2 0.2 0.01
+#pragma parameter g_I_MUL        "I/U Multiplier"       1.0  0.0 2.0 0.01
+#pragma parameter g_Q_MUL        "Q/V Multiplier"       1.0  0.0 2.0 0.01
+#pragma parameter g_lum_fix      "Sega Luma Fix"        0.0  0.0 1.0 1.0
+#pragma parameter g_vignette     "Vignette Toggle"      1.0  0.0 1.0 1.0
+#pragma parameter g_vstr         "Vignette Strength"    40.0 0.0 50.0 1.0
+#pragma parameter g_vpower       "Vignette Power"       0.20 0.0 0.5 0.01
+#pragma parameter g_lum          "Brightness"           0.0 -0.5 1.0 0.01
+#pragma parameter g_cntrst       "Contrast"             0.0 -1.0 1.0 0.05
+#pragma parameter g_mid          "Contrast Pivot"       0.5  0.0 1.0 0.01
+#pragma parameter wp_temperature "White Point"          6505.0 5005.0 12005.0 100.0
+#pragma parameter g_sat          "Saturation"           0.0 -1.0 2.0 0.01
+#pragma parameter g_satr         "Hue vs Sat Red"       0.0 -1.0 1.0 0.01
+#pragma parameter g_satg         "Hue vs Sat Green"     0.0 -1.0 1.0 0.01
+#pragma parameter g_satb         "Hue vs Sat Blue"      0.0 -1.0 1.0 0.01
+#pragma parameter g_vibr         "Dullness/Vibrance"    0.0 -1.0 1.0 0.05
+#pragma parameter g_lift         "Black Level"          0.0 -0.5 0.5 0.01
+#pragma parameter blr            "Black-Red Tint"       0.0  0.0 1.0 0.01
+#pragma parameter blg            "Black-Green Tint"     0.0  0.0 1.0 0.01
+#pragma parameter blb            "Black-Blue Tint"      0.0  0.0 1.0 0.01
+#pragma parameter wlr            "White-Red Tint"       1.0  0.0 2.0 0.01
+#pragma parameter wlg            "White-Green Tint"     1.0  0.0 2.0 0.01
+#pragma parameter wlb            "White-Blue Tint"      1.0  0.0 2.0 0.01
+#pragma parameter rg             "Red-Green Tint"       0.0 -1.0 1.0 0.005
+#pragma parameter rb             "Red-Blue Tint"        0.0 -1.0 1.0 0.005
+#pragma parameter gr             "Green-Red Tint"       0.0 -1.0 1.0 0.005
+#pragma parameter gb             "Green-Blue Tint"      0.0 -1.0 1.0 0.005
+#pragma parameter br             "Blue-Red Tint"        0.0 -1.0 1.0 0.005
+#pragma parameter bg             "Blue-Green Tint"      0.0 -1.0 1.0 0.005
+#pragma parameter LUT_Size1      "LUT Size 1"           16.0 8.0 64.0 16.0
+#pragma parameter LUT1_toggle    "LUT 1 Toggle"         0.0  0.0 1.0 1.0
+#pragma parameter LUT_Size2      "LUT Size 2"           64.0 0.0 64.0 16.0
+#pragma parameter LUT2_toggle    "LUT 2 Toggle"         0.0  0.0 1.0 1.0
 
 #define M_PI            3.1415926535897932384626433832795
 #define SPC             g_space_out
