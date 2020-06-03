@@ -6,10 +6,8 @@ layout(push_constant) uniform Push
 	vec4 OriginalSize;
 	vec4 OutputSize;
 	uint FrameCount;
-	float CURVE_HEIGHT;
 } params;
 
-#pragma parameter CURVE_HEIGHT "AS Sharpness" 0.8 0.1 2.0 0.1
 
 layout(std140, set = 0, binding = 0) uniform UBO
 {
@@ -43,25 +41,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 // Adaptive sharpen - version 2015-05-15 - (requires ps >= 3.0)
 // Tuned for use post resize, EXPECTS FULL RANGE GAMMA LIGHT
 
-#define VIDEO_LEVEL_OUT 0.0
 
-#define curve_height    params.CURVE_HEIGHT         // Main sharpening strength, POSITIVE VALUE ONLY!
-                                             // 0.3 <-> 1.5 is a reasonable range of values
-
-#define video_level_out VIDEO_LEVEL_OUT      // True to preserve BTB & WTW (minor summation error)
-                                             // Normally it should be set to false
-
-// Defined values under this row are "optimal" DO NOT CHANGE IF YOU DO NOT KNOW WHAT YOU ARE DOING!
-
-#define curveslope      (curve_height*1.5)   // Sharpening curve slope, edge region
-#define D_overshoot     0.016                // Max dark overshoot before max compression
-#define D_comp_ratio    0.250                // Max compression ratio, dark overshoot (1/0.25=4x)
-#define L_overshoot     0.004                // Max light overshoot before max compression
-#define L_comp_ratio    0.167                // Max compression ratio, light overshoot (1/0.167=6x)
-#define max_scale_lim   10.0                 // Abs change before max compression (1/10=±10%)
-
-// Colour to greyscale, fast approx gamma
-float CtG(vec3 RGB) { return  sqrt( (1.0/3.0)*((RGB*RGB).r + (RGB*RGB).g + (RGB*RGB).b) ); }
 
 #pragma stage vertex
 layout(location = 0) in vec4 Position;
