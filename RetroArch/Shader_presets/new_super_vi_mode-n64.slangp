@@ -1,33 +1,48 @@
 // New Super VI Mode for N64 by Dogway
 
 // Removes polygon jaggies in a pleasant manner
+// Place in the "presets" folder
 
 
-shaders = 5
+shaders = 6
 
 shader0 = ../blurs/removegrain22.slang
 filter_linear0 = true
 scale_type0 = source
-scale_x0 = 2.0
-scale_y0 = 2.0
+scale_x0 = 1.0
+scale_y0 = 1.0
 
-shader1 = shaders/nnedi3-nns16-win8x4-pass1-rgb.slang
+shader1 = ../anti-aliasing/shaders/advanced-aa.slang
 filter_linear1 = true
-scale_type1 = absolute
-scale_x1 = 640
-scale_y1 = 640
+scale_type1 = source
+scale_x1 = 1.0
+scale_y1 = 1.0
 
-shader2 = shaders/nnedi3-nns16-win8x4-pass2-rgb.slang
-filter_linear2 = false
+shader2 = ../nnedi3/shaders/nnedi3-nns16-win8x4-pass1-rgb.slang
+filter_linear2 = true
 scale_type2 = source
-scale_x2 = 2.0
-scale_y2 = 1.0
+scale_x2 = 1.0
+scale_y2 = 2.0
 
-shader3 = shaders/jinc2-cshift-rgb.slang
+shader3 = ../nnedi3/shaders/nnedi3-nns16-win8x4-pass2-rgb.slang
 filter_linear3 = false
 scale_type3 = source
-scale_x3 = 1.0
+scale_x3 = 2.0
 scale_y3 = 1.0
 
-shader4 = ../windowed/shaders/jinc2.slang
+shader4 = ../nnedi3/shaders/jinc2-cshift-rgb.slang
 filter_linear4 = false
+scale_type4 = source
+scale_x4 = 1.0
+scale_y4 = 1.0
+
+shader5 = ../windowed/shaders/jinc2.slang
+filter_linear5 = false
+
+
+parameters = "AA_RESOLUTION_X;AA_RESOLUTION_Y;JINC2_WINDOW_SINC;JINC2_SINC;JINC2_AR_STRENGTH"
+AA_RESOLUTION_X = "0.000000"
+AA_RESOLUTION_Y = "0.000000"
+JINC2_WINDOW_SINC = "0.350000"
+JINC2_SINC = "0.800000"
+JINC2_AR_STRENGTH = "0.900000"
