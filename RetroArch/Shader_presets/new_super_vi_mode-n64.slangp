@@ -12,8 +12,11 @@ scale_type0 = source
 scale_x0 = 1.0
 scale_y0 = 1.0
 
-shader1 = ../anti-aliasing/shaders/advanced-aa.slang
-filter_linear1 = true
+// Smears too much, requires a better antialiaser like SangNom2
+// shader1 = ../anti-aliasing/shaders/advanced-aa.slang
+// filter_linear1 = true
+shader1 = ../stock.slang
+filter_linear1 = false
 scale_type1 = source
 scale_x1 = 1.0
 scale_y1 = 1.0
