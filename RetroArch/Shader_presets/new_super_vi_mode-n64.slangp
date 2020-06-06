@@ -5,6 +5,7 @@
    Place in the "presets" folder
 
    Requirements:
+        -N64 Res: 640x480
         -VI Filter: Unfiltered
         -RA Video Smooth: Disabled
 */
