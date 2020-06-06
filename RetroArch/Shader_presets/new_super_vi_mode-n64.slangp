@@ -1,7 +1,14 @@
 // New Super VI Mode for N64 by Dogway
 
-// Removes polygon jaggies in a pleasant manner
-// Place in the "presets" folder
+/*
+   Remove polygon jaggies in a pleasant manner
+   Place in the "presets" folder
+
+   Requirements:
+        -VI Filter: Unfiltered
+        -RA Video Smooth: Disabled
+*/
+
 
 
 shaders = 6
