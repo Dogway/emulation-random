@@ -928,8 +928,8 @@ void main()
 
     screen = clamp(rolled_gain_v4(screen, lum * 2.0), 0.0, 1.0);
     screen = color * screen;
-    float sat_msk = (vibr > 0.0) ? clamp(1.0 -    (SatMask(screen.r, screen.g, screen.b) * vibr),            0.0, 1.0) : \
-                                   clamp(1.0 - abs(SatMask(screen.r, screen.g, screen.b) - 1.0) * abs(vibr), 0.0, 1.0) ;
+    float sat_msk = (vibr < 0.0) ? clamp(1.0 - abs(SatMask(screen.r, screen.g, screen.b) - 1.0) * abs(vibr), 0.0, 1.0) : \
+                                   clamp(1.0 -    (SatMask(screen.r, screen.g, screen.b) * vibr),            0.0, 1.0) ;
 
     screen = mixfix_v4(screen, clamp(adjust * screen, 0.0, 1.0), sat_msk);
 
