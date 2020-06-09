@@ -70,24 +70,24 @@ layout(std140, set = 0, binding = 0) uniform UBO
     ######################################...PRESETS...#######################################
     ##########################################################################################
     ###                                                                                    ###
-    ###      PAL                                                                           ###
-    ###          Phosphor: EBU (#3)      (or an EBU T3213 based CRT phosphor gamut)        ###
-    ###          WP: D65 (6504K)                                                           ###
-    ###          TRC: 2.8 SMPTE-C Gamma                                                    ###
-    ###          Saturation: -0.02                                                         ###
+    ###    PAL                                                                             ###
+    ###        Phosphor: EBU (#3)            (or an EBU T3213 based CRT phosphor gamut)    ###
+    ###        WP: D65 (6504K)               (in practice more like ~7500K)                ###
+    ###        TRC: 2.8 SMPTE-C Gamma                                                      ###
+    ###        Saturation: -0.02                                                           ###
     ###                                                                                    ###
-    ###      NTSC-U                                                                        ###
-    ###          Phosphor: SMPTE-C (#1)  (or a SMPTE-C based CRT phosphor gamut)           ###
-    ###          WP: D65 (6504K)         (in practice more like ~8000K)                    ###
-    ###          TRC: 2.22 SMPTE-C Gamma (in practice more like 2.35-2.55)                 ###
+    ###    NTSC-U                                                                          ###
+    ###        Phosphor: P22/SMPTE-C (#1 #-1)(SMPTE-C for > 1994 CRTs or a custom SMPTE-C) ###
+    ###        WP: D65 (6504K)               (in practice more like ~7500K)                ###
+    ###        TRC: 2.22 SMPTE-C Gamma       (in practice more like 2.35-2.55)             ###
     ###                                                                                    ###
-    ###      NTSC-J (Default)                                                              ###
-    ###          Phosphor: NTSC-J (#2)   (or a NTSC-J based CRT phosphor gamut)            ###
-    ###          WP: D93 (9305K)         (or keep D65 and set "I/U Shift = -0.04")         ###
-    ###          TRC: 2.22 SMPTE-C Gamma (in practice more like 2.35-2.55)                 ###
+    ###    NTSC-J (Default)                                                                ###
+    ###        Phosphor: NTSC-J (#2)         (or a NTSC-J based CRT phosphor gamut)        ###
+    ###        WP: CCT (0.281 0.311) (8942K) (or keep D65 and set "I/U Shift = -0.04")     ###
+    ###        TRC: 2.22 SMPTE-C Gamma       (in practice more like 2.35-2.55)             ###
     ###                                                                                    ###
-    ###      *Despite the standard of 2.22, a more faithful approximation to CRT...        ###
-    ###       ...is to use a gamma (SMPTE-C type) with a value of 2.35-2.55.               ###
+    ###    *Despite the standard of 2.22, a more faithful approximation to CRT...          ###
+    ###     ...is to use a gamma (SMPTE-C type) with a value of 2.35-2.55.                 ###
     ###                                                                                    ###
     ###                                                                                    ###
     ##########################################################################################
@@ -282,8 +282,8 @@ vec3 YxytoXYZ(vec3 Yxy){
 // Inspired itself by Tanner Helland's work
 //    >> http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
 //
-// PAL: D65  NTSC-U: D65  NTSC-J: D93  NTSC-FCC: C
-// PAL: 6504 NTSC-U: 6504 NTSC-J: 9305 NTSC-FCC: 6779.65 *correlated from (0.310, 0.316)
+// PAL: D65  NTSC-U: D65  NTSC-J: CCT NTSC-J NTSC-FCC: C
+// PAL: 6504 NTSC-U: 6504 NTSC-J: 8942K      NTSC-FCC: 6779.65 *Correlated from (0.310, 0.316)
 
 vec3 wp_adjust(float temperature){
 
@@ -443,7 +443,7 @@ vec4 mixfix_v4(vec4 a, vec4 b, float c)
 //---------------------- Range Expansion/Compression -------------------
 
 
-//  to Studio Swing/Broadcast Safe/SMPTE legal
+//  to Studio Swing/Broadcast Safe/SMPTE legal/Limited Range
 vec3 PCtoTV(vec3 col, float luma_swing, float Umax, float Vmax, float max_swing, bool rgb_in)
 {
    col *= 255.;
@@ -457,7 +457,7 @@ vec3 PCtoTV(vec3 col, float luma_swing, float Umax, float Vmax, float max_swing,
 }
 
 
-//  to Full Swing
+//  to Full Swing/Full Range
 vec3 TVtoPC(vec3 col, float luma_swing, float Umax, float Vmax, float max_swing, bool rgb_in)
 {
    col *= 255.;
@@ -667,8 +667,7 @@ mat3(
  0.31906270980834960, 0.67800831794738770, 0.153833806514740000,
  0.24766337871551514, 0.11184798181056976, 1.238316893577575700);
 
-// SMPTE RP 145-1994 (SMPTE-C), 170M-1999
-// SMPTE-C - Measured Average Phosphor
+// SMPTE-C - Measured Average Phosphor (1979-1994)
 const mat3 P22_transform =
 mat3(
  0.4665636420249939, 0.25661000609397890, 0.005832045804709196,
@@ -861,8 +860,8 @@ void main()
     if (crtgamut == -4.0) { m_in = NTSC_FCC_transform;          } else
     if (crtgamut == -3.0) { m_in = Conrac_transform;            } else
     if (crtgamut == -2.0) { m_in = Sony20_20_transform;         } else
-    if (crtgamut == -1.0) { m_in = P22_transform;               } else
-    if (crtgamut ==  1.0) { m_in = SMPTE_transform;             } else
+    if (crtgamut == -1.0) { m_in = SMPTE_transform;             } else
+    if (crtgamut ==  1.0) { m_in = P22_transform;               } else
     if (crtgamut ==  2.0) { m_in = NTSC_J_transform;            } else
     if (crtgamut ==  3.0) { m_in = EBU_transform;               }
 
