@@ -17,7 +17,7 @@
     ###                                                                                    ###
     ###    PAL                                                                             ###
     ###        Phosphor: EBU (#3)            (or an EBU T3213 based CRT phosphor gamut)    ###
-    ###        WP: D65 (6504K)               (in practice more like ~7500K)                ###
+    ###        WP: D65 (6489K)               (in practice more like ~7500K)                ###
     ###        TRC: 2.8 SMPTE-C Gamma                                                      ###
     ###        Saturation: -0.02                                                           ###
     ###                                                                                    ###
@@ -361,8 +361,9 @@ vec3 YxytoXYZ(vec3 Yxy){
 // Inspired itself by Tanner Helland's work
 //    >> http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
 //
-// PAL: D65  NTSC-U: D65  NTSC-J: CCT NTSC-J NTSC-FCC: C
-// PAL: 6504 NTSC-U: 6504 NTSC-J: 8942K      NTSC-FCC: 6779.65 *Correlated from (0.310, 0.316)
+// PAL: D65      NTSC-U: D65      NTSC-J: CCT NTSC-J NTSC-FCC: C
+// PAL: 6489K    NTSC-U: 6504K    NTSC-J: 8942K      NTSC-FCC: 6780K
+// 0.313 0.329   0.3127 0.3290    0.281 0.311        0.310, 0.316
 
 vec3 wp_adjust(float temperature){
 
@@ -713,9 +714,15 @@ mat3(
 
 const mat3 D93_D65_Brad =
 mat3(
- 1.047182083129882800, 0.019761435687541960, -0.047600898891687390,
- 0.025015428662300110, 0.998820304870605500, -0.016028285026550293,
--0.008994228206574917, 0.014804697595536709,  0.765806019306182900);
+ 1.074299335479736300, 0.03572637960314751, -0.042645290493965150,
+ 0.050180613994598390, 0.97543668746948240, -0.015837108716368675,
+-0.006000521592795849, 0.00851820595562458,  0.827671706676483200);
+
+const mat3 PAL_D65_Brad =
+mat3(
+ 0.99919301271438600000, -0.00044559128582477570, 0.00027090078219771385,
+-0.00065565120894461870,  1.00049483776092530000, 0.00011852011084556580,
+ 1.3149343430995941e-05,  3.4691765904426575e-06, 1.00069344043731700000);
 
 
 //----------------------------------------------------------------------
@@ -948,6 +955,7 @@ void main()
                  (crtgamut == -3.0) ? (m_in*screen.rgb)*C_D65_Brad    : \
                  (crtgamut == -2.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
                  (crtgamut ==  2.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
+                 (crtgamut ==  3.0) ? (m_in*screen.rgb)*PAL_D65_Brad  : \
                                        m_in*screen.rgb;
 
 // White Point Mapping
