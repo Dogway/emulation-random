@@ -670,9 +670,9 @@ mat3(
 // Sony Trinitron KV-20M20
 const mat3 Sony20_20_transform =
 mat3(
- 0.38629359006881714, 0.21014373004436493, 0.021632442250847816,
- 0.31906270980834960, 0.67800831794738770, 0.153833806514740000,
- 0.24766337871551514, 0.11184798181056976, 1.238316893577575700);
+ 0.33989441394805910, 0.18490256369113922, 0.019034087657928467,
+ 0.33497872948646545, 0.71182984113693240, 0.149544075131416320,
+ 0.22866378724575043, 0.10326752066612244, 1.143318891525268600);
 
 // SMPTE-C - Measured Average Phosphor (1979-1994)
 const mat3 P22_transform =
@@ -698,12 +698,12 @@ mat3(
  0.24496731162071228, 0.10153251141309738, 1.26512730121612550);
 
 // ITU-R BT.470/601 (B/G)
-// EBU Tech.3213 PAL - Standard Phosphor
+// EBU Tech.3213 PAL - Standard Phosphor for Studio Monitors
 const mat3 EBU_transform =
 mat3(
- 0.43057379126548767, 0.22201462090015410, 0.020183145999908447,
- 0.34154993295669556, 0.70665508508682250, 0.129553422331810000,
- 0.17832535505294800, 0.07133013755083084, 0.939180195331573500);
+ 0.43194326758384705, 0.22272075712680817, 0.020247340202331543,
+ 0.34123489260673523, 0.70600330829620360, 0.129433929920196530,
+ 0.17818950116634370, 0.07127580046653748, 0.938464701175689700);
 
 
 
@@ -867,8 +867,8 @@ void main()
     if (crtgamut == -4.0) { m_in = NTSC_FCC_transform;          } else
     if (crtgamut == -3.0) { m_in = Conrac_transform;            } else
     if (crtgamut == -2.0) { m_in = Sony20_20_transform;         } else
-    if (crtgamut == -1.0) { m_in = SMPTE_transform;             } else
-    if (crtgamut ==  1.0) { m_in = P22_transform;               } else
+    if (crtgamut == -1.0) { m_in = P22_transform;               } else
+    if (crtgamut ==  1.0) { m_in = SMPTE_transform;             } else
     if (crtgamut ==  2.0) { m_in = NTSC_J_transform;            } else
     if (crtgamut ==  3.0) { m_in = EBU_transform;               }
 
