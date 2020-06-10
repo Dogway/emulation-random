@@ -32,8 +32,8 @@
 #pragma parameter PAL "0:NTSC 1:PAL" 0.0 0.0 1.0 1.0
 #pragma parameter CH_SPC "YIQ/YUV" 0.0 0.0 1.0 1.0
 #pragma parameter Y_RES "Y Mhz" 4.2 2.5 6.0 0.01
-#pragma parameter I_RES "I/U Mhz" 1.3 0.4 4.0 0.05
-#pragma parameter Q_RES "Q/V Mhz" 0.4 0.4 4.0 0.05
+#pragma parameter I_RES "I/U Mhz" 1.5 0.4 4.0 0.05
+#pragma parameter Q_RES "Q/V Mhz" 0.5 0.4 4.0 0.05
 #pragma parameter I_SHIFT "I/U Shift" 0.0 -1.0 1.0 0.02
 #pragma parameter Q_SHIFT "Q/V Shift" 0.0 -1.0 1.0 0.02
 #pragma parameter Y_MUL "Y Multiplier" 1.0 0.0 2.0 0.1
@@ -278,8 +278,8 @@ void main()
     }
     if (S_PRESET == 4.0)
     {
-        max_col_res_I = (1.30 / 2.0) * 52.6 ms * 315.0/90.0 MHz;
-        max_col_res_Q = (1.30 / 2.0) * 52.6 ms * 315.0/90.0 MHz;
+        max_col_res_I = (1.50 / 2.0) * 52.6 ms * 315.0/90.0 MHz;
+        max_col_res_Q = (0.50 / 2.0) * 52.6 ms * 315.0/90.0 MHz;
         max_lum_res = 52.6 ms * 369.6/90.0 MHz;
     }
     if (S_PRESET == 5.0)
