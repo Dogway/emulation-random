@@ -867,8 +867,8 @@ void main()
     if (crtgamut == -4.0) { m_in = NTSC_FCC_transform;          } else
     if (crtgamut == -3.0) { m_in = Conrac_transform;            } else
     if (crtgamut == -2.0) { m_in = Sony20_20_transform;         } else
-    if (crtgamut == -1.0) { m_in = P22_transform;               } else
-    if (crtgamut ==  1.0) { m_in = SMPTE_transform;             } else
+    if (crtgamut == -1.0) { m_in = SMPTE_transform;             } else
+    if (crtgamut ==  1.0) { m_in = P22_transform;               } else
     if (crtgamut ==  2.0) { m_in = NTSC_J_transform;            } else
     if (crtgamut ==  3.0) { m_in = EBU_transform;               }
 
