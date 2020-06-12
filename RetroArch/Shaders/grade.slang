@@ -77,13 +77,13 @@ layout(std140, set = 0, binding = 0) uniform UBO
     ###        Saturation: -0.02                                                           ###
     ###                                                                                    ###
     ###    NTSC-U                                                                          ###
-    ###        Phosphor: P22/SMPTE-C (#1 #-1)(SMPTE-C for > 1994 CRTs or a custom SMPTE-C) ###
+    ###        Phosphor: P22/SMPTE-C (#1 #-1)(or a SMPTE-C based CRT phosphor gamut)       ###
     ###        WP: D65 (6504K)               (in practice more like ~7500K)                ###
     ###        TRC: 2.22 SMPTE-C Gamma       (in practice more like 2.35-2.55)             ###
     ###                                                                                    ###
     ###    NTSC-J (Default)                                                                ###
     ###        Phosphor: NTSC-J (#2)         (or a NTSC-J based CRT phosphor gamut)        ###
-    ###        WP: CCT (0.281 0.311) (8942K) (or keep D65 and set "I/U Shift = -0.04")     ###
+    ###        WP: 9300K+27MPCD (8942K)      (CCT from x:0.281 y:0.311)                    ###
     ###        TRC: 2.22 SMPTE-C Gamma       (in practice more like 2.35-2.55)             ###
     ###                                                                                    ###
     ###    *Despite the standard of 2.22, a more faithful approximation to CRT...          ###
@@ -622,6 +622,22 @@ vec3 YCC_r709(vec3 YUV)
  }
 
 
+//------------------------- IPT --------------------------
+
+
+const mat3 LMS =
+mat3(
+ 0.4002, 0.7076, -0.0808,
+-0.2263, 1.1653,  0.0457,
+ 0.0,       0.0,  0.9182);
+
+const mat3 IPT =
+mat3(
+ 0.4000,  0.4000, 0.2000,
+ 4.4550, -4.8510, 0.3960,
+ 0.8056, 0.3572, -1.1628);
+
+
 
 //*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 
@@ -831,8 +847,6 @@ void main()
 // RGB Related Transforms
     vec4 screen = vec4(max(contrast, 0.0), 1.0);
     float sat = g_sat + 1.0;
-    vec3 sat_c = clamp(vec3(satr, satg, satb) + sat, 0.0, 2.0);
-
 
                    //  r    g    b  alpha ; alpha does nothing for our purposes
     mat4 color = mat4(wlr, rg,  rb,   0.0,              //red tint
@@ -847,18 +861,42 @@ void main()
                                 vec3(0.21264933049678802, 0.71516913175582890,  0.07218152284622192) ;
 
 
-    mat4 adjust = mat4((1.0 - sat_c.r) * coeff.x + sat, (1.0 - sat_c.r) * coeff.x,       (1.0 - sat_c.r) * coeff.x,       1.0,
-                       (1.0 - sat_c.g) * coeff.y,       (1.0 - sat_c.g) * coeff.y + sat, (1.0 - sat_c.g) * coeff.y,       1.0,
-                       (1.0 - sat_c.b) * coeff.z,       (1.0 - sat_c.b) * coeff.z,       (1.0 - sat_c.b) * coeff.z + sat, 1.0,
-                        0.0, 0.0, 0.0, 1.0);
+    mat3 adjust = mat3((1.0 - sat) * coeff.x + sat, (1.0 - sat) * coeff.x,       (1.0 - sat) * coeff.x,
+                       (1.0 - sat) * coeff.y,       (1.0 - sat) * coeff.y + sat, (1.0 - sat) * coeff.y,
+                       (1.0 - sat) * coeff.z,       (1.0 - sat) * coeff.z,       (1.0 - sat) * coeff.z + sat);
 
 
     screen = clamp(rolled_gain_v4(screen, lum * 2.0), 0.0, 1.0);
     screen = color * screen;
-    float sat_msk = (vibr < 0.0) ? clamp(1.0 - abs(SatMask(screen.r, screen.g, screen.b) - 1.0) * abs(vibr), 0.0, 1.0) : \
-                                   clamp(1.0 -    (SatMask(screen.r, screen.g, screen.b) * vibr),            0.0, 1.0) ;
 
-    screen = mixfix_v4(screen, clamp(adjust * screen, 0.0, 1.0), sat_msk);
+//  HUE vs SAT
+    vec3 src_h = RGB_to_XYZ(screen.rgb, SPC) * LMS;
+    src_h.x = src_h.x >= 0.0 ? pow(src_h.x, 0.43) : -pow(-src_h.x, 0.43);
+    src_h.y = src_h.y >= 0.0 ? pow(src_h.y, 0.43) : -pow(-src_h.y, 0.43);
+    src_h.z = src_h.z >= 0.0 ? pow(src_h.z, 0.43) : -pow(-src_h.z, 0.43);
+
+    src_h.xyz *= IPT;
+
+    float hue_at = atan(src_h.z, src_h.y);
+    chroma = sqrt(src_h.z * src_h.z + src_h.y * src_h.y);
+
+    //  red -40º green 230º blue 100º
+    float hue_radians_r = -40.0 * (M_PI / 180.0);
+    float hue_r = clamp(chroma * cos(hue_at + hue_radians_r) * 2., 0.0, 1.0);
+
+    float hue_radians_g = 230.0 * (M_PI / 180.0);
+    float hue_g = clamp(chroma * cos(hue_at + hue_radians_g) * 2., 0.0, 1.0);
+
+    float hue_radians_b = 100.0 * (M_PI / 180.0);
+    float hue_b = clamp(chroma * cos(hue_at + hue_radians_b) * 2., 0.0, 1.0);
+
+    float msk = dot(vec3(hue_r, hue_g, hue_b), vec3(satr, satg, satb)*(-1.));
+    src_h = mixfix(screen.rgb, vec3(dot(coeff, screen.rgb)), msk);
+
+    float sat_msk = (vibr < 0.0) ? clamp(1.0 - abs(SatMask(src_h.x, src_h.y, src_h.z) - 1.0) * abs(vibr), 0.0, 1.0) : \
+                                   clamp(1.0 -    (SatMask(src_h.x, src_h.y, src_h.z) * vibr),            0.0, 1.0) ;
+
+    src_h = mixfix(src_h, clamp(adjust * src_h, 0.0, 1.0), sat_msk);
 
 
 // CRT Phosphor Gamut
@@ -872,18 +910,18 @@ void main()
     if (crtgamut ==  2.0) { m_in = NTSC_J_transform;            } else
     if (crtgamut ==  3.0) { m_in = EBU_transform;               }
 
-    vec3 gamut = (crtgamut == -4.0) ? (m_in*screen.rgb)*C_D65_Brad    : \
-                 (crtgamut == -3.0) ? (m_in*screen.rgb)*C_D65_Brad    : \
-                 (crtgamut == -2.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
-                 (crtgamut ==  2.0) ? (m_in*screen.rgb)*D93_D65_Brad  : \
-                 (crtgamut ==  3.0) ? (m_in*screen.rgb)*PAL_D65_Brad  : \
-                                       m_in*screen.rgb;
+    vec3 gamut = (crtgamut == -4.0) ? (m_in*src_h)*C_D65_Brad    : \
+                 (crtgamut == -3.0) ? (m_in*src_h)*C_D65_Brad    : \
+                 (crtgamut == -2.0) ? (m_in*src_h)*D93_D65_Brad  : \
+                 (crtgamut ==  2.0) ? (m_in*src_h)*D93_D65_Brad  : \
+                 (crtgamut ==  3.0) ? (m_in*src_h)*PAL_D65_Brad  : \
+                                       m_in*src_h;
 
 // White Point Mapping
     vec3 wp       = RGB_to_XYZ(wp_adjust(global.wp_temperature), 0.);
-    vec3 base     = (crtgamut == 0.0) ? RGB_to_XYZ(screen.rgb, SPC)      : gamut;
+    vec3 base     = (crtgamut == 0.0) ? RGB_to_XYZ(src_h, SPC)      : gamut;
          base     = XYZtoYxy(base);
-    vec3 adjusted = (crtgamut == 0.0) ? RGB_to_XYZ(screen.rgb, SPC) * wp : gamut * wp;
+    vec3 adjusted = (crtgamut == 0.0) ? RGB_to_XYZ(src_h, SPC) * wp : gamut * wp;
          adjusted = XYZtoYxy(adjusted);
          adjusted = clamp(XYZ_to_RGB(YxytoXYZ(vec3(base.x , adjusted.y , adjusted.z)), SPC), 0.0, 1.0);
 
