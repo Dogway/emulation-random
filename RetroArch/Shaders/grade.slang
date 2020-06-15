@@ -58,7 +58,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
    > Ubershader grouping some monolithic color related shaders:
     ::color-mangler (hunterk), ntsc color tuning knobs (Doriphor), white_point (hunterk, Dogway), lut_x2 (Guest, Dr. Venom).
    > and the addition of:
-    ::analogue color emulation, phosphor gamut, color space + TRC support, vibrance, vignette (shared by Syh), black level, rolled gain and sigmoidal contrast.
+    ::analogue color emulation, phosphor gamut, color space + TRC support, vibrance, HUE vs SAT, vignette (shared by Syh), black level, rolled gain and sigmoidal contrast.
 
    Author: Dogway
    License: Public domain
@@ -115,10 +115,10 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #pragma parameter g_mid          "Contrast Pivot"       0.5  0.0 1.0 0.01
 #pragma parameter wp_temperature "White Point"          6505.0 5005.0 12005.0 100.0
 #pragma parameter g_sat          "Saturation"           0.0 -1.0 2.0 0.01
+#pragma parameter g_vibr         "Dullness/Vibrance"    0.0 -1.0 1.0 0.05
 #pragma parameter g_satr         "Hue vs Sat Red"       0.0 -1.0 1.0 0.01
 #pragma parameter g_satg         "Hue vs Sat Green"     0.0 -1.0 1.0 0.01
 #pragma parameter g_satb         "Hue vs Sat Blue"      0.0 -1.0 1.0 0.01
-#pragma parameter g_vibr         "Dullness/Vibrance"    0.0 -1.0 1.0 0.05
 #pragma parameter g_lift         "Black Level"          0.0 -0.5 0.5 0.01
 #pragma parameter blr            "Black-Red Tint"       0.0  0.0 1.0 0.01
 #pragma parameter blg            "Black-Green Tint"     0.0  0.0 1.0 0.01
@@ -153,10 +153,10 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #define vstr            params.g_vstr
 #define vpower          params.g_vpower
 #define g_sat           params.g_sat
+#define vibr            params.g_vibr
 #define satr            global.g_satr
 #define satg            global.g_satg
 #define satb            global.g_satb
-#define vibr            params.g_vibr
 #define lum             params.g_lum
 #define cntrst          params.g_cntrst
 #define mid             params.g_mid

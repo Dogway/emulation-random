@@ -3,7 +3,7 @@
    > Ubershader grouping some monolithic color related shaders:
     ::color-mangler (hunterk), ntsc color tuning knobs (Doriphor), white_point (hunterk, Dogway), lut_x2 (Guest, Dr. Venom).
    > and the addition of:
-    ::analogue color emulation, phosphor gamut, color space + TRC support, vibrance, vignette (shared by Syh), black level, rolled gain and sigmoidal contrast.
+    ::analogue color emulation, phosphor gamut, color space + TRC support, vibrance, HUE vs SAT, vignette (shared by Syh), black level, rolled gain and sigmoidal contrast.
 
    Author: Dogway
    License: Public domain
@@ -60,10 +60,10 @@
 #pragma parameter g_mid          "Contrast Pivot"       0.5  0.0 1.0 0.01
 #pragma parameter wp_temperature "White Point"          6505.0 5005.0 12005.0 100.0
 #pragma parameter g_sat          "Saturation"           0.0 -1.0 2.0 0.01
+#pragma parameter g_vibr         "Dullness/Vibrance"    0.0 -1.0 1.0 0.05
 #pragma parameter g_satr         "Hue vs Sat Red"       0.0 -1.0 1.0 0.01
 #pragma parameter g_satg         "Hue vs Sat Green"     0.0 -1.0 1.0 0.01
 #pragma parameter g_satb         "Hue vs Sat Blue"      0.0 -1.0 1.0 0.01
-#pragma parameter g_vibr         "Dullness/Vibrance"    0.0 -1.0 1.0 0.05
 #pragma parameter g_lift         "Black Level"          0.0 -0.5 0.5 0.01
 #pragma parameter blr            "Black-Red Tint"       0.0  0.0 1.0 0.01
 #pragma parameter blg            "Black-Green Tint"     0.0  0.0 1.0 0.01
@@ -205,10 +205,10 @@ uniform COMPAT_PRECISION float vignette;
 uniform COMPAT_PRECISION float vstr;
 uniform COMPAT_PRECISION float vpower;
 uniform COMPAT_PRECISION float g_sat;
+uniform COMPAT_PRECISION float vibr;
 uniform COMPAT_PRECISION float satr;
 uniform COMPAT_PRECISION float satg;
 uniform COMPAT_PRECISION float satb;
-uniform COMPAT_PRECISION float vibr;
 uniform COMPAT_PRECISION float lum;
 uniform COMPAT_PRECISION float cntrst;
 uniform COMPAT_PRECISION float mid;
@@ -246,10 +246,10 @@ uniform COMPAT_PRECISION float LUT2_toggle;
 #define wp_temperature 6505.0
 #define lum_fix 0.0
 #define g_sat 0.0
+#define vibr 0.0
 #define satr 0.0
 #define satg 0.0
 #define satb 0.0
-#define vibr 0.0
 #define lum 0.0
 #define cntrst 0.0
 #define mid 0.5
