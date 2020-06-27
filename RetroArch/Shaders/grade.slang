@@ -63,7 +63,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
    Author: Dogway
    License: Public domain
 
-   **Thanks to those that helped me out keep motivated by continuous feedback and bug reports.
+   **Thanks to those that helped me out keep motivated by continuous feedback and bug reports:
    **Syh, Nesguy, hunterk, and the libretro forum members.
 
 
@@ -926,24 +926,28 @@ void main()
          adjusted = clamp(XYZ_to_RGB(YxytoXYZ(vec3(base.x , adjusted.y , adjusted.z)), SPC), 0.0, 1.0);
 
 
-// Technical LUT - (in SPC space)
-    float red_2 =   (adjusted.r * (global.LUT_Size2 - 1.0) + 0.4999) / (global.LUT_Size2 * global.LUT_Size2);
-    float green_2 = (adjusted.g * (global.LUT_Size2 - 1.0) + 0.4999) / global.LUT_Size2;
-    float blue1_2 = (floor(adjusted.b * (global.LUT_Size2 - 1.0)) / global.LUT_Size2) + red_2;
-    float blue2_2 =  (ceil(adjusted.b * (global.LUT_Size2 - 1.0)) / global.LUT_Size2) + red_2;
-    float mixer_2 = clamp(max((adjusted.b - blue1_2) / (blue2_2 - blue1_2), 0.0), 0.0, 32.0);
-    vec3 color1_2 = texture(SamplerLUT2, vec2(blue1_2, green_2)).rgb;
-    vec3 color2_2 = texture(SamplerLUT2, vec2(blue2_2, green_2)).rgb;
-    vec3 LUT2_output = mixfix(color1_2, color2_2, mixer_2);
-
-    LUT2_output = (global.LUT2_toggle == 0.0) ? adjusted : LUT2_output;
-
 
 // EOTF - Electro-Optical Transfer Function
-    vec3 TRC = (SPC == 3.0) ?     clamp(pow(LUT2_output, vec3(1./(563./256.))),    0., 1.) : \
-               (SPC == 2.0) ? moncurve_r_f3(LUT2_output,          2.20 + 0.022222, 0.0993) : \
-               (SPC == 1.0) ?     clamp(pow(LUT2_output, vec3(1./(2.20 + 0.40))),  0., 1.) : \
-                              moncurve_r_f3(LUT2_output,          2.20 + 0.20,     0.0550) ;
+    vec3 TRC = (SPC == 3.0) ?     clamp(pow(adjusted, vec3(1./(563./256.))),    0., 1.) : \
+               (SPC == 2.0) ? moncurve_r_f3(adjusted,          2.20 + 0.022222, 0.0993) : \
+               (SPC == 1.0) ?     clamp(pow(adjusted, vec3(1./(2.20 + 0.40))),  0., 1.) : \
+                              moncurve_r_f3(adjusted,          2.20 + 0.20,     0.0550) ;
 
-    FragColor = vec4(TRC, 1.0);
+// Technical LUT - (in SPC space)
+    float red_2 = ( TRC.r * (global.LUT_Size2 - 1.0) + 0.499999 ) / (global.LUT_Size2 * global.LUT_Size2);
+    float green_2 = ( TRC.g * (global.LUT_Size2 - 1.0) + 0.499999 ) / global.LUT_Size2;
+    float blue1_2 = (floor( TRC.b  * (global.LUT_Size2 - 1.0) ) / global.LUT_Size2) + red_2;
+    float blue2_2 = (ceil( TRC.b  * (global.LUT_Size2 - 1.0) ) / global.LUT_Size2) + red_2;
+    float mixer_2 = clamp(max((TRC.b - blue1_2) / (blue2_2 - blue1_2), 0.0), 0.0, 32.0);
+    vec3 color1_2 = texture( SamplerLUT2, vec2( blue1_2, green_2 )).rgb;
+    vec3 color2_2 = texture( SamplerLUT2, vec2( blue2_2, green_2 )).rgb;
+    vec3 res_2 = mixfix(color1_2, color2_2, mixer_2);
+    float mx_2 = max(res_2.r,max(res_2.g,res_2.b));
+    float l_2 = mix(length(TRC.rgb), length(res_2.rgb), max(mx_2-0.5,0.0));
+    res_2.rgb = mix(TRC.rgb, res_2.rgb, clamp(25.0*(mx_2-0.02),0.0,1.0));
+    vec3 LUT2_output = normalize(res_2.rgb+1e-10)*l_2;
+
+    LUT2_output = (global.LUT2_toggle == 0.0) ? TRC : LUT2_output;
+
+    FragColor = vec4(LUT2_output, 1.0);
 }
