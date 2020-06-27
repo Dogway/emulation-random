@@ -802,25 +802,25 @@ void main()
 // \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \
 
 
-
-// OETF - Opto-Electronic Transfer Function
-    vec3 imgColor = (SPC == 3.0) ?     clamp(pow(col, vec3(563./256.)),     0., 1.) : \
-                    (SPC == 2.0) ? moncurve_f_f3(col,      2.20 + 0.022222, 0.0993) : \
-                    (SPC == 1.0) ?     clamp(pow(col, vec3(2.20 + 0.40)),   0., 1.) : \
-                                   moncurve_f_f3(col,      2.20 + 0.20,     0.055)  ;
-
-
 // Look LUT - (in sRGB space)
-    float red =   (imgColor.r * (global.LUT_Size1 - 1.0) + 0.4999) / (global.LUT_Size1 * global.LUT_Size1);
-    float green = (imgColor.g * (global.LUT_Size1 - 1.0) + 0.4999) /  global.LUT_Size1;
-    float blue1 = (floor(imgColor.b * (global.LUT_Size1 - 1.0)) / global.LUT_Size1) + red;
-    float blue2 =  (ceil(imgColor.b * (global.LUT_Size1 - 1.0)) / global.LUT_Size1) + red;
-    float mixer = clamp(max((imgColor.b - blue1) / (blue2 - blue1), 0.0), 0.0, 32.0);
+    float red =   (col.r * (global.LUT_Size1 - 1.0) + 0.4999) / (global.LUT_Size1 * global.LUT_Size1);
+    float green = (col.g * (global.LUT_Size1 - 1.0) + 0.4999) /  global.LUT_Size1;
+    float blue1 = (floor(col.b * (global.LUT_Size1 - 1.0)) / global.LUT_Size1) + red;
+    float blue2 =  (ceil(col.b * (global.LUT_Size1 - 1.0)) / global.LUT_Size1) + red;
+    float mixer = clamp(max((col.b - blue1) / (blue2 - blue1), 0.0), 0.0, 32.0);
     vec3 color1 = texture(SamplerLUT1, vec2(blue1, green)).rgb;
     vec3 color2 = texture(SamplerLUT1, vec2(blue2, green)).rgb;
-    vec3 vcolor = (global.LUT1_toggle == 0.0) ? imgColor : mixfix(color1, color2, mixer);
+    vec3 vcolor = (global.LUT1_toggle == 0.0) ? col : mixfix(color1, color2, mixer);
 
-    vcolor = RGB_to_XYZ(vcolor, 0.);
+
+// OETF - Opto-Electronic Transfer Function
+    vec3 imgColor = (SPC == 3.0) ?     clamp(pow(vcolor, vec3(563./256.)),     0., 1.) : \
+                    (SPC == 2.0) ? moncurve_f_f3(vcolor,      2.20 + 0.022222, 0.0993) : \
+                    (SPC == 1.0) ?     clamp(pow(vcolor, vec3(2.20 + 0.40)),   0., 1.) : \
+                                   moncurve_f_f3(vcolor,      2.20 + 0.20,     0.055)  ;
+
+
+    vcolor = RGB_to_XYZ(imgColor, 0.);
 
 
 // Sigmoidal Contrast
@@ -926,28 +926,25 @@ void main()
          adjusted = clamp(XYZ_to_RGB(YxytoXYZ(vec3(base.x , adjusted.y , adjusted.z)), SPC), 0.0, 1.0);
 
 
-
 // EOTF - Electro-Optical Transfer Function
     vec3 TRC = (SPC == 3.0) ?     clamp(pow(adjusted, vec3(1./(563./256.))),    0., 1.) : \
                (SPC == 2.0) ? moncurve_r_f3(adjusted,          2.20 + 0.022222, 0.0993) : \
                (SPC == 1.0) ?     clamp(pow(adjusted, vec3(1./(2.20 + 0.40))),  0., 1.) : \
                               moncurve_r_f3(adjusted,          2.20 + 0.20,     0.0550) ;
 
+
 // Technical LUT - (in SPC space)
-    float red_2 = ( TRC.r * (global.LUT_Size2 - 1.0) + 0.499999 ) / (global.LUT_Size2 * global.LUT_Size2);
-    float green_2 = ( TRC.g * (global.LUT_Size2 - 1.0) + 0.499999 ) / global.LUT_Size2;
-    float blue1_2 = (floor( TRC.b  * (global.LUT_Size2 - 1.0) ) / global.LUT_Size2) + red_2;
-    float blue2_2 = (ceil( TRC.b  * (global.LUT_Size2 - 1.0) ) / global.LUT_Size2) + red_2;
+    float red_2 =   (TRC.r * (global.LUT_Size2 - 1.0) + 0.4999) / (global.LUT_Size2 * global.LUT_Size2);
+    float green_2 = (TRC.g * (global.LUT_Size2 - 1.0) + 0.4999) / global.LUT_Size2;
+    float blue1_2 = (floor(TRC.b * (global.LUT_Size2 - 1.0)) / global.LUT_Size2) + red_2;
+    float blue2_2 =  (ceil(TRC.b * (global.LUT_Size2 - 1.0)) / global.LUT_Size2) + red_2;
     float mixer_2 = clamp(max((TRC.b - blue1_2) / (blue2_2 - blue1_2), 0.0), 0.0, 32.0);
-    vec3 color1_2 = texture( SamplerLUT2, vec2( blue1_2, green_2 )).rgb;
-    vec3 color2_2 = texture( SamplerLUT2, vec2( blue2_2, green_2 )).rgb;
-    vec3 res_2 = mixfix(color1_2, color2_2, mixer_2);
-    float mx_2 = max(res_2.r,max(res_2.g,res_2.b));
-    float l_2 = mix(length(TRC.rgb), length(res_2.rgb), max(mx_2-0.5,0.0));
-    res_2.rgb = mix(TRC.rgb, res_2.rgb, clamp(25.0*(mx_2-0.02),0.0,1.0));
-    vec3 LUT2_output = normalize(res_2.rgb+1e-10)*l_2;
+    vec3 color1_2 = texture(SamplerLUT2, vec2(blue1_2, green_2)).rgb;
+    vec3 color2_2 = texture(SamplerLUT2, vec2(blue2_2, green_2)).rgb;
+    vec3 LUT2_output = mixfix(color1_2, color2_2, mixer_2);
 
     LUT2_output = (global.LUT2_toggle == 0.0) ? TRC : LUT2_output;
+
 
     FragColor = vec4(LUT2_output, 1.0);
 }
