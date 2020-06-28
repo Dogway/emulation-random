@@ -56,7 +56,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 /*
    Grade
    > Ubershader grouping some monolithic color related shaders:
-    ::color-mangler (hunterk), ntsc color tuning knobs (Doriphor), white_point (hunterk, Dogway), lut_x2 (Guest, Dr. Venom).
+    ::color-mangler (hunterk), ntsc color tuning knobs (Doriphor), white_point (hunterk, Dogway), RA Reshade LUT.
    > and the addition of:
     ::analogue color emulation, phosphor gamut, color space + TRC support, vibrance, HUE vs SAT, vignette (shared by Syh), black level, rolled gain and sigmoidal contrast.
 
@@ -99,7 +99,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #pragma parameter g_signal_type  "Signal Type (0:RGB 1:Composite)"                     1.0 0.0 1.0 1.0
 #pragma parameter g_gamma_type   "Signal Gamma Type (0:sRGB 1:SMPTE-C)"                1.0 0.0 1.0 1.0
 #pragma parameter g_crtgamut     "Phosphor (1:NTSC-U 2:NTSC-J 3:PAL)"                  2.0 -4.0 3.0 1.0
-#pragma parameter g_space_out    "Diplay Color Space (0:sRGB 1:DCI 2:2020 3:AdobeRGB)" 0.0 0.0 3.0 1.0
+#pragma parameter g_space_out    "Diplay Color Space (-1:709 0:sRGB 2:DCI 3:2020 4:Adobe)" 0.0 -1.0 3.0 1.0
 
 #pragma parameter g_hue_degrees  "Hue"                  0.0 -360.0 360.0 1.0
 #pragma parameter g_I_SHIFT      "I/U Shift"            0.0 -0.2 0.2 0.01
@@ -817,7 +817,8 @@ void main()
     vec3 imgColor = (SPC == 3.0) ?     clamp(pow(vcolor, vec3(563./256.)),     0., 1.) : \
                     (SPC == 2.0) ? moncurve_f_f3(vcolor,      2.20 + 0.022222, 0.0993) : \
                     (SPC == 1.0) ?     clamp(pow(vcolor, vec3(2.20 + 0.40)),   0., 1.) : \
-                                   moncurve_f_f3(vcolor,      2.20 + 0.20,     0.055)  ;
+                    (SPC == 0.0) ? moncurve_f_f3(vcolor,      2.20 + 0.20,     0.055)  : \
+                                       clamp(pow(vcolor, vec3(2.20 + 0.20)),   0., 1.) ;
 
 
     vcolor = RGB_to_XYZ(imgColor, 0.);
@@ -930,7 +931,8 @@ void main()
     vec3 TRC = (SPC == 3.0) ?     clamp(pow(adjusted, vec3(1./(563./256.))),    0., 1.) : \
                (SPC == 2.0) ? moncurve_r_f3(adjusted,          2.20 + 0.022222, 0.0993) : \
                (SPC == 1.0) ?     clamp(pow(adjusted, vec3(1./(2.20 + 0.40))),  0., 1.) : \
-                              moncurve_r_f3(adjusted,          2.20 + 0.20,     0.0550) ;
+               (SPC == 0.0) ? moncurve_r_f3(adjusted,          2.20 + 0.20, 0.0550) : \
+                                  clamp(pow(adjusted, vec3(1./(2.20 + 0.20))),  0., 1.) ;
 
 
 // Technical LUT - (in SPC space)

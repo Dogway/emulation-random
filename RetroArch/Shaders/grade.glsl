@@ -1,14 +1,14 @@
 /*
    Grade
    > Ubershader grouping some monolithic color related shaders:
-    ::color-mangler (hunterk), ntsc color tuning knobs (Doriphor), white_point (hunterk, Dogway), lut_x2 (Guest, Dr. Venom).
+    ::color-mangler (hunterk), ntsc color tuning knobs (Doriphor), white_point (hunterk, Dogway), RA Reshade LUT.
    > and the addition of:
     ::analogue color emulation, phosphor gamut, color space + TRC support, vibrance, HUE vs SAT, vignette (shared by Syh), black level, rolled gain and sigmoidal contrast.
 
    Author: Dogway
    License: Public domain
 
-   **Thanks to those that helped me out keep motivated by continuous feedback and bug reports.
+   **Thanks to those that helped me out keep motivated by continuous feedback and bug reports:
    **Syh, Nesguy, hunterk, and the libretro forum members.
 
 
@@ -44,7 +44,7 @@
 #pragma parameter g_signal_type  "Signal Type (0:RGB 1:Composite)"                     1.0 0.0 1.0 1.0
 #pragma parameter g_gamma_type   "Signal Gamma Type (0:sRGB 1:SMPTE-C)"                1.0 0.0 1.0 1.0
 #pragma parameter g_crtgamut     "Phosphor (1:NTSC-U 2:NTSC-J 3:PAL)"                  2.0 -4.0 3.0 1.0
-#pragma parameter g_space_out    "Diplay Color Space (0:sRGB 1:DCI 2:2020 3:AdobeRGB)" 0.0 0.0 3.0 1.0
+#pragma parameter g_space_out    "Diplay Color Space (-1:709 0:sRGB 2:DCI 3:2020 4:Adobe)" 0.0 -1.0 3.0 1.0
 
 #pragma parameter g_hue_degrees  "Hue"                  0.0 -360.0 360.0 1.0
 #pragma parameter g_I_SHIFT      "I/U Shift"            0.0 -0.2 0.2 0.01
@@ -881,25 +881,26 @@ void main()
 // \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \
 
 
-
-// OETF - Opto-Electronic Transfer Function
-    vec3 imgColor = (SPC == 3.0) ?     clamp(pow(col, vec3(563./256.)),     0., 1.) : \
-                    (SPC == 2.0) ? moncurve_f_f3(col,      2.20 + 0.022222, 0.0993) : \
-                    (SPC == 1.0) ?     clamp(pow(col, vec3(2.20 + 0.40)),   0., 1.) : \
-                                   moncurve_f_f3(col,      2.20 + 0.20,     0.055)  ;
-
-
 // Look LUT - (in sRGB space)
-    float red =   (imgColor.r * (LUT_Size1 - 1.0) + 0.4999) / (LUT_Size1 * LUT_Size1);
-    float green = (imgColor.g * (LUT_Size1 - 1.0) + 0.4999) /  LUT_Size1;
-    float blue1 = (floor(imgColor.b * (LUT_Size1 - 1.0)) / LUT_Size1) + red;
-    float blue2 =  (ceil(imgColor.b * (LUT_Size1 - 1.0)) / LUT_Size1) + red;
-    float mixer = clamp(max((imgColor.b - blue1) / (blue2 - blue1), 0.0), 0.0, 32.0);
+    float red =   (col.r * (LUT_Size1 - 1.0) + 0.4999) / (LUT_Size1 * LUT_Size1);
+    float green = (col.g * (LUT_Size1 - 1.0) + 0.4999) /  LUT_Size1;
+    float blue1 = (floor(col.b * (LUT_Size1 - 1.0)) / LUT_Size1) + red;
+    float blue2 =  (ceil(col.b * (LUT_Size1 - 1.0)) / LUT_Size1) + red;
+    float mixer = clamp(max((col.b - blue1) / (blue2 - blue1), 0.0), 0.0, 32.0);
     vec3 color1 = COMPAT_TEXTURE(SamplerLUT1, vec2(blue1, green)).rgb;
     vec3 color2 = COMPAT_TEXTURE(SamplerLUT1, vec2(blue2, green)).rgb;
-    vec3 vcolor = (LUT1_toggle == 0.0) ? imgColor : mixfix(color1, color2, mixer);
+    vec3 vcolor = (LUT1_toggle == 0.0) ? col : mixfix(color1, color2, mixer);
 
-    vcolor = RGB_to_XYZ(vcolor, 0.);
+
+// OETF - Opto-Electronic Transfer Function
+    vec3 imgColor = (SPC == 3.0) ?     clamp(pow(vcolor, vec3(563./256.)),     0., 1.) : \
+                    (SPC == 2.0) ? moncurve_f_f3(vcolor,      2.20 + 0.022222, 0.0993) : \
+                    (SPC == 1.0) ?     clamp(pow(vcolor, vec3(2.20 + 0.40)),   0., 1.) : \
+                    (SPC == 0.0) ? moncurve_f_f3(vcolor,      2.20 + 0.20,     0.055)  : \
+                                       clamp(pow(vcolor, vec3(2.20 + 0.20)),   0., 1.) ;
+
+
+    vcolor = RGB_to_XYZ(imgColor, 0.);
 
 
 // Sigmoidal Contrast
@@ -998,32 +999,34 @@ void main()
 
 // White Point Mapping
     vec3 wp       = RGB_to_XYZ(wp_adjust(wp_temperature), 0.);
-    vec3 base     = (crtgamut == 0.0) ? RGB_to_XYZ(screen.rgb, SPC)      : gamut;
+    vec3 base     = (crtgamut == 0.0) ? RGB_to_XYZ(src_h, SPC)      : gamut;
          base     = XYZtoYxy(base);
-    vec3 adjusted = (crtgamut == 0.0) ? RGB_to_XYZ(screen.rgb, SPC) * wp : gamut * wp;
+    vec3 adjusted = (crtgamut == 0.0) ? RGB_to_XYZ(src_h, SPC) * wp : gamut * wp;
          adjusted = XYZtoYxy(adjusted);
          adjusted = clamp(XYZ_to_RGB(YxytoXYZ(vec3(base.x , adjusted.y , adjusted.z)), SPC), 0.0, 1.0);
 
 
+// EOTF - Electro-Optical Transfer Function
+    vec3 TRC = (SPC == 3.0) ?     clamp(pow(adjusted, vec3(1./(563./256.))),    0., 1.) : \
+               (SPC == 2.0) ? moncurve_r_f3(adjusted,          2.20 + 0.022222, 0.0993) : \
+               (SPC == 1.0) ?     clamp(pow(adjusted, vec3(1./(2.20 + 0.40))),  0., 1.) : \
+               (SPC == 0.0) ? moncurve_r_f3(adjusted,          2.20 + 0.20, 0.0550) : \
+                                  clamp(pow(adjusted, vec3(1./(2.20 + 0.20))),  0., 1.) ;
+
+
 // Technical LUT - (in SPC space)
-    float red_2 =   (adjusted.r * (LUT_Size2 - 1.0) + 0.4999) / (LUT_Size2 * LUT_Size2);
-    float green_2 = (adjusted.g * (LUT_Size2 - 1.0) + 0.4999) / LUT_Size2;
-    float blue1_2 = (floor(adjusted.b * (LUT_Size2 - 1.0)) / LUT_Size2) + red_2;
-    float blue2_2 =  (ceil(adjusted.b * (LUT_Size2 - 1.0)) / LUT_Size2) + red_2;
-    float mixer_2 = clamp(max((adjusted.b - blue1_2) / (blue2_2 - blue1_2), 0.0), 0.0, 32.0);
+    float red_2 =   (TRC.r * (LUT_Size2 - 1.0) + 0.4999) / (LUT_Size2 * LUT_Size2);
+    float green_2 = (TRC.g * (LUT_Size2 - 1.0) + 0.4999) / LUT_Size2;
+    float blue1_2 = (floor(TRC.b * (LUT_Size2 - 1.0)) / LUT_Size2) + red_2;
+    float blue2_2 =  (ceil(TRC.b * (LUT_Size2 - 1.0)) / LUT_Size2) + red_2;
+    float mixer_2 = clamp(max((TRC.b - blue1_2) / (blue2_2 - blue1_2), 0.0), 0.0, 32.0);
     vec3 color1_2 = COMPAT_TEXTURE(SamplerLUT2, vec2(blue1_2, green_2)).rgb;
     vec3 color2_2 = COMPAT_TEXTURE(SamplerLUT2, vec2(blue2_2, green_2)).rgb;
     vec3 LUT2_output = mixfix(color1_2, color2_2, mixer_2);
 
-    LUT2_output = (LUT2_toggle == 0.0) ? adjusted : LUT2_output;
+    LUT2_output = (LUT2_toggle == 0.0) ? TRC : LUT2_output;
 
 
-// EOTF - Electro-Optical Transfer Function
-    vec3 TRC = (SPC == 3.0) ?     clamp(pow(LUT2_output, vec3(1./(563./256.))),    0., 1.) : \
-               (SPC == 2.0) ? moncurve_r_f3(LUT2_output,          2.20 + 0.022222, 0.0993) : \
-               (SPC == 1.0) ?     clamp(pow(LUT2_output, vec3(1./(2.20 + 0.40))),  0., 1.) : \
-                              moncurve_r_f3(LUT2_output,          2.20 + 0.20,     0.0550) ;
-
-    FragColor = vec4(TRC, 1.0);
+    FragColor = vec4(LUT2_output, 1.0);
 }
 #endif
