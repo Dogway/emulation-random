@@ -815,8 +815,8 @@ void main()
                                  moncurve_f_f3(src,           2.40, 0.055) ;
 
 // CRT Gamma: SMPTE-C gamma at 2.222 approximates to a power law gamma of 2.0
-    vec3 gamma_fix = (gamma_type == 1.0) ? moncurve_r_f3(src, gamma_in,       0.099)  : \
-                                           moncurve_r_f3(src, gamma_in + 0.2, 0.055)  ;
+    vec3 gamma_fix = (gamma_type == 1.0) ? moncurve_r_f3(src, gamma_in + 0.0222, 0.099)  : \
+                                           moncurve_r_f3(src, gamma_in - 0.1222, 0.055)  ;
 
     vec3 col = gamma_fix;
 
@@ -888,8 +888,11 @@ void main()
 
 
 // OETF - Opto-Electronic Transfer Function
-    vec3 imgColor = (gamma_type == 1.0) ? moncurve_f_f3(vcolor, 2.222, 0.099)  : \
-                                          moncurve_f_f3(vcolor, 2.40,  0.055)  ;
+    vec3 imgColor = (SPC == 3.0) ?     clamp(pow(vcolor, vec3(563./256.)),     0., 1.) : \
+                    (SPC == 2.0) ? moncurve_f_f3(vcolor,      2.20 + 0.022222, 0.0993) : \
+                    (SPC == 1.0) ?     clamp(pow(vcolor, vec3(2.20 + 0.40)),   0., 1.) : \
+                    (SPC == 0.0) ? moncurve_f_f3(vcolor,      2.20 + 0.20,     0.055)  : \
+                                       clamp(pow(vcolor, vec3(2.20 + 0.20)),   0., 1.) ;
 
 
     vcolor = RGB_to_XYZ(imgColor, 0.);
