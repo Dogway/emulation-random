@@ -40,10 +40,10 @@
 */
 
 
-#pragma parameter g_gamma_in     "CRT Gamma"                                           2.40 1.80 3.0 0.05
-#pragma parameter g_signal_type  "Signal Type (0:RGB 1:Composite)"                     1.0 0.0 1.0 1.0
-#pragma parameter g_gamma_type   "Signal Gamma Type (0:sRGB 1:SMPTE-C)"                1.0 0.0 1.0 1.0
-#pragma parameter g_crtgamut     "Phosphor (1:NTSC-U 2:NTSC-J 3:PAL)"                  2.0 -4.0 3.0 1.0
+#pragma parameter g_gamma_in     "CRT Gamma"                                               2.40 1.80 3.0 0.05
+#pragma parameter g_signal_type  "Signal Type (0:RGB 1:Composite)"                         1.0 0.0 1.0 1.0
+#pragma parameter g_gamma_type   "Signal Gamma Type (0:sRGB 1:SMPTE-C)"                    1.0 0.0 1.0 1.0
+#pragma parameter g_crtgamut     "Phosphor (1:NTSC-U 2:NTSC-J 3:PAL)"                      2.0 -4.0 3.0 1.0
 #pragma parameter g_space_out    "Diplay Color Space (-1:709 0:sRGB 2:DCI 3:2020 4:Adobe)" 0.0 -1.0 3.0 1.0
 
 #pragma parameter g_hue_degrees  "Hue"                  0.0 -360.0 360.0 1.0
@@ -55,10 +55,10 @@
 #pragma parameter g_vignette     "Vignette Toggle"      1.0  0.0 1.0 1.0
 #pragma parameter g_vstr         "Vignette Strength"    40.0 0.0 50.0 1.0
 #pragma parameter g_vpower       "Vignette Power"       0.20 0.0 0.5 0.01
-#pragma parameter g_lum          "Brightness"           0.0 -0.5 1.0 0.01
+#pragma parameter g_lum          "Brightness"           0.0 -0.25 0.5 0.01
 #pragma parameter g_cntrst       "Contrast"             0.0 -1.0 1.0 0.05
 #pragma parameter g_mid          "Contrast Pivot"       0.5  0.0 1.0 0.01
-#pragma parameter wp_temperature "White Point"          6505.0 5005.0 12005.0 100.0
+#pragma parameter wp_temperature "White Point"          5505.0 5005.0 12005.0 100.0
 #pragma parameter g_sat          "Saturation"           0.0 -1.0 2.0 0.01
 #pragma parameter g_vibr         "Dullness/Vibrance"    0.0 -1.0 1.0 0.05
 #pragma parameter g_satr         "Hue vs Sat Red"       0.0 -1.0 1.0 0.01
@@ -473,14 +473,9 @@ float contrast_sigmoid_inv(float color, float cont, float pivot){
 
 float rolled_gain(float color, float gain){
 
-    float gx = gain + 1.0;
-    float ax = (max(0.5 - (gx / 2.0), 0.5));
-    float cx = (gx > 0.0) ? (1.0 - gx + (gx / 2.0)) : abs(gx) / 2.0;
-
-    float gain_plus = ((color * gx) > ax) ? (ax + cx * tanh((color * gx - ax) / cx)) : (color * gx);
-    float ax_g = 1.0 - abs(gx);
-    float gain_minus = (color > ax_g) ? (ax_g + cx * tanh((color - ax_g) / cx)) : color;
-    color = (gx > 0.0) ? gain_plus : gain_minus;
+    float gx = abs(gain) + 0.001;
+    float anch = (gain > 0.0) ? 0.5 / (gx / 2.0) : 0.5 / gx;
+    color = (gain > 0.0) ? color * ((color - anch) / (1 - anch)) : color * ((1 - anch) / (color - anch)) * (1 - gain);
 
     return color;
 }
