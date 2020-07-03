@@ -809,9 +809,8 @@ void main()
 
 
 // OETF - Opto-Electronic Transfer Function
-    vec3 imgColor = moncurve_f_f3(vcolor, 2.20 + 0.20, 0.055);
-
-    vcolor = RGB_to_XYZ(imgColor, 0.);
+    vcolor = moncurve_f_f3(vcolor, 2.20 + 0.20, 0.055);
+    vcolor = RGB_to_XYZ(vcolor, 0.);
 
 
 // Sigmoidal Contrast
