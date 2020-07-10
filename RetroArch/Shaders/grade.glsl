@@ -55,7 +55,7 @@
 #pragma parameter g_vignette     "Vignette Toggle"      1.0  0.0 1.0 1.0
 #pragma parameter g_vstr         "Vignette Strength"    40.0 0.0 50.0 1.0
 #pragma parameter g_vpower       "Vignette Power"       0.20 0.0 0.5 0.01
-#pragma parameter g_lum          "Brightness"           0.0 -0.25 0.5 0.01
+#pragma parameter g_lum          "Brightness"           0.0 -0.5 1.0 0.01
 #pragma parameter g_cntrst       "Contrast"             0.0 -1.0 1.0 0.05
 #pragma parameter g_mid          "Contrast Pivot"       0.5  0.0 1.0 0.01
 #pragma parameter wp_temperature "White Point"          5505.0 5005.0 12005.0 100.0
@@ -935,7 +935,7 @@ void main()
                        (1.0 - sat) * coeff.z,       (1.0 - sat) * coeff.z,       (1.0 - sat) * coeff.z + sat);
 
 
-    screen = clamp(rolled_gain_v4(screen, lum * 2.0), 0.0, 1.0);
+    screen = clamp(rolled_gain_v4(screen, clamp(lum, -0.49,0.99)), 0.0, 1.0);
     screen = color * screen;
 
 //  HUE vs SAT
