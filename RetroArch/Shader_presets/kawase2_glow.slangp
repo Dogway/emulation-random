@@ -1,0 +1,57 @@
+shaders = 10
+
+shader0 = ../stock.slang
+scale_type0 = source
+alias0 = Reference
+
+shader1 = kawase-tribonacci/linearize.slang
+srgb_framebuffer1 = true
+scale_type1 = source
+alias1 = Linear
+
+shader2 = kawase-tribonacci/kawase0.slang
+filter_linear2 = true
+srgb_framebuffer2 = true
+scale_type2 = source
+wrap_mode2 = mirrored_repeat
+alias2 = kawase0
+
+shader3 = kawase-tribonacci/kawase1.slang
+filter_linear3 = true
+srgb_framebuffer3 = true
+scale_type3 = source
+wrap_mode3 = mirrored_repeat
+alias3 = kawase1
+
+shader4 = kawase-tribonacci/kawase1.slang
+filter_linear4 = true
+srgb_framebuffer4 = true
+scale_type4 = source
+wrap_mode4 = mirrored_repeat
+alias4 = kawase2
+
+shader5 = kawase-tribonacci/kawase2.slang
+filter_linear5 = true
+srgb_framebuffer5 = true
+scale_type5 = source
+wrap_mode5 = mirrored_repeat
+alias5 = kawase3
+
+shader6 = kawase-tribonacci/kawase4.slang
+filter_linear6 = true
+srgb_framebuffer6 = true
+scale_type6 = source
+wrap_mode6 = mirrored_repeat
+alias6 = kawase4
+
+shader7 = kawase-tribonacci/kawase7.slang
+filter_linear7 = true
+srgb_framebuffer7 = true
+scale_type7 = source
+wrap_mode7 = mirrored_repeat
+alias7 = kawase5
+
+shader8 = kawase-tribonacci/delinearize.slang
+filter_linear8 = true
+
+shader9 = kawase-tribonacci/screen_combine.slang
