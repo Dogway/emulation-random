@@ -95,8 +95,8 @@ layout(std140, set = 0, binding = 0) uniform UBO
 */
 
 
-#pragma parameter g_gamma_in     "Game Embedded Gamma"                                     2.20 1.80 3.0 0.05
-#pragma parameter g_gamma_out    "CRT Electron Gun Gamma"                                  2.50 1.80 3.0 0.05
+#pragma parameter g_gamma_in     "Game Embedded Gamma"                                     2.222 1.80 3.0 0.05
+#pragma parameter g_gamma_out    "CRT Electron Gun Gamma"                                  2.50  1.80 3.0 0.05
 #pragma parameter g_signal_type  "Signal Type (0:RGB 1:Composite)"                         1.0 0.0 1.0 1.0
 #pragma parameter g_crtgamut     "Phosphor (1:NTSC-U 2:NTSC-J 3:PAL)"                      2.0 -4.0 3.0 1.0
 #pragma parameter g_space_out    "Diplay Color Space (-1:709 0:sRGB 1:DCI 2:2020 3:Adobe)" 0.0 -1.0 3.0 1.0
@@ -662,7 +662,7 @@ mat3(
  0.19164848327636720, 0.08655092865228653, 0.95824241638183590);
 
 // SMPTE RP 145-1994 (SMPTE-C), 170M-1999
-// NTSC-J - Standard Phosphor
+// NTSC-J - Standard Phosphor (https://web.archive.org/web/20130413104152/http://arib.or.jp/english/html/overview/doc/4-TR-B09v1_0.pdf)
 const mat3 NTSC_J_transform =
 mat3(
  0.39603787660598755, 0.22429330646991730, 0.02050681784749031,
@@ -670,7 +670,7 @@ mat3(
  0.24496731162071228, 0.10153251141309738, 1.26512730121612550);
 
 // ITU-R BT.470/601 (B/G)
-// EBU Tech.3213 PAL - Standard Phosphor for Studio Monitors
+// EBU Tech.3213-E PAL - Standard Phosphor for Studio Monitors
 const mat3 EBU_transform =
 mat3(
  0.43194326758384705, 0.22272075712680817, 0.020247340202331543,
@@ -692,16 +692,15 @@ void main()
 // Retro Sega Systems: Genesis, 32x, CD and Saturn 2D had color palettes designed in TV levels to save on transformations.
     float lum_exp = (lum_fix ==  1.0) ? (255./239.) : 1.;
 
-    vec3 src = texture(Source, vTexCoord.xy).rgb;
-    vec3 col = src;
+    vec3 src = texture(Source, vTexCoord.xy).rgb * lum_exp;
 
 // Assumes framebuffer in Rec.601 with baked gamma
 // make a YUV * NTSC Phosphor option too and a FCC * NTSC phosphor
-    col = (crtgamut ==  3.0) ? r601_YUV(col*lum_exp)   : \
-          (crtgamut ==  2.0) ?  RGB_YIQ(col*lum_exp)   : \
-          (crtgamut == -3.0) ?  RGB_FCC(col*lum_exp)   : \
-          (crtgamut == -4.0) ?  RGB_FCC(col*lum_exp)   : \
-                                RGB_YIQ(col*lum_exp)   ;
+    vec3 col = (crtgamut ==  3.0) ? r601_YUV(src)   : \
+               (crtgamut ==  2.0) ?  RGB_YIQ(src)   : \
+               (crtgamut == -3.0) ?  RGB_FCC(src)   : \
+               (crtgamut == -4.0) ?  RGB_FCC(src)   : \
+                                     RGB_YIQ(src)   ;
 
 
 // Clipping Logic / Gamut Limiting
