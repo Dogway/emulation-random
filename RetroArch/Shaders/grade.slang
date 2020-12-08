@@ -751,8 +751,8 @@ void main()
 // \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \
 
 
-// Developer baked CRT gamma (2.20 - 2.25)
-    col = moncurve_f_f3(col, gamma_in, 0.099);
+// Guest Emulated CRT Electron Gun gamma (2.4 - 2.5) (phosphor gamma brings it up back to ~2.222)
+    col = moncurve_f_f3(col, gamma_out, 0.099);
 
 // CRT Phosphor Gamut
     mat3 m_in;
@@ -781,8 +781,8 @@ void main()
          adj  = clamp(XYZ_to_RGB(YxytoXYZ(vec3(base.x , adj.y , adj.z)), SPC), 0., 1.);
 
 
-// Guest Emulated CRT Electron Gun gamma (2.4 - 2.5)
-    adj = moncurve_r_f3(crtgamut ==  0.0 ? col : adj, gamma_out, 0.099);
+// Developer baked CRT gamma (2.20 - 2.25)
+    adj = moncurve_r_f3(crtgamut ==  0.0 ? col : adj, gamma_in, 0.099);
 
 
 // Look LUT - (in SPC space)
