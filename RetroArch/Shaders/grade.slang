@@ -275,11 +275,11 @@ vec3 YxytoXYZ(vec3 Yxy){
 ///////////////////////// White Point Mapping /////////////////////////
 //
 //
-// PAL: D65      NTSC-U: D65      NTSC-J: CCT NTSC-J NTSC-FCC: C
-// PAL: 6489K    NTSC-U: 6504K    NTSC-J: 8942K      NTSC-FCC: 6780K
-// 0.313 0.329   0.3127 0.3290    0.281 0.311        0.310, 0.316
+// PAL: D65       NTSC-U: D65     NTSC-J: CCT NTSC-J NTSC-FCC: C
+// PAL: 6504K     NTSC-U: 6504K   NTSC-J: 8942K      NTSC-FCC: 6780K
+// 0.3127 0.3290  0.3127 0.3290   0.281 0.311        0.310 0.316
 
-vec3 wp_adjust(float temperature){
+vec3 wp_adjust(float temperature, vec3 color){
 
     float temp3 = pow(10.,3.) / temperature;
     float temp6 = pow(10.,6.) / pow(temperature, 2.);
@@ -293,7 +293,15 @@ vec3 wp_adjust(float temperature){
     wp.y = -3.000 * pow(wp.x,2.) + 2.870 * wp.x - 0.275;
     wp.z = 1. - wp.x - wp.y;
 
-    return wp.xyz;
+    const mat3x3 CAT02 = mat3x3(
+     0.7328,  0.4296, -0.1624,
+    -0.70360, 1.6975,  0.0061,
+     0.003,  -0.0136,  0.9834);
+
+    vec3 fw_trans = (vec3(wp.x/wp.y,1.,wp.z/wp.y) * CAT02) / (vec3(0.95045,1.,1.088917) * CAT02) ;
+
+    return color.xyz * vec3(fw_trans.x,fw_trans.y,fw_trans.z) ;
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -751,8 +759,8 @@ void main()
 // \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \
 
 
-// Guest Emulated CRT Electron Gun gamma (2.4 - 2.5) (phosphor gamma brings it up back to ~2.222)
-    col = moncurve_f_f3(col, gamma_out, 0.099);
+// Developer baked CRT gamma (2.20 - 2.25)
+    col = moncurve_f_f3(col, gamma_in, 0.099);
 
 // CRT Phosphor Gamut
     mat3 m_in;
@@ -768,21 +776,20 @@ void main()
     vec3 gamut = m_in*col;
 
 // White Point Mapping
-    vec3 wp   = (crtgamut == -4.0) ? wp_adjust(global.wp_temperature - (7291.943 - 6504.)) : \
-                (crtgamut == -3.0) ? wp_adjust(global.wp_temperature - (7304.069 - 6504.)) : \
-                (crtgamut == -2.0) ? wp_adjust(global.wp_temperature - (8154.069 - 6504.)) : \
-                (crtgamut == -1.0) ? wp_adjust(global.wp_temperature - (7204.000 - 6504.)) : \
-                (crtgamut ==  1.0) ? wp_adjust(global.wp_temperature - (7072.948 - 6504.)) : \
-                (crtgamut ==  2.0) ? wp_adjust(global.wp_temperature - (8002.309 - 6504.)) : \
-                (crtgamut ==  3.0) ? wp_adjust(global.wp_temperature - (7063.915 - 6504.)) : \
-                                     wp_adjust(global.wp_temperature) ;
-    vec3 base = XYZtoYxy(gamut);
-    vec3 adj  = XYZtoYxy(gamut * wp);
-         adj  = clamp(XYZ_to_RGB(YxytoXYZ(vec3(base.x , adj.y , adj.z)), SPC), 0., 1.);
+    vec3 wp   = (crtgamut == -4.0) ? wp_adjust(global.wp_temperature - (6404.943 - 6504.), gamut) : \
+                (crtgamut == -3.0) ? wp_adjust(global.wp_temperature - (6504.069 - 6504.), gamut) : \
+                (crtgamut == -2.0) ? wp_adjust(global.wp_temperature - (7600.069 - 6504.), gamut) : \
+                (crtgamut == -1.0) ? wp_adjust(global.wp_temperature - (6504.000 - 6504.), gamut) : \
+                (crtgamut ==  1.0) ? wp_adjust(global.wp_temperature - (6504.000 - 6504.), gamut) : \
+                (crtgamut ==  2.0) ? wp_adjust(global.wp_temperature - (7400.309 - 6504.), gamut) : \
+                (crtgamut ==  3.0) ? wp_adjust(global.wp_temperature - (6504.000 - 6504.), gamut) : \
+                                     wp_adjust(global.wp_temperature, gamut) ;
+
+    vec3 adj  = clamp(XYZ_to_RGB(wp, SPC), 0., 1.);
 
 
-// Developer baked CRT gamma (2.20 - 2.25)
-    adj = moncurve_r_f3(crtgamut ==  0.0 ? col : adj, gamma_in, 0.099);
+// Guest Emulated CRT Electron Gun gamma (2.35 - 2.50) (phosphor gamma brings it up back to ~2.222)
+    adj = moncurve_r_f3(crtgamut ==  0.0 ? col : adj, pow(gamma_in, 2.) / gamma_out, 0.099);
 
 
 // Look LUT - (in SPC space)
