@@ -300,7 +300,7 @@ vec3 wp_adjust(float temperature, vec3 color){
 
     vec3 fw_trans = (vec3(wp.x/wp.y,1.,wp.z/wp.y) * CAT02) / (vec3(0.95045,1.,1.088917) * CAT02) ;
 
-    return color.xyz * vec3(fw_trans.x,fw_trans.y,fw_trans.z) ;
+    return color.xyz * fw_trans.xyz ;
 
 }
 
