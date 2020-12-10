@@ -72,7 +72,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
     ###                                                                                    ###
     ###    PAL                                                                             ###
     ###        Phosphor: EBU (#3)            (or an EBU T3213 based CRT phosphor gamut)    ###
-    ###        WP: D65 (6489K)               (in practice more like ~7500K)                ###
+    ###        WP: D65 (6504K)               (in practice more like ~7500K)                ###
     ###        TRC: 2.8 SMPTE-C Gamma                                                      ###
     ###        Saturation: -0.02                                                           ###
     ###                                                                                    ###
@@ -776,13 +776,13 @@ void main()
     vec3 gamut = m_in*col;
 
 // White Point Mapping
-    vec3 wp   = (crtgamut == -4.0) ? wp_adjust(global.wp_temperature - (6404.943 - 6504.), gamut) : \
-                (crtgamut == -3.0) ? wp_adjust(global.wp_temperature - (6504.069 - 6504.), gamut) : \
-                (crtgamut == -2.0) ? wp_adjust(global.wp_temperature - (7600.069 - 6504.), gamut) : \
-                (crtgamut == -1.0) ? wp_adjust(global.wp_temperature - (6504.000 - 6504.), gamut) : \
-                (crtgamut ==  1.0) ? wp_adjust(global.wp_temperature - (6504.000 - 6504.), gamut) : \
-                (crtgamut ==  2.0) ? wp_adjust(global.wp_temperature - (7400.309 - 6504.), gamut) : \
-                (crtgamut ==  3.0) ? wp_adjust(global.wp_temperature - (6504.000 - 6504.), gamut) : \
+    vec3 wp   = (crtgamut == -4.0) ? wp_adjust(global.wp_temperature - (6404. - 6504.), gamut) : \
+                (crtgamut == -3.0) ? wp_adjust(global.wp_temperature - (6504. - 6504.), gamut) : \
+                (crtgamut == -2.0) ? wp_adjust(global.wp_temperature - (7600. - 6504.), gamut) : \
+                (crtgamut == -1.0) ? wp_adjust(global.wp_temperature - (6504. - 6504.), gamut) : \
+                (crtgamut ==  1.0) ? wp_adjust(global.wp_temperature - (6504. - 6504.), gamut) : \
+                (crtgamut ==  2.0) ? wp_adjust(global.wp_temperature - (7400. - 6504.), gamut) : \
+                (crtgamut ==  3.0) ? wp_adjust(global.wp_temperature - (6504. - 6504.), gamut) : \
                                      wp_adjust(global.wp_temperature, gamut) ;
 
     vec3 adj  = clamp(XYZ_to_RGB(wp, SPC), 0., 1.);
