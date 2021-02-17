@@ -1,44 +1,52 @@
 /*
    CRT Glass shader
       > CRT related artifacts:
-        ::glass inner+outer reflection, chromatic aberration, screen flicker+jitter, noise, afterglow (dr-venom's mod).
+        ::grain
+        ::glass inner reflection
+        ::glass outer reflection
+        ::chromatic aberration (for beam deconvergence and glass diffraction)
+        ::screen flicker
+        ::screen jitter
+        ::afterglow (dr-venom's mod)
+        ::CRT border corner (cgwg's crt-geom)
       > Stack just before scanlines. Works better with curved geometry modes.
 
    Author: Dogway
    License: Public domain
 */
 
-#pragma parameter g_csize "Corner size" 0.0 0.0 0.07 0.01
-#pragma parameter g_bsize "Border smoothness" 600.0 100.0 600.0 25.0
-#pragma parameter g_flicker "Screen Flicker" 0.25 0.0 1.0 0.01
-#pragma parameter g_shaker "Screen Shake" 0.02 0.0 0.5 0.01
-#pragma parameter g_refltog "Reflection Toggle" 1.0 0.0 1.0 1.00
-#pragma parameter g_reflgrain "Refl. Deband Grain" 0.0 0.0 2.0 0.01
-#pragma parameter g_reflstr "Refl. Brightness" 0.25 0.0 1.0 0.01
-#pragma parameter g_fresnel "Refl. Fresnel" 1.0 0.0 1.0 0.10
-#pragma parameter g_reflblur "Refl. Blur" 0.6 0.0 1.0 0.10
-#pragma parameter gz "Zoom" 1.2 1.0 1.5 0.01
-#pragma parameter gx "Shift-X" 0.0 -1.0 1.0 0.01
-#pragma parameter gy "Shift-Y" -0.01 -1.0 1.0 0.01
-#pragma parameter gzr "Zoom Red" 1.03 1.0 1.5 0.01
-#pragma parameter gzg "Zoom Green" 1.01 1.0 1.5 0.01
-#pragma parameter gzb "Zoom Blue" 1.0 1.0 1.5 0.01
-#pragma parameter goxr "Shift-X Red" 0.0 -1.0 1.0 0.01
-#pragma parameter goyr "Shift-Y Red" -0.01 -1.0 1.0 0.01
-#pragma parameter goxg "Shift-X Green" 0.0 -1.0 1.0 0.01
-#pragma parameter goyg "Shift-Y Green" -0.01 -1.0 1.0 0.01
-#pragma parameter goxb "Shift-X Blue" 0.0 -1.0 1.0 0.01
-#pragma parameter goyb "Shift-Y Blue" 0.0 -1.0 1.0 0.01
+#pragma parameter g_csize      "Corner Size"         0.0 0.0 0.07 0.01
+#pragma parameter g_bsize      "Border Smoothness"   600.0 100.0 600.0 25.0
+#pragma parameter g_flicker    "Screen Flicker"      0.25 0.0 1.0 0.01
+#pragma parameter g_shaker     "Screen Shake"        0.02 0.0 0.5 0.01
+#pragma parameter g_refltog    "Reflection Toggle"   1.0 0.0 1.0 1.00
+#pragma parameter g_reflgrain  "Refl. Deband Grain"  0.0 0.0 2.0 0.01
+#pragma parameter g_reflstr    "Refl. Brightness"    0.25 0.0 1.0 0.01
+#pragma parameter g_fresnel    "Refl. Fresnel"       1.0 0.0 1.0 0.10
+#pragma parameter g_reflblur   "Refl. Blur"          0.6 0.0 1.0 0.10
+#pragma parameter gz           "Zoom"                1.2 1.0 1.5 0.01
+#pragma parameter gx           "Shift-X"             0.0 -1.0 1.0 0.01
+#pragma parameter gy           "Shift-Y"            -0.01 -1.0 1.0 0.01
+#pragma parameter gzr          "Zoom Red"            1.03 1.0 1.5 0.01
+#pragma parameter gzg          "Zoom Green"          1.01 1.0 1.5 0.01
+#pragma parameter gzb          "Zoom Blue"           1.0 1.0 1.5 0.01
+#pragma parameter goxr         "Shift-X Red"         0.0 -1.0 1.0 0.01
+#pragma parameter goyr         "Shift-Y Red"        -0.01 -1.0 1.0 0.01
+#pragma parameter goxg         "Shift-X Green"       0.0 -1.0 1.0 0.01
+#pragma parameter goyg         "Shift-Y Green"      -0.01 -1.0 1.0 0.01
+#pragma parameter goxb         "Shift-X Blue"        0.0 -1.0 1.0 0.01
+#pragma parameter goyb         "Shift-Y Blue"        0.0 -1.0 1.0 0.01
 
 // https://www.desmos.com/calculator/1nfq4uubnx
 // PER = 2.0 for realistic (1.0 or less when using scanlines). Phosphor Index; it's the same as in the "grade" shader
-#pragma parameter TO "Afterglow OFF/ON" 1.0 0.0 1.0 1.0
-#pragma parameter PH "Phosphor Index" 2.0 -1.0 3.0 1.0
-#pragma parameter PER "Persistence (more is less)" 0.75 0.5 2.0 0.1
-#pragma parameter ASAT "Afterglow saturation" 0.20 0.0 1.0 0.01
+#pragma parameter TO           "Afterglow OFF/ON"                       1.0 0.0 1.0 1.0
+#pragma parameter PH           "AG Phosphor (1:NTSC-U 2:NTSC-J 3:PAL)"  2.0 0.0 3.0 1.0
+#pragma parameter ASAT         "Afterglow Saturation"                   0.20 0.0 1.0 0.01
+#pragma parameter PER          "Persistence (more is less)"             0.75 0.5 2.0 0.1
 
-#define SW TO
-#define sat ASAT
+
+#define SW    TO
+#define sat   ASAT
 #define GRAIN g_reflgrain
 
 #if defined(VERTEX)
@@ -223,31 +231,28 @@ float rand(float co, float size){
 
 vec3 afterglow(float Pho, vec3 decay)
 {
-    // PAL
-    vec3 PAL = vec3(0.290, 0.600, 0.110);
+    // Rec.601
+    vec3 RGB =    vec3(0.299, 0.587, 0.114);
+    // SMPTE
+    vec3 NTSC =   vec3(0.310, 0.595, 0.095);
     // JAP
     vec3 NTSC_J = vec3(0.280, 0.605, 0.115);
-    // SMPTE
-    vec3 NTSC = vec3(0.310, 0.595, 0.095);
-    // P22
-    vec3 P22 = vec3(0.282, 0.620, 0.098);
-    // r601
-    vec3 r601 = vec3(0.299, 0.587, 0.114);
+    // PAL
+    vec3 PAL =    vec3(0.290, 0.600, 0.110);
 
     vec3 p_in;
 
-    if (Pho == -1.0) { p_in = P22;            } else
-    if (Pho ==  0.0) { p_in = r601;           } else
+    if (Pho ==  0.0) { p_in = RGB;            } else
     if (Pho ==  1.0) { p_in = NTSC;           } else
     if (Pho ==  2.0) { p_in = NTSC_J;         } else
     if (Pho ==  3.0) { p_in = PAL;            }
 
 // Phosphor Response / Cone Response
-    vec3 p_res = (p_in / (vec3(0.21264933049678802, 0.71516913175582890,  0.07218152284622192))/10.0);
+    vec3 p_res = (p_in / (vec3(0.21264933049678802, 0.71516913175582890, 0.07218152284622192)) / 10.0);
 
-    float decr = clamp((log(1./p_res.r)+0.2)/(decay.r),0.0,1.0);
-    float decg = clamp((log(1./p_res.g)+0.2)/(decay.g),0.0,1.0);
-    float decb = clamp((log(1./p_res.b)+0.2)/(decay.b),0.0,1.0);
+    float decr = clamp((log(1. / p_res.r) + 0.2) / (decay.r), 0., 1.);
+    float decg = clamp((log(1. / p_res.g) + 0.2) / (decay.g), 0., 1.);
+    float decb = clamp((log(1. / p_res.b) + 0.2) / (decay.b), 0., 1.);
 
     return vec3(decr, decg, decb);
 }
@@ -272,12 +277,11 @@ void main()
     vec2 ch_dist = (InputSize / TextureSize) / 2.;
     vec2 vpos = vTexCoord * (TextureSize.xy / InputSize.xy);
 
-    float vert = vpos.y;
-    float vert_msk = abs(1. - vert);
-    float center_msk = abs(1. - (vTexCoord.x) * SourceSize.x / InputSize.x - ch_dist.x);
-    float horiz_msk = max(center_msk - 0.2, 0.0) + 0.1;
+    float vert_msk = abs(1. - vpos.y);
+    float center_msk = clamp(abs(1. - (vTexCoord.x) * SourceSize.x / InputSize.x - ch_dist.x), 0., 1.);
+    float horiz_msk = clamp(max(center_msk - 0.2, 0.0) + 0.1, 0., 1.);
 
-    float zoom   = fract(gz)/10.;
+    float zoom   = fract(gz) / 10.;
 
 // Screen Jitter ------------------------------------
 
@@ -303,24 +307,23 @@ void main()
 
 // AfterGlow --------------------------------------
 
-    vec3 color1 = COMPAT_TEXTURE(Prev1Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*10.0);
-    vec3 color2 = COMPAT_TEXTURE(Prev2Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*20.0);
-    vec3 color3 = COMPAT_TEXTURE(Prev3Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*30.0);
-    vec3 color4 = COMPAT_TEXTURE(Prev4Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*40.0);
-    vec3 color5 = COMPAT_TEXTURE(Prev5Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*50.0);
-    vec3 color6 = COMPAT_TEXTURE(Prev6Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*60.0);
+    vec3 color1 = COMPAT_TEXTURE(Prev1Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*10.);
+    vec3 color2 = COMPAT_TEXTURE(Prev2Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*20.);
+    vec3 color3 = COMPAT_TEXTURE(Prev3Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*30.);
+    vec3 color4 = COMPAT_TEXTURE(Prev4Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*40.);
+    vec3 color5 = COMPAT_TEXTURE(Prev5Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*50.);
+    vec3 color6 = COMPAT_TEXTURE(Prev6Texture, TEX0.xy).rgb * afterglow(PH, vec3(PER)*60.);
 
     vec3 glow = max(max(max(max(max(color1, color2), color3), color4), color5), color6);
 
-    float len = length(glow);
-    glow = normalize(pow(glow + vec3(0.001), vec3(sat)))*len;
+    glow = normalize(pow(glow + vec3(0.001), vec3(sat)))*length(glow);
 
-	vec3 glowl  = pow(glow,  vec3(2.2));
-	vec3 colorl = pow(color, vec3(2.2));
-	float glowY  = glowl.r  * 0.21265 + glowl.g  * 0.71517 + glowl.b  * 0.07218;
-	float colorY = colorl.r * 0.21265 + colorl.g * 0.71517 + colorl.b * 0.07218;
+    vec3 glowl  = pow(glow,  vec3(2.2));
+    vec3 colorl = pow(color, vec3(2.2));
+    float glowY  = glowl.r  * 0.21265 + glowl.g  * 0.71517 + glowl.b  * 0.07218;
+    float colorY = colorl.r * 0.21265 + colorl.g * 0.71517 + colorl.b * 0.07218;
 
-	vec3 colormax = (colorY > glowY)  ? color : glow;
+    vec3 colormax = (colorY > glowY)  ? color : glow;
 
     color = (SW == 0.0) ? color : clamp(colormax,0.0,1.0);
 
@@ -366,7 +369,7 @@ void main()
     vec3 sumH = vec3(rH, gH, bH);
     vec3 sumI = vec3(rI, gI, bI);
 
-    vec3 blurred = (sumE+sumA+sumC+sumD+sumF+sumG+sumI+sumB+sumH)/9.0;
+    vec3 blurred = (sumE+sumA+sumC+sumD+sumF+sumG+sumI+sumB+sumH) / 9.0;
 
 
     vpos *= 1. - vpos.xy;
@@ -397,7 +400,7 @@ void main()
         }
 
 // Reflection out
-    reflection = clamp(vec4(1. - (1. - reflection.rgb ) * (1. - vig_c / 7.), 1.), 0.0, 1.0);
+    reflection = clamp(vec4(1. - (1. - reflection.rgb ) * (1. - vig_c / 7.), 1.), 0., 1.);
 
 // Corner Size
     vpos *= (InputSize.xy/TextureSize.xy);
@@ -405,6 +408,7 @@ void main()
 // Screen Flicker
     float flicker = (g_flicker == 0.0) ? 1.0 : mix(1. - g_flicker / 10., 1.0, rand(float(FrameCount), 4.37585453));
 
-    FragColor = (g_refltog == 0.0) ? clamp(COMPAT_TEXTURE(Source, vTexCoord)*corner(vpos)*flicker, 0.0, 1.0) : clamp(reflection*corner(vpos)*flicker, 0.0, 1.0);
+    reflection = (g_refltog == 0.0) ? clamp(COMPAT_TEXTURE(Source, vTexCoord) * flicker, 0., 1.) : clamp(reflection * flicker, 0., 1.);
+    FragColor = corner(vpos) * reflection;
 }
 #endif
