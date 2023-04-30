@@ -85,9 +85,6 @@ layout(std140, set = 0, binding = 0) uniform UBO
     ###        Phosphor: NTSC-J (#2)         (or a NTSC-J based CRT phosphor gamut)        ###
     ###        WP: 9300K+27MPCD (8945K)      (CCT from x:0.281 y:0.311)(in practice ~8600K)###
     ###                                                                                    ###
-    ###    *Despite the standard of 2.22, a more faithful approximation to CRT...          ###
-    ###     ...is to use a gamma (SMPTE-C type) with a value of 2.35-2.55.                 ###
-    ###                                                                                    ###
     ###                                                                                    ###
     ##########################################################################################
     ##########################################################################################
@@ -293,8 +290,8 @@ vec3 wp_adjust(vec3 RGB, float temperature, mat3 primaries, int illuminant) {
     mat3 mata = RGB_to_XYZ_mat(primaries, illuminant);
 
     // Originally   "(mata * CAM) * matb" but we want to output XYZ so omit
-    return RGB.xyz * (mata * CAM);
-
+    // In "D93" we omit CAM as we are in compensation mode, not simulation nor adaptation
+    return illuminant > 0 ? RGB.xyz * (mata * VK) : RGB.xyz * (mata * CAM);
 }
 
 
