@@ -104,9 +104,9 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #pragma parameter g_CRT_b        "CRT Brightness"       0.0    0.0 100.0  1.0
 #pragma parameter g_CRT_c        "CRT Contrast"         100.0 50.0 150.0  1.0
 #pragma parameter g_CRT_l        "CRT Black Level"      0.1    0.0   0.35 0.01
-#pragma parameter g_CRT_br       "CRT Beam Red"         1.0    0.0   1.0  0.01
-#pragma parameter g_CRT_bg       "CRT Beam Green"       1.0    0.0   1.0  0.01
-#pragma parameter g_CRT_bb       "CRT Beam Blue"        1.0    0.0   1.0  0.01
+#pragma parameter g_CRT_br       "CRT Beam Red"         1.0    0.0   1.2  0.01
+#pragma parameter g_CRT_bg       "CRT Beam Green"       1.0    0.0   1.2  0.01
+#pragma parameter g_CRT_bb       "CRT Beam Blue"        1.0    0.0   1.2  0.01
 #pragma parameter g_vignette     "Vignette Toggle"      0.0    0.0   1.0  1.0
 #pragma parameter g_vstr         "Vignette Strength"    40.0   0.0  50.0  1.0
 #pragma parameter g_vpower       "Vignette Power"       0.20   0.0   0.5  0.01
@@ -592,7 +592,9 @@ const mat3 P22_J_ph =
 
 ////// P22 ///////
 // You can run any of these primaries either through D65 or D93 indistinctly but typically these were D65 based.
+// This is roughly the same as the old P22 gamut in Grade 2020
 // ILLUMINANT: D65->[0.31266142,0.3289589]
+// ILLUMINANT: D97->[0.285,0.285] ~9696K for Nanao MS-2930s series
 const mat3 P22_80s_ph =
     mat3(
      0.6470, 0.3430, 0.0100,
@@ -710,10 +712,10 @@ void main()
 // Display color space
     mat3 m_ou;
 
-    if (SPC ==  1.0) { m_ou = DCIP3_prims;           } else
-    if (SPC ==  2.0) { m_ou = rec2020_prims;         } else
-    if (SPC ==  3.0) { m_ou = Adobe_prims;           } else
-                     { m_ou = sRGB_prims;            }
+    if (SPC ==  1.0) { m_ou = DCIP3_prims;               } else
+    if (SPC ==  2.0) { m_ou = rec2020_prims;             } else
+    if (SPC ==  3.0) { m_ou = Adobe_prims;               } else
+                     { m_ou = sRGB_prims;                }
 
 // Sigmoidal Luma Contrast under 'Yxy' decorrelated model (in gamma space)
     vec3 Yxy = XYZtoYxy(col);
