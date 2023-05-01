@@ -46,6 +46,9 @@ layout(std140, set = 0, binding = 0) uniform UBO
     float g_vignette;
     float g_Dim_to_Dark;
     float wp_temperature;
+    float g_CRT_br;
+    float g_CRT_bg;
+    float g_CRT_bb;
     float g_satr;
     float g_satg;
     float g_satb;
@@ -105,6 +108,9 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #pragma parameter g_CRT_b        "CRT Brightness"       0.0    0.0 100.0  1.0
 #pragma parameter g_CRT_c        "CRT Contrast"         100.0 50.0 150.0  1.0
 #pragma parameter g_CRT_l        "CRT Black Level"      0.1    0.0   0.35 0.01
+#pragma parameter g_CRT_br       "CRT Beam Red"         1.0    0.0   1.0  0.01
+#pragma parameter g_CRT_bg       "CRT Beam Green"       1.0    0.0   1.0  0.01
+#pragma parameter g_CRT_bb       "CRT Beam Blue"        1.0    0.0   1.0  0.01
 #pragma parameter g_vignette     "Vignette Toggle"      1.0    0.0   1.0  1.0
 #pragma parameter g_vstr         "Vignette Strength"    40.0   0.0  50.0  1.0
 #pragma parameter g_vpower       "Vignette Power"       0.20   0.0   0.5  0.01
@@ -153,6 +159,9 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #define vpower          params.g_vpower
 #define g_sat           params.g_sat
 #define vibr            params.g_vibr
+#define beamr           global.g_CRT_br
+#define beamg           global.g_CRT_bg
+#define beamb           global.g_CRT_bb
 #define satr            global.g_satr
 #define satg            global.g_satg
 #define satb            global.g_satb
@@ -586,9 +595,9 @@ const mat3 SMPTE470BG_ph =
 // Mix between averaging KV-20M20, KDS VS19, Dell D93 and 4-TR-B09v1_0.pdf and Phosphor Handbook 'P22'
 const mat3 P22_J_ph =
     mat3(
-    0.625, 0.350, 0.025,
-    0.280, 0.605, 0.115,
-    0.152, 0.062, 0.786);
+     0.625, 0.350, 0.025,
+     0.280, 0.605, 0.115,
+     0.152, 0.062, 0.786);
 
 
 ////// P22 ///////
@@ -622,30 +631,30 @@ const mat3 CRT_95s_ph =
 // sRGB (IEC 61966-2-1) and ITU-R BT.709-6 (originally CCIR Rec.709)
 const mat3 sRGB_prims =
     mat3(
-    0.640, 0.330, 0.030,
-    0.300, 0.600, 0.100,
-    0.150, 0.060, 0.790);
+     0.640, 0.330, 0.030,
+     0.300, 0.600, 0.100,
+     0.150, 0.060, 0.790);
 
 // Adobe RGB (1998)
 const mat3 Adobe_prims =
     mat3(
-    0.640, 0.330, 0.030,
-    0.210, 0.710, 0.080,
-    0.150, 0.060, 0.790);
+     0.640, 0.330, 0.030,
+     0.210, 0.710, 0.080,
+     0.150, 0.060, 0.790);
 
 // BT-2020/BT-2100 (from 630nm, 532nm and 467nm)
 const mat3 rec2020_prims =
     mat3(
-    0.707917792, 0.292027109, 0.000055099,
-    0.170237195, 0.796518542, 0.033244263,
-    0.131370635, 0.045875976, 0.822753389);
+     0.707917792, 0.292027109, 0.000055099,
+     0.170237195, 0.796518542, 0.033244263,
+     0.131370635, 0.045875976, 0.822753389);
 
 // SMPTE RP 432-2 (DCI-P3)
 const mat3 DCIP3_prims =
     mat3(
-    0.680, 0.320, 0.000,
-    0.265, 0.690, 0.045,
-    0.150, 0.060, 0.790);
+     0.680, 0.320, 0.000,
+     0.265, 0.690, 0.045,
+     0.150, 0.060, 0.790);
 
 
 //*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
@@ -769,9 +778,9 @@ void main()
     float msaty = msat * coeff.y;
     float msatz = msat * coeff.z;
 
-    mat3 adjust = mat3(msatx + sat, msatx,       msatx,
-                       msaty,       msaty + sat, msaty,
-                       msatz,       msatz,       msatz + sat);
+    mat3 adjust = mat3(msatx + sat, msatx      , msatx       ,
+                       msaty      , msaty + sat, msaty       ,
+                       msatz      , msatz      , msatz + sat);
 
 
     screen = clamp(rolled_gain_v4(screen, clamp(lum, -0.49, 0.99)), 0., 1.);
@@ -803,19 +812,21 @@ void main()
     float sat_msk = (vibr < 0.0) ? 1.0 - abs(SatMask(src_h.x, src_h.y, src_h.z) - 1.0) * abs(vibr) : \
                                    1.0 -    (SatMask(src_h.x, src_h.y, src_h.z) * vibr)            ;
 
-    src_h = g_sat==0.0 && satr==0.0 && satg==0.0 && satb==0.0 && vibr==0.0 ? src_h : \
-            mixfix(src_h, clamp(adjust * src_h, 0., 1.), clamp(sat_msk, 0., 1.));
+    src_h  = satr==0.0 && satg==0.0 && satb==0.0 && vibr==0.0 ? g_sat==0.0 ? screen.rgb : clamp(adjust * screen.rgb, 0., 1.) : \
+             mixfix(src_h, clamp(adjust * src_h, 0., 1.), clamp(sat_msk, 0., 1.));
+
+    src_h *= vec3(beamr,beamg,beamb);
 
 // Dim to Dark adaptation OOTF; only for 709 and 2020
     vec3 src_D = global.g_Dim_to_Dark > 0.0 ? pow(src_h,vec3(1./0.9811)) : src_h;
 
 
 // EOTF^-1 - Inverted Electro-Optical Transfer Function
-    vec3 TRC = (SPC == 3.0) ?     clamp(pow(src_h,                  vec3(1./(563./256.))),    0., 1.) : \
-               (SPC == 2.0) ? moncurve_r_f3(src_D,                           2.20 + 0.022222, 0.0993) : \
-               (SPC == 1.0) ?     clamp(pow(src_h,                  vec3(1./(2.20 + 0.40))),  0., 1.) : \
-               (SPC == 0.0) ? moncurve_r_f3(src_h,                           2.20 + 0.20,     0.0550) : \
-                              clamp(pow(    src_D,                  vec3(1./(2.20 + 0.20))),  0., 1.) ;
+    vec3 TRC = (SPC == 3.0) ?     clamp(pow(src_h, vec3(1./(563./256.))),    0., 1.) : \
+               (SPC == 2.0) ? moncurve_r_f3(src_D,          2.20 + 0.022222, 0.0993) : \
+               (SPC == 1.0) ?     clamp(pow(src_h, vec3(1./(2.20 + 0.40))),  0., 1.) : \
+               (SPC == 0.0) ? moncurve_r_f3(src_h,          2.20 + 0.20,     0.0550) : \
+                              clamp(pow(    src_D, vec3(1./(2.20 + 0.20))),  0., 1.) ;
 
 
 // Technical LUT - (in SPC space)
