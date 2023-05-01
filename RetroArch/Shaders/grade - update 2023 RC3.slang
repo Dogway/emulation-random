@@ -704,7 +704,7 @@ void main()
     vec3 vcolor = (global.LUT1_toggle == 0.0) ? col : mixfix(color1, color2, mixer);
 
 
-// To Linear. Undo developer baked CRT gamma (from 2.40 at default 0.1 CRT black level, to 2.61 at 0.0 CRT black level)
+// CRT EOTF. To Linear: Undo developer baked CRT gamma (from 2.40 at default 0.1 CRT black level, to 2.61 at 0.0 CRT black level)
     col = EOTF_1886a_f3(vcolor, params.g_CRT_l, params.g_CRT_b, params.g_CRT_c);
 
 
