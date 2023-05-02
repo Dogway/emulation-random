@@ -55,7 +55,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 } global;
 
 /*
-   Grade
+   Grade (02-05-2023)
    > Ubershader grouping some monolithic color related shaders:
     ::color-mangler (hunterk), ntsc color tuning knobs (Doriphor), white_point (hunterk, Dogway), RA Reshade LUT.
    > and the addition of:
@@ -101,9 +101,9 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #pragma parameter g_V_SHIFT      "CRT V Shift"          0.0   -0.2   0.2  0.01
 #pragma parameter g_U_MUL        "CRT U Multiplier"     1.0    0.0   2.0  0.01
 #pragma parameter g_V_MUL        "CRT V Multiplier"     1.0    0.0   2.0  0.01
+#pragma parameter g_CRT_l        "CRT Gamma"            2.40   2.28  2.60 0.01
 #pragma parameter g_CRT_b        "CRT Brightness"       0.0    0.0 100.0  1.0
 #pragma parameter g_CRT_c        "CRT Contrast"         100.0 50.0 150.0  1.0
-#pragma parameter g_CRT_l        "CRT Black Level"      0.1    0.0   0.35 0.01
 #pragma parameter g_CRT_br       "CRT Beam Red"         1.0    0.0   1.2  0.01
 #pragma parameter g_CRT_bg       "CRT Beam Green"       1.0    0.0   1.2  0.01
 #pragma parameter g_CRT_bb       "CRT Beam Blue"        1.0    0.0   1.2  0.01
@@ -145,6 +145,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #define V_SHIFT         params.g_V_SHIFT
 #define U_MUL           params.g_U_MUL
 #define V_MUL           params.g_V_MUL
+#define g_CRT_l         -(100000.*log((72981.-500000./(3.*max(2.284,params.g_CRT_l)))/9058.))/945461.
 #define lum_fix         params.g_lum_fix
 #define vignette        global.g_vignette
 #define vstr            params.g_vstr
@@ -686,7 +687,7 @@ void main()
     col   = clamp(YUV_r601(col), 0., 1.);
 
 // CRT EOTF. To Linear: Undo developer baked CRT gamma (from 2.40 at default 0.1 CRT black level, to 2.61 at 0.0 CRT black level)
-    col = EOTF_1886a_f3(col, params.g_CRT_l, params.g_CRT_b, params.g_CRT_c);
+    col = EOTF_1886a_f3(col, g_CRT_l, params.g_CRT_b, params.g_CRT_c);
 
 
 // CRT Phosphor Gamut (0.0 is noop)
