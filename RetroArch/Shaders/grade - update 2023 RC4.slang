@@ -59,7 +59,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 } global;
 
 /*
-   Grade (02-05-2023)
+   Grade (03-05-2023)
    > Ubershader grouping some monolithic color related shaders:
     ::color-mangler (hunterk), ntsc color tuning knobs (Doriphor), white_point (hunterk, Dogway), RA Reshade LUT.
    > and the addition of:
@@ -139,7 +139,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #pragma parameter gb             "Green-Blue Tint"      0.0 -1.0 1.0 0.005
 #pragma parameter br             "Blue-Red Tint"        0.0 -1.0 1.0 0.005
 #pragma parameter bg             "Blue-Green Tint"      0.0 -1.0 1.0 0.005
-#pragma parameter LUT_Size1      "LUT Size 1"           16.0 8.0 64.0 16.0
+#pragma parameter LUT_Size1      "LUT Size 1"           32.0 8.0 64.0 16.0
 #pragma parameter LUT1_toggle    "LUT 1 Toggle"         0.0  0.0 1.0 1.0
 #pragma parameter LUT_Size2      "LUT Size 2"           64.0 0.0 64.0 16.0
 #pragma parameter LUT2_toggle    "LUT 2 Toggle"         0.0  0.0 1.0 1.0
@@ -517,12 +517,10 @@ const float[9] YByRy = {
     0.701088,-0.586603,-0.114485};
 
 
-// YUV is defined with headroom and footroom (TV range),
-// we need to limit the excursion to 16-235.
-// LimitU = sclU/(1-0.114485); // scale factor, yields 0.555786025922879
-// LimitV = sclU/(1-0.298912); // scale factor, yields 0.701990139247995
 // Umax 0.435812284313725
 // Vmax 0.615857694117647
+// YUV is defined with headroom and footroom (TV range),
+// we need to limit the excursion to 16-235.
 // This is still R'G'B' full to YUV full though
 vec3 r601_YUV(vec3 RGB) {
 
@@ -660,8 +658,9 @@ const mat3 DCIP3_prims =
      0.150, 0.060, 0.790);
 
 
-//*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 
+
+//*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 
 
 
@@ -678,9 +677,9 @@ void main()
     vec2 UVmax = vec2(0.435812284313725, 0.615857694117647);
 
 // Assumes framebuffer in Rec.601 full range with baked gamma
-    vec3 col = clamp(r601_YUV(src), vec3(0.0, -UVmax.x, -UVmax.y), vec3(1.0, UVmax.x, UVmax.y));
+    vec3 col = clamp(r601_YUV(src), vec3(0.0,   -UVmax.x, -UVmax.y), vec3(1.0, UVmax.x, UVmax.y));
 
-    col      = crtgamut < 2.0 ? PCtoTV(col, 1.0, UVmax.x, UVmax.y, 1.0, false) : col;
+    col      = crtgamut < 2.0 ? PCtoTV(col, 1.0, UVmax.x,  UVmax.y, 1.0, false) : col;
 
 
 // YUV Analogue Color Controls (HUE + Color Shift + Color Burst)
@@ -820,9 +819,9 @@ void main()
 
     src_h *= vec3(beamr,beamg,beamb);
 
+
 // Dim to Dark adaptation OOTF; only for 709 and 2020
     vec3 src_D = global.g_Dim_to_Dark > 0.0 ? pow(src_h,vec3(1./0.9811)) : src_h;
-
 
 // EOTF^-1 - Inverted Electro-Optical Transfer Function
     vec3 TRC = (SPC == 3.0) ?     clamp(pow(src_h, vec3(1./(563./256.))),    0., 1.) : \
