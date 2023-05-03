@@ -24,14 +24,15 @@ layout(push_constant) uniform Push
 // https://forums.libretro.com/t/please-show-off-what-crt-shaders-can-do/19193/1482
 
 // Other NTSC
-// Y:2.0   I: 0.30   Q: 0.30 (1993-2020) (for FCC NTSC VHS analogue standard) (band limited)
-// Y:4.2   I: 0.60   Q: 0.60 (1993-2020) (for FCC NTSC Broadcast analogue standard) (band limited)
+// Y:2.0    I: 0.30   Q: 0.30 (1993-2020) (for     NTSC   VHS analogue standard) (band limited)
+// Y:5.5    I: 0.30   Q: 0.30 (1993-2020) (for     NTSC S-VHS or LD analogue standard) (chroma band limited)
 
 // Suggestions (NTSC):
 // Y:4.20   I: 1.30   Q: 0.40 (1953-1993) (for FCC NTSC analogue standard -old-)
 // Y:4.20   I: 1.50   Q: 0.50 (1953-1993) (for FCC NTSC analogue standard -old-)
-// Y:4.20   U: 1.30   V: 1.30 (1998-2020) (for FCC NTSC digital standard 4:1:1) (chroma band limited)
-// Y:4.20   U: 1.79   V: 1.79 (1998-2020) (for FCC NTSC S-Video & digital -new- 4:2:2) (max subcarrier width)
+// Y:4.20   I: 0.60   Q: 0.60 (1993-2020) (for     NTSC Broadcast analogue standard) (band limited)
+// Y:4.20   U: 1.30   V: 1.30 (1998-2020) (for     NTSC digital standard 4:1:1, DVDs) (chroma band limited)
+// Y:4.20   U: 1.79   V: 1.79 (1998-2020) (for     NTSC S-Video & digital -new- 4:2:2) (max subcarrier width)
 
 // Suggestions (NTSC-J):
 // Y:4.20   I: 1.30   Q: 0.40  (for NTSC-J analogue standard -old-)
