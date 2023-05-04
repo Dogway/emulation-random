@@ -1,5 +1,27 @@
 #version 450
 
+/*
+   Grade - CRT emulated color manipulation shader
+   
+   Copyright (C) 2020-2023 Dogway (Jose Linares)
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+   
+*/
+
+
 layout(push_constant) uniform Push
 {
     float g_signal_type;
@@ -44,7 +66,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
     vec4 OutputSize;
     uint FrameCount;
     float g_vignette;
-    float g_Dim_to_Dark;
+    float g_Dark_to_Dim;
     float wp_temperature;
     float g_CRT_br;
     float g_CRT_bg;
@@ -59,14 +81,11 @@ layout(std140, set = 0, binding = 0) uniform UBO
 } global;
 
 /*
-   Grade (03-05-2023)
+   Grade (04-05-2023)
    > Ubershader grouping some monolithic color related shaders:
     ::color-mangler (hunterk), ntsc color tuning knobs (Doriphor), white_point (hunterk, Dogway), RA Reshade LUT.
    > and the addition of:
     ::analogue color emulation, phosphor gamut, color space + TRC support, vibrance, HUE vs SAT, vignette (shared by Syh), black level, rolled gain and sigmoidal contrast.
-
-   Author: Dogway
-   License: Public domain
 
    **Thanks to those that helped me out keep motivated by continuous feedback and bug reports:
    **Syh, Nesguy, hunterk, and the libretro forum members.
@@ -97,7 +116,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #pragma parameter g_signal_type  "Signal Type (0:RGB 1:Composite)"                           1.0  0.0 1.0 1.0
 #pragma parameter g_crtgamut     "Phosphor (-2:CRT-95s -1:P22-80s 1:P22-90s 2:NTSC-J 3:PAL)" 2.0 -3.0 3.0 1.0
 #pragma parameter g_space_out    "Diplay Color Space (-1:709 0:sRGB 1:DCI 2:2020 3:Adobe)"   0.0 -1.0 3.0 1.0
-#pragma parameter g_Dim_to_Dark  "Dim to Dark adaptation"                                    1.0  0.0 1.0 1.0
+#pragma parameter g_Dark_to_Dim  "Dark to Dim adaptation"                                    1.0  0.0 1.0 1.0
 
 // Analogue controls
 #pragma parameter g_hue_degrees  "CRT Hue"              0.0 -360.0 360.0  1.0
@@ -105,7 +124,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #pragma parameter g_V_SHIFT      "CRT V Shift"          0.0   -0.2   0.2  0.01
 #pragma parameter g_U_MUL        "CRT U Multiplier"     1.0    0.0   2.0  0.01
 #pragma parameter g_V_MUL        "CRT V Multiplier"     1.0    0.0   2.0  0.01
-#pragma parameter g_CRT_l        "CRT Gamma"            2.40   2.28  2.60 0.01
+#pragma parameter g_CRT_l        "CRT Gamma"            2.50   2.28  2.60 0.01
 #pragma parameter g_CRT_b        "CRT Brightness"       0.0    0.0 100.0  1.0
 #pragma parameter g_CRT_c        "CRT Contrast"         100.0 50.0 150.0  1.0
 #pragma parameter g_CRT_br       "CRT Beam Red"         1.0    0.0   1.2  0.01
@@ -332,7 +351,7 @@ float EOTF_1886a(float color, float bl, float brightness, float contrast) {
     float k  = Lw /pow(1  + Lb,    a1);
     float sl = k * pow(Vc + Lb, a1-a2);        // Slope for knee gamma
 
-    color = color >= Vc ? k * pow((color + Lb), a1 ) : sl * pow((color + Lb), a2 );
+    color = color >= Vc ? k * pow(color + Lb, a1 ) : sl * pow(color + Lb, a2 );
     return color;
  }
 
@@ -591,7 +610,7 @@ const mat3 SMPTE470BG_ph =
 
 // NTSC-J P22
 // ILLUMINANT: [0.281000,0.311000] (CCT of 8945.436K)
-// Mix between averaging KV-20M20, KDS VS19, Dell D93 and 4-TR-B09v1_0.pdf and Phosphor Handbook 'P22'
+// Mix between averaging KV-20M20, KDS VS19, Dell D93, 4-TR-B09v1_0.pdf and Phosphor Handbook 'P22'
 const mat3 P22_J_ph =
     mat3(
      0.625, 0.350, 0.025,
@@ -600,8 +619,8 @@ const mat3 P22_J_ph =
 
 
 ////// P22 ///////
-// You can run any of these primaries either through D65 or D93 indistinctly but typically these were D65 based.
-// This is roughly the same as the old P22 gamut in Grade 2020
+// You can run any of these P22 primaries either through D65 or D93 indistinctly but typically these were D65 based.
+// P22_80 is roughly the same as the old P22 gamut in Grade 2020
 // ILLUMINANT: D65->[0.31266142,0.3289589]
 // ILLUMINANT: D97->[0.285,0.285] ~9696K for Nanao MS-2930s series
 const mat3 P22_80s_ph =
@@ -677,7 +696,8 @@ void main()
     vec2 UVmax = vec2(0.435812284313725, 0.615857694117647);
 
 // Assumes framebuffer in Rec.601 full range with baked gamma
-    vec3 col = clamp(r601_YUV(src), vec3(0.0,   -UVmax.x, -UVmax.y), vec3(1.0, UVmax.x, UVmax.y));
+    vec3 col = clamp(r601_YUV(src), vec3(0.0,   -UVmax.x, -UVmax.y) , \
+                                    vec3(1.0,    UVmax.x,  UVmax.y));
 
     col      = crtgamut < 2.0 ? PCtoTV(col, 1.0, UVmax.x,  UVmax.y, 1.0, false) : col;
 
@@ -706,7 +726,7 @@ void main()
     vec3 vcolor = (global.LUT1_toggle == 0.0) ? col : mixfix(color1, color2, mixer);
 
 
-// CRT EOTF. To Linear: Undo developer baked CRT gamma (from 2.40 at default 0.1 CRT black level, to 2.61 at 0.0 CRT black level)
+// CRT EOTF. To Display Referred Linear: Undo developer baked CRT gamma (from 2.40 at default 0.1 CRT black level, to 2.61 at 0.0 CRT black level)
     col = EOTF_1886a_f3(vcolor, g_CRT_l, params.g_CRT_b, params.g_CRT_c);
 
 
@@ -716,6 +736,7 @@ void main()
     if (crtgamut == -3.0) { m_in = SMPTE170M_ph;         } else
     if (crtgamut == -2.0) { m_in = CRT_95s_ph;           } else
     if (crtgamut == -1.0) { m_in = P22_80s_ph;           } else
+    if (crtgamut ==  0.0) { m_in = sRGB_prims;           } else
     if (crtgamut ==  1.0) { m_in = P22_90s_ph;           } else
     if (crtgamut ==  2.0) { m_in = P22_J_ph;             } else
     if (crtgamut ==  3.0) { m_in = SMPTE470BG_ph;        }
@@ -754,6 +775,8 @@ void main()
     vpos *= 1.0 - vpos.xy;
     float vig = vpos.x * vpos.y * vstr;
     vig = min(pow(vig, vpower), 1.0);
+    vig = vig >= 0.5 ? smoothstep(0,1,vig) : vig;
+
     contrast *= (vignette == 1.0) ? vig : 1.0;
 
     contrast += (lift / 20.0) * (1.0 - contrast);
@@ -799,6 +822,7 @@ void main()
     float hue_at = atan(src_h.z, src_h.y);
     chroma = sqrt(src_h.z * src_h.z + src_h.y * src_h.y);
 
+    //  red -20º green 230º blue 100º
     float hue_radians_r = -20.0 * M_PI;
     float hue_r = chroma * cos(hue_at + hue_radians_r) * 2.;
 
@@ -820,8 +844,8 @@ void main()
     src_h *= vec3(beamr,beamg,beamb);
 
 
-// Dim to Dark adaptation OOTF; only for 709 and 2020
-    vec3 src_D = global.g_Dim_to_Dark > 0.0 ? pow(src_h,vec3(1./0.9811)) : src_h;
+// Dark to Dim adaptation OOTF; only for 709 and 2020
+    vec3 src_D = global.g_Dark_to_Dim > 0.0 ? pow(src_h,vec3(0.9811)) : src_h;
 
 // EOTF^-1 - Inverted Electro-Optical Transfer Function
     vec3 TRC = (SPC == 3.0) ?     clamp(pow(src_h, vec3(1./(563./256.))),    0., 1.) : \

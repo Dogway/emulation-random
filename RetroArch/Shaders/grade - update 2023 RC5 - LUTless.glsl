@@ -1,68 +1,31 @@
-#version 450
+/*
+   Grade - CRT emulated color manipulation shader
+   
+   Copyright (C) 2020-2023 Dogway (Jose Linares)
 
-layout(push_constant) uniform Push
-{
-    float g_signal_type;
-    float g_crtgamut;
-    float g_space_out;
-    float g_hue_degrees;
-    float g_U_SHIFT;
-    float g_V_SHIFT;
-    float g_U_MUL;
-    float g_V_MUL;
-    float g_CRT_b;
-    float g_CRT_c;
-    float g_CRT_l;
-    float g_lum_fix;
-    float g_vstr;
-    float g_vpower;
-    float g_sat;
-    float g_vibr;
-    float g_lum;
-    float g_cntrst;
-    float g_mid;
-    float g_lift;
-    float blr;
-    float blg;
-    float blb;
-    float wlr;
-    float wlg;
-    float wlb;
-    float rg;
-    float rb;
-    float gr;
-    float gb;
-    float br;
-    float bg;
-} params;
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
 
-layout(std140, set = 0, binding = 0) uniform UBO
-{
-    mat4 MVP;
-    vec4 SourceSize;
-    vec4 OriginalSize;
-    vec4 OutputSize;
-    uint FrameCount;
-    float g_vignette;
-    float g_Dim_to_Dark;
-    float wp_temperature;
-    float g_CRT_br;
-    float g_CRT_bg;
-    float g_CRT_bb;
-    float g_satr;
-    float g_satg;
-    float g_satb;
-} global;
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+   
+*/
+
 
 /*
-   Grade (03-05-2023)
+   Grade (04-05-2023)
    > Ubershader grouping some monolithic color related shaders:
     ::color-mangler (hunterk), ntsc color tuning knobs (Doriphor), white_point (hunterk, Dogway), RA Reshade LUT.
    > and the addition of:
     ::analogue color emulation, phosphor gamut, color space + TRC support, vibrance, HUE vs SAT, vignette (shared by Syh), black level, rolled gain and sigmoidal contrast.
-
-   Author: Dogway
-   License: Public domain
 
    **Thanks to those that helped me out keep motivated by continuous feedback and bug reports:
    **Syh, Nesguy, hunterk, and the libretro forum members.
@@ -93,7 +56,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #pragma parameter g_signal_type  "Signal Type (0:RGB 1:Composite)"                           0.0  0.0 1.0 1.0
 #pragma parameter g_crtgamut     "Phosphor (-2:CRT-95s -1:P22-80s 1:P22-90s 2:NTSC-J 3:PAL)" 0.0 -3.0 3.0 1.0
 #pragma parameter g_space_out    "Diplay Color Space (-1:709 0:sRGB 1:DCI 2:2020 3:Adobe)"   0.0 -1.0 3.0 1.0
-#pragma parameter g_Dim_to_Dark  "Dim to Dark adaptation"                                    0.0  0.0 1.0 1.0
+#pragma parameter g_Dark_to_Dim  "Dark to Dim adaptation"                                    0.0  0.0 1.0 1.0
 
 // Analogue controls
 #pragma parameter g_hue_degrees  "CRT Hue"              0.0 -360.0 360.0  1.0
@@ -101,7 +64,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #pragma parameter g_V_SHIFT      "CRT V Shift"          0.0   -0.2   0.2  0.01
 #pragma parameter g_U_MUL        "CRT U Multiplier"     1.0    0.0   2.0  0.01
 #pragma parameter g_V_MUL        "CRT V Multiplier"     1.0    0.0   2.0  0.01
-#pragma parameter g_CRT_l        "CRT Gamma"            2.40   2.28  2.60 0.01
+#pragma parameter g_CRT_l        "CRT Gamma"            2.50   2.28  2.60 0.01
 #pragma parameter g_CRT_b        "CRT Brightness"       0.0    0.0 100.0  1.0
 #pragma parameter g_CRT_c        "CRT Contrast"         100.0 50.0 150.0  1.0
 #pragma parameter g_CRT_br       "CRT Beam Red"         1.0    0.0   1.2  0.01
@@ -137,60 +100,197 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #pragma parameter bg             "Blue-Green Tint"      0.0 -1.0 1.0 0.005
 
 #define M_PI            3.1415926535897932384626433832795/180.0
-#define signal          params.g_signal_type
-#define crtgamut        params.g_crtgamut
-#define SPC             params.g_space_out
-#define hue_degrees     params.g_hue_degrees
-#define U_SHIFT         params.g_U_SHIFT
-#define V_SHIFT         params.g_V_SHIFT
-#define U_MUL           params.g_U_MUL
-#define V_MUL           params.g_V_MUL
-#define g_CRT_l         -(100000.*log((72981.-500000./(3.*max(2.284,params.g_CRT_l)))/9058.))/945461.
-#define lum_fix         params.g_lum_fix
-#define vignette        global.g_vignette
-#define vstr            params.g_vstr
-#define vpower          params.g_vpower
-#define g_sat           params.g_sat
-#define vibr            params.g_vibr
-#define beamr           global.g_CRT_br
-#define beamg           global.g_CRT_bg
-#define beamb           global.g_CRT_bb
-#define satr            global.g_satr
-#define satg            global.g_satg
-#define satb            global.g_satb
-#define lum             params.g_lum
-#define cntrst          params.g_cntrst
-#define mid             params.g_mid
-#define lift            params.g_lift
-#define blr             params.blr
-#define blg             params.blg
-#define blb             params.blb
-#define wlr             params.wlr
-#define wlg             params.wlg
-#define wlb             params.wlb
-#define rg              params.rg
-#define rb              params.rb
-#define gr              params.gr
-#define gb              params.gb
-#define br              params.br
-#define bg              params.bg
+#define signal          g_signal_type
+#define crtgamut        g_crtgamut
+#define SPC             g_space_out
+#define hue_degrees     g_hue_degrees
+#define U_SHIFT         g_U_SHIFT
+#define V_SHIFT         g_V_SHIFT
+#define U_MUL           g_U_MUL
+#define V_MUL           g_V_MUL
+#define g_CRT_l         -(100000.*log((72981.-500000./(3.*max(2.284,g_CRT_l)))/9058.))/945461.
+#define lum_fix         g_lum_fix
+#define vignette        g_vignette
+#define vstr            g_vstr
+#define vpower          g_vpower
+#define vibr            g_vibr
+#define beamr           g_CRT_br
+#define beamg           g_CRT_bg
+#define beamb           g_CRT_bb
+#define satr            g_satr
+#define satg            g_satg
+#define satb            g_satb
+#define lum             g_lum
+#define cntrst          g_cntrst
+#define mid             g_mid
+#define lift            g_lift
 
-#pragma stage vertex
-layout(location = 0) in vec4 Position;
-layout(location = 1) in vec2 TexCoord;
-layout(location = 0) out vec2 vTexCoord;
+
+#if defined(VERTEX)
+
+#if __VERSION__ >= 130
+#define COMPAT_VARYING out
+#define COMPAT_ATTRIBUTE in
+#define COMPAT_TEXTURE texture
+#else
+#define COMPAT_VARYING varying
+#define COMPAT_ATTRIBUTE attribute
+#define COMPAT_TEXTURE texture2D
+#endif
+
+#ifdef GL_ES
+#define COMPAT_PRECISION mediump
+#else
+#define COMPAT_PRECISION
+#endif
+
+COMPAT_ATTRIBUTE vec4 VertexCoord;
+COMPAT_ATTRIBUTE vec4 COLOR;
+COMPAT_ATTRIBUTE vec4 TexCoord;
+COMPAT_VARYING vec4 COL0;
+COMPAT_VARYING vec4 TEX0;
+
+uniform mat4 MVPMatrix;
+uniform COMPAT_PRECISION int FrameDirection;
+uniform COMPAT_PRECISION int FrameCount;
+uniform COMPAT_PRECISION vec2 OutputSize;
+uniform COMPAT_PRECISION vec2 TextureSize;
+uniform COMPAT_PRECISION vec2 InputSize;
+
+// compatibility #defines
+#define vTexCoord TEX0.xy
+#define SourceSize vec4(TextureSize, 1.0 / TextureSize) //either TextureSize or InputSize
+#define OutSize vec4(OutputSize, 1.0 / OutputSize)
 
 void main()
 {
-    gl_Position = global.MVP * Position;
-    vTexCoord = TexCoord;
+   gl_Position = MVPMatrix * VertexCoord;
+   TEX0.xy = TexCoord.xy;
 }
 
-#pragma stage fragment
-layout(location = 0) in vec2 vTexCoord;
-layout(location = 0) out vec4 FragColor;
-layout(set = 0, binding = 2) uniform sampler2D Source;
+#elif defined(FRAGMENT)
 
+#ifdef GL_ES
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+#define COMPAT_PRECISION mediump
+#else
+#define COMPAT_PRECISION
+#endif
+
+#if __VERSION__ >= 130
+#define COMPAT_VARYING in
+#define COMPAT_TEXTURE texture
+out COMPAT_PRECISION vec4 FragColor;
+#else
+#define COMPAT_VARYING varying
+#define FragColor gl_FragColor
+#define COMPAT_TEXTURE texture2D
+#endif
+
+uniform COMPAT_PRECISION int FrameDirection;
+uniform COMPAT_PRECISION int FrameCount;
+uniform COMPAT_PRECISION vec2 OutputSize;
+uniform COMPAT_PRECISION vec2 TextureSize;
+uniform COMPAT_PRECISION vec2 InputSize;
+uniform sampler2D Texture;
+COMPAT_VARYING vec4 TEX0;
+
+// compatibility #defines
+#define Source Texture
+#define vTexCoord TEX0.xy
+
+#define SourceSize vec4(TextureSize, 1.0 / TextureSize) //either TextureSize or InputSize
+#define OutSize vec4(OutputSize, 1.0 / OutputSize)
+
+#ifdef PARAMETER_UNIFORM
+uniform COMPAT_PRECISION float signal;
+uniform COMPAT_PRECISION float crtgamut;
+uniform COMPAT_PRECISION float SPC;
+uniform COMPAT_PRECISION float g_Dark_to_Dim;
+uniform COMPAT_PRECISION float hue_degrees;
+uniform COMPAT_PRECISION float U_SHIFT;
+uniform COMPAT_PRECISION float V_SHIFT;
+uniform COMPAT_PRECISION float U_MUL;
+uniform COMPAT_PRECISION float V_MUL;
+uniform COMPAT_PRECISION float g_CRT_l;
+uniform COMPAT_PRECISION float g_CRT_b;
+uniform COMPAT_PRECISION float g_CRT_c;
+uniform COMPAT_PRECISION float beamr;
+uniform COMPAT_PRECISION float beamg;
+uniform COMPAT_PRECISION float beamb;
+uniform COMPAT_PRECISION float vignette;
+uniform COMPAT_PRECISION float vstr;
+uniform COMPAT_PRECISION float vpower;
+uniform COMPAT_PRECISION float lum_fix;
+uniform COMPAT_PRECISION float lum;
+uniform COMPAT_PRECISION float cntrst;
+uniform COMPAT_PRECISION float mid;
+uniform COMPAT_PRECISION float wp_temperature;
+uniform COMPAT_PRECISION float g_sat;
+uniform COMPAT_PRECISION float vibr;
+uniform COMPAT_PRECISION float satr;
+uniform COMPAT_PRECISION float satg;
+uniform COMPAT_PRECISION float satb;
+uniform COMPAT_PRECISION float lift;
+uniform COMPAT_PRECISION float blr;
+uniform COMPAT_PRECISION float blg;
+uniform COMPAT_PRECISION float blb;
+uniform COMPAT_PRECISION float wlr;
+uniform COMPAT_PRECISION float wlg;
+uniform COMPAT_PRECISION float wlb;
+uniform COMPAT_PRECISION float rg;
+uniform COMPAT_PRECISION float rb;
+uniform COMPAT_PRECISION float gr;
+uniform COMPAT_PRECISION float gb;
+uniform COMPAT_PRECISION float br;
+uniform COMPAT_PRECISION float bg;
+#else
+#define signal 1.0
+#define crtgamut 2.0
+#define SPC 0.0
+#define g_Dark_to_Dim 0.0
+#define hue_degrees 0.0
+#define U_SHIFT 0.0
+#define V_SHIFT 0.0
+#define U_MUL 1.0
+#define V_MUL 1.0
+#define g_CRT_l 2.50
+#define g_CRT_b 0.0
+#define g_CRT_c 0.0
+#define beamr 1.0
+#define beamg 1.0
+#define beamb 1.0
+#define vignette 1.0
+#define vstr 50.0
+#define vpower 0.50
+#define lum_fix 0.0
+#define lum 0.0
+#define cntrst 0.0
+#define mid 0.5
+#define wp_temperature 8604.0
+#define g_sat 0.0
+#define vibr 0.0
+#define satr 0.0
+#define satg 0.0
+#define satb 0.0
+#define lift 0.0
+#define blr 0.0
+#define blg 0.0
+#define blb 0.0
+#define wlr 1.0
+#define wlg 1.0
+#define wlb 1.0
+#define rg 0.0
+#define rb 0.0
+#define gr 0.0
+#define gb 0.0
+#define br 0.0
+#define bg 0.0
+#endif
 
 
 ///////////////////////// Color Space Transformations //////////////////////////
@@ -322,7 +422,7 @@ float EOTF_1886a(float color, float bl, float brightness, float contrast) {
     float k  = Lw /pow(1  + Lb,    a1);
     float sl = k * pow(Vc + Lb, a1-a2);        // Slope for knee gamma
 
-    color = color >= Vc ? k * pow((color + Lb), a1 ) : sl * pow((color + Lb), a2 );
+    color = color >= Vc ? k * pow(color + Lb, a1 ) : sl * pow(color + Lb, a2 );
     return color;
  }
 
@@ -581,7 +681,7 @@ const mat3 SMPTE470BG_ph =
 
 // NTSC-J P22
 // ILLUMINANT: [0.281000,0.311000] (CCT of 8945.436K)
-// Mix between averaging KV-20M20, KDS VS19, Dell D93 and 4-TR-B09v1_0.pdf and Phosphor Handbook 'P22'
+// Mix between averaging KV-20M20, KDS VS19, Dell D93, 4-TR-B09v1_0.pdf and Phosphor Handbook 'P22'
 const mat3 P22_J_ph =
     mat3(
      0.625, 0.350, 0.025,
@@ -590,8 +690,8 @@ const mat3 P22_J_ph =
 
 
 ////// P22 ///////
-// You can run any of these primaries either through D65 or D93 indistinctly but typically these were D65 based.
-// This is roughly the same as the old P22 gamut in Grade 2020
+// You can run any of these P22 primaries either through D65 or D93 indistinctly but typically these were D65 based.
+// P22_80 is roughly the same as the old P22 gamut in Grade 2020
 // ILLUMINANT: D65->[0.31266142,0.3289589]
 // ILLUMINANT: D97->[0.285,0.285] ~9696K for Nanao MS-2930s series
 const mat3 P22_80s_ph =
@@ -661,13 +761,14 @@ void main()
 // Retro Sega Systems: Genesis, 32x, CD and Saturn 2D had color palettes designed in TV levels to save on transformations.
     float lum_exp = (lum_fix ==  1.0) ? (255./239.) : 1.;
 
-    vec3 src = texture(Source, vTexCoord.xy).rgb * lum_exp;
+    vec3 src = COMPAT_TEXTURE(Source, vTexCoord).rgb * lum_exp;
 
 // Clipping Logic / Gamut Limiting
     vec2 UVmax = vec2(0.435812284313725, 0.615857694117647);
 
 // Assumes framebuffer in Rec.601 full range with baked gamma
-    vec3 col = clamp(r601_YUV(src), vec3(0.0,   -UVmax.x, -UVmax.y), vec3(1.0, UVmax.x, UVmax.y));
+    vec3 col = clamp(r601_YUV(src), vec3(0.0,   -UVmax.x, -UVmax.y) , \
+                                    vec3(1.0,    UVmax.x,  UVmax.y));
 
     col      = crtgamut < 2.0 ? PCtoTV(col, 1.0, UVmax.x,  UVmax.y, 1.0, false) : col;
 
@@ -685,8 +786,8 @@ void main()
     col   = crtgamut < 2.0 ? TVtoPC(col, 1.0, UVmax.x, UVmax.y, 1.0, false) : col;
     col   = clamp(YUV_r601(col), 0., 1.);
 
-// CRT EOTF. To Linear: Undo developer baked CRT gamma (from 2.40 at default 0.1 CRT black level, to 2.61 at 0.0 CRT black level)
-    col = EOTF_1886a_f3(col, g_CRT_l, params.g_CRT_b, params.g_CRT_c);
+// CRT EOTF. To Display Referred Linear: Undo developer baked CRT gamma (from 2.40 at default 0.1 CRT black level, to 2.61 at 0.0 CRT black level)
+    col = EOTF_1886a_f3(col, g_CRT_l, g_CRT_b, g_CRT_c);
 
 
 // CRT Phosphor Gamut (0.0 is noop)
@@ -695,12 +796,13 @@ void main()
     if (crtgamut == -3.0) { m_in = SMPTE170M_ph;         } else
     if (crtgamut == -2.0) { m_in = CRT_95s_ph;           } else
     if (crtgamut == -1.0) { m_in = P22_80s_ph;           } else
+    if (crtgamut ==  0.0) { m_in = sRGB_prims;           } else
     if (crtgamut ==  1.0) { m_in = P22_90s_ph;           } else
     if (crtgamut ==  2.0) { m_in = P22_J_ph;             } else
     if (crtgamut ==  3.0) { m_in = SMPTE470BG_ph;        }
 
 // White Point Mapping
-    col = clamp(wp_adjust(col, global.wp_temperature, m_in, crtgamut==2.0?1:0), 0., 1.);
+    col = clamp(wp_adjust(col, wp_temperature, m_in, crtgamut==2.0?1:0), 0., 1.);
 
 
 
@@ -728,11 +830,13 @@ void main()
 
 
 // Vignetting & Black Level
-    vec2 vpos = vTexCoord*(global.OriginalSize.xy/global.SourceSize.xy);
+    vec2 vpos = vTexCoord*(TextureSize.xy/InputSize.xy);
 
     vpos *= 1.0 - vpos.xy;
     float vig = vpos.x * vpos.y * vstr;
     vig = min(pow(vig, vpower), 1.0);
+    vig = vig >= 0.5 ? smoothstep(0,1,vig) : vig;
+
     contrast *= (vignette == 1.0) ? vig : 1.0;
 
     contrast += (lift / 20.0) * (1.0 - contrast);
@@ -778,6 +882,7 @@ void main()
     float hue_at = atan(src_h.z, src_h.y);
     chroma = sqrt(src_h.z * src_h.z + src_h.y * src_h.y);
 
+    //  red -20º green 230º blue 100º
     float hue_radians_r = -20.0 * M_PI;
     float hue_r = chroma * cos(hue_at + hue_radians_r) * 2.;
 
@@ -799,8 +904,8 @@ void main()
     src_h *= vec3(beamr,beamg,beamb);
 
 
-// Dim to Dark adaptation OOTF; only for 709 and 2020
-    vec3 src_D = global.g_Dim_to_Dark > 0.0 ? pow(src_h,vec3(1./0.9811)) : src_h;
+// Dark to Dim adaptation OOTF; only for 709 and 2020
+    vec3 src_D = g_Dark_to_Dim > 0.0 ? pow(src_h,vec3(0.9811)) : src_h;
 
 // EOTF^-1 - Inverted Electro-Optical Transfer Function
     vec3 TRC = (SPC == 3.0) ?     clamp(pow(src_h, vec3(1./(563./256.))),    0., 1.) : \
@@ -812,3 +917,4 @@ void main()
 
     FragColor = vec4(TRC, 1.0);
 }
+#endif
