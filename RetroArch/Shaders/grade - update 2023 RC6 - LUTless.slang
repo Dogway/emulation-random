@@ -2,7 +2,7 @@
 
 /*
    Grade - CRT emulated color manipulation shader
-   
+
    Copyright (C) 2020-2023 Dogway (Jose Linares)
 
    This program is free software; you can redistribute it and/or
@@ -18,7 +18,7 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-   
+
 */
 
 
@@ -77,7 +77,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 } global;
 
 /*
-   Grade (04-05-2023)
+   Grade (05-05-2023)
    > Ubershader grouping some monolithic color related shaders:
     ::color-mangler (hunterk), ntsc color tuning knobs (Doriphor), white_point (hunterk, Dogway), RA Reshade LUT.
    > and the addition of:
@@ -221,7 +221,7 @@ mat3 RGB_to_XYZ_mat(mat3 primaries, int illuminant) {
     vec3 RW = illuminant > 0 ? vec3(0.903536977491961, 1., 1.311897106109325) : \
                                vec3(0.950457397565471, 1., 1.089436035930324) ;
 
-    vec3 T  = RW * transpose(inverse(primaries));
+    vec3 T  = RW * inverse(primaries);
 
     mat3 TB = mat3(
                 T.x, 0, 0,
@@ -293,9 +293,9 @@ vec3 wp_adjust(vec3 RGB, float temperature, mat3 primaries, int illuminant) {
                                vec3(0.950457397565471, 1., 1.089436035930324) ;
 
     const mat3 CAT16 = mat3(
-     0.401288, 0.650173, -0.051461,
-    -0.250268, 1.204414,  0.045854,
-    -0.002079, 0.048952,  0.953127);
+     0.401288,-0.250268, -0.002079,
+     0.650173, 1.204414,  0.048952,
+    -0.051461, 0.045854,  0.953127);
 
     vec3 VKV = (vec3(wp.x/wp.y,1.,wp.z/wp.y) * CAT16) / (RW * CAT16);
 
@@ -310,7 +310,7 @@ vec3 wp_adjust(vec3 RGB, float temperature, mat3 primaries, int illuminant) {
 
     // Originally   "(mata * CAM) * matb" but we want to output XYZ so omit
     // In "D93" we omit CAM as we are in compensation mode, not simulation nor adaptation
-    return illuminant > 0 ? RGB.xyz * (mata * VK) : RGB.xyz * (mata * CAM);
+    return illuminant > 0 ? RGB.rgb * (mata * VK) : RGB.rgb * (mata * CAM);
 }
 
 
@@ -442,13 +442,13 @@ float rolled_gain(float color, float gain){
 }
 
 
-vec4 rolled_gain_v4(vec4 color, float gain){
+vec3 rolled_gain_v3(vec3 color, float gain){
 
     color.r = rolled_gain(color.r, gain);
     color.g = rolled_gain(color.g, gain);
     color.b = rolled_gain(color.b, gain);
 
-    return vec4(color.rgb, 1.0);
+    return color.rgb;
 }
 
 
@@ -514,16 +514,22 @@ vec3 TVtoPC(vec3 col, float luma_swing, float Umax, float Vmax, float max_swing,
 
 
 
+// Matrices in OpenGL column-major
+
+
 //----------------------- ITU-R BT.470/601 (B/G)  &  SMPTE RP 145-1994 -----------------------
+
+
 
 // Bymax 0.885515
 // Rymax 0.701088
 // R'G'B' full range to Decorrelated Intermediate (Y,B-Y,R-Y)
 // Rows should sum to 0, except first one which sums 1
-const float[9] YByRy = {
+const mat3 YByRy =
+   mat3(
     0.298912, 0.586603, 0.114485,
    -0.298912,-0.586603, 0.885515,
-    0.701088,-0.586603,-0.114485};
+    0.701088,-0.586603,-0.114485);
 
 
 // Umax 0.435812284313725
@@ -537,9 +543,9 @@ vec3 r601_YUV(vec3 RGB) {
     float sclV =       (240-16)    /255. ; // This yields Chroma range at around 0.87843 or 224   in 8-bit
 
     mat3 conv_mat = mat3(
-    0.298912,      0.586603,      0.114485,
-    sclU*YByRy[3], sclU*YByRy[4], sclU*YByRy[5],
-    sclV*YByRy[6], sclV*YByRy[7], sclV*YByRy[8]);
+                 vec3(YByRy[0]),
+    vec3(sclU) * vec3(YByRy[1]),
+    vec3(sclV) * vec3(YByRy[2]));
 
 // -0.147111592156863  -0.288700692156863   0.435812284313725
 //  0.615857694117647  -0.515290478431373  -0.100567215686275
@@ -556,6 +562,9 @@ vec3 YUV_r601(vec3 YUV) {
 
     return YUV.xyz * conv_mat;
  }
+
+
+
 
 //------------------------- LMS --------------------------
 
@@ -575,7 +584,6 @@ mat3(
  0.8056, 0.3572, -1.1628);
 
 
-
 //*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 
 
@@ -585,27 +593,28 @@ mat3(
 // ILLUMINANT: D65->[0.31266142,0.3289589]
 const mat3 SMPTE170M_ph =
     mat3(
-     0.630, 0.340, 0.030,
-     0.310, 0.595, 0.095,
-     0.155, 0.070, 0.775);
+     0.630, 0.310, 0.155,
+     0.340, 0.595, 0.070,
+     0.030, 0.095, 0.775);
 
 // ITU-R BT.470/601 (B/G)
 // EBU Tech.3213 PAL - Standard Phosphor for Studio Monitors
 // ILLUMINANT: D65->[0.31266142,0.3289589]
 const mat3 SMPTE470BG_ph =
     mat3(
-     0.640, 0.330, 0.030,
-     0.290, 0.600, 0.110,
-     0.150, 0.060, 0.790);
+     0.640, 0.290, 0.150,
+     0.330, 0.600, 0.060,
+     0.030, 0.110, 0.790);
 
 // NTSC-J P22
 // ILLUMINANT: [0.281000,0.311000] (CCT of 8945.436K)
 // Mix between averaging KV-20M20, KDS VS19, Dell D93, 4-TR-B09v1_0.pdf and Phosphor Handbook 'P22'
 const mat3 P22_J_ph =
     mat3(
-     0.625, 0.350, 0.025,
-     0.280, 0.605, 0.115,
-     0.152, 0.062, 0.786);
+     0.625, 0.280, 0.152,
+     0.350, 0.605, 0.062,
+     0.025, 0.115, 0.786);
+
 
 
 ////// P22 ///////
@@ -615,24 +624,23 @@ const mat3 P22_J_ph =
 // ILLUMINANT: D97->[0.285,0.285] ~9696K for Nanao MS-2930s series
 const mat3 P22_80s_ph =
     mat3(
-     0.6470, 0.3430, 0.0100,
-     0.2820, 0.6200, 0.0980,
-     0.1472, 0.0642, 0.7886);
+     0.6470, 0.2820, 0.1472,
+     0.3430, 0.6200, 0.0642,
+     0.0100, 0.0980, 0.7886);
 
 // P22 meta measurement (Use this for NTSC-U 16-bits, and above 1979-1994 for 8-bits)
 const mat3 P22_90s_ph =
     mat3(
-     0.6661, 0.3329, 0.0010,
-     0.3134, 0.6310, 0.0556,
-     0.1472, 0.0642, 0.7886);
+     0.6661, 0.3134, 0.1472,
+     0.3329, 0.6310, 0.0642,
+     0.0010, 0.0556, 0.7886);
 
 // CRT for Projection Tubes for NTSC-U late 90s, early 00s
 const mat3 CRT_95s_ph =
     mat3(
-     0.640, 0.335, 0.025,
-     0.341, 0.586, 0.073,
-     0.150, 0.070, 0.780);
-
+     0.640, 0.341, 0.150,
+     0.335, 0.586, 0.070,
+     0.025, 0.073, 0.780);
 
 
 //*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
@@ -641,30 +649,30 @@ const mat3 CRT_95s_ph =
 // sRGB (IEC 61966-2-1) and ITU-R BT.709-6 (originally CCIR Rec.709)
 const mat3 sRGB_prims =
     mat3(
-     0.640, 0.330, 0.030,
-     0.300, 0.600, 0.100,
-     0.150, 0.060, 0.790);
+     0.640, 0.300, 0.150,
+     0.330, 0.600, 0.060,
+     0.030, 0.100, 0.790);
 
 // Adobe RGB (1998)
 const mat3 Adobe_prims =
     mat3(
-     0.640, 0.330, 0.030,
-     0.210, 0.710, 0.080,
-     0.150, 0.060, 0.790);
+     0.640, 0.210, 0.150,
+     0.330, 0.710, 0.060,
+     0.030, 0.080, 0.790);
 
 // BT-2020/BT-2100 (from 630nm, 532nm and 467nm)
 const mat3 rec2020_prims =
     mat3(
-     0.707917792, 0.292027109, 0.000055099,
-     0.170237195, 0.796518542, 0.033244263,
-     0.131370635, 0.045875976, 0.822753389);
+     0.707917792, 0.170237195, 0.131370635,
+     0.292027109, 0.796518542, 0.045875976,
+     0.000055099, 0.033244263, 0.822753389);
 
 // SMPTE RP 432-2 (DCI-P3)
 const mat3 DCIP3_prims =
     mat3(
-     0.680, 0.320, 0.000,
-     0.265, 0.690, 0.045,
-     0.150, 0.060, 0.790);
+     0.680, 0.265, 0.150,
+     0.320, 0.690, 0.060,
+     0.000, 0.045, 0.790);
 
 
 
@@ -721,8 +729,7 @@ void main()
     if (crtgamut ==  3.0) { m_in = SMPTE470BG_ph;        }
 
 // White Point Mapping
-    col = clamp(wp_adjust(col, global.wp_temperature, m_in, crtgamut==2.0?1:0), 0., 1.);
-
+    col = wp_adjust(col, global.wp_temperature, m_in, crtgamut==2.0?1:0);
 
 
 //_   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _
@@ -744,9 +751,28 @@ void main()
     toGamma = (Yxy.r > 0.5) ? contrast_sigmoid_inv(toGamma, 2.3, 0.5) : toGamma;
     float sigmoid = (cntrst > 0.0) ? contrast_sigmoid(toGamma, cntrst, mid) : contrast_sigmoid_inv(toGamma, cntrst, mid);
     vec3 contrast = vec3(moncurve_f(sigmoid, 2.40, 0.055), Yxy.g, Yxy.b);
-    vec3 XYZsrgb = clamp(XYZ_to_RGB(YxytoXYZ(contrast), m_ou, 0), 0., 1.);
+    vec3 XYZsrgb = XYZ_to_RGB(YxytoXYZ(contrast), m_ou, 0);
     contrast = (cntrst == 0.0) ? XYZ_to_RGB(col, m_ou, 0) : XYZsrgb;
 
+// Desaturate gamut compression (in linear RGB space) (by John Walker: https://www.fourmilab.ch/documents/specrend)
+    vec3 com;
+    float w = min(min(min(contrast.r,0),contrast.g),contrast.b)*(-1.0);
+    com.r = (w > 1.0) ? contrast.r + w : contrast.r;
+    com.g = (w > 1.0) ? contrast.g + w : contrast.g;
+    com.b = (w > 1.0) ? contrast.b + w : contrast.b;
+    float great = max(max(com.g,com.b),com.r);
+
+    if (gr > 0.0) {
+        com.r /= great;
+        com.g /= great;
+        com.b /= great;
+        contrast.rgb = com.rgb;
+    }
+
+
+// Lift + Gain (Could do in Yxy but for performance reasons)
+    contrast = clamp(rolled_gain_v3(contrast, clamp(lum, -0.49, 0.99)), 0., 1.);
+    contrast += (lift / 20.0) * (1.0 - contrast);
 
 // Vignetting & Black Level
     vec2 vpos = vTexCoord*(global.OriginalSize.xy/global.SourceSize.xy);
@@ -757,8 +783,6 @@ void main()
     vig = vig >= 0.5 ? smoothstep(0,1,vig) : vig;
 
     contrast *= (vignette == 1.0) ? vig : 1.0;
-
-    contrast += (lift / 20.0) * (1.0 - contrast);
 
 
 // RGB Related Transforms
@@ -786,9 +810,8 @@ void main()
                        msaty      , msaty + sat, msaty       ,
                        msatz      , msatz      , msatz + sat);
 
+    screen *= color;
 
-    screen = clamp(rolled_gain_v4(screen, clamp(lum, -0.49, 0.99)), 0., 1.);
-    screen = color * screen;
 
 //  HUE vs SAT (in IPT space)
     vec3 src_h = RGB_to_XYZ(screen.rgb, m_ou, 0) * LMS;
@@ -801,11 +824,11 @@ void main()
     float hue_at = atan(src_h.z, src_h.y);
     chroma = sqrt(src_h.z * src_h.z + src_h.y * src_h.y);
 
-    //  red -20º green 230º blue 100º
-    float hue_radians_r = -20.0 * M_PI;
+    //  red 320º green 220º blue 100º
+    float hue_radians_r = 320.0 * M_PI;
     float hue_r = chroma * cos(hue_at + hue_radians_r) * 2.;
 
-    float hue_radians_g = 230.0 * M_PI;
+    float hue_radians_g = 220.0 * M_PI;
     float hue_g = chroma * cos(hue_at + hue_radians_g) * 2.;
 
     float hue_radians_b = 100.0 * M_PI;
