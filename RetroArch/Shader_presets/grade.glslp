@@ -1,6 +1,6 @@
 shaders = 1
 
-shader0 = shaders/grade.slang
+shader0 = shaders/grade.glsl
 scale_type0 = source
 
 textures = "SamplerLUT1;SamplerLUT2"

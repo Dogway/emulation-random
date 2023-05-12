@@ -1,5 +1,3 @@
-#version 450
-
 /*
    Grade - CRT emulated color manipulation shader
 
@@ -22,62 +20,8 @@
 */
 
 
-layout(push_constant) uniform Push
-{
-    float g_signal_type;
-    float g_crtgamut;
-    float g_space_out;
-    float g_hue_degrees;
-    float g_U_SHIFT;
-    float g_V_SHIFT;
-    float g_U_MUL;
-    float g_V_MUL;
-    float g_CRT_b;
-    float g_CRT_c;
-    float g_CRT_l;
-    float g_lum_fix;
-    float g_vstr;
-    float g_vpower;
-    float g_sat;
-    float g_vibr;
-    float g_lum;
-    float g_cntrst;
-    float g_mid;
-    float g_lift;
-    float blr;
-    float blg;
-    float blb;
-    float wlr;
-    float wlg;
-    float wlb;
-    float rg;
-    float rb;
-    float gr;
-    float gb;
-    float br;
-    float bg;
-} params;
-
-layout(std140, set = 0, binding = 0) uniform UBO
-{
-    mat4 MVP;
-    vec4 SourceSize;
-    vec4 OriginalSize;
-    vec4 OutputSize;
-    uint FrameCount;
-    float g_vignette;
-    float g_Dark_to_Dim;
-    float wp_temperature;
-    float g_CRT_br;
-    float g_CRT_bg;
-    float g_CRT_bb;
-    float g_satr;
-    float g_satg;
-    float g_satb;
-} global;
-
 /*
-   Grade (10-05-2023)
+   Grade (11-05-2023)
    > Ubershader grouping some monolithic color related shaders:
     ::color-mangler (hunterk), ntsc color tuning knobs (Doriphor), white_point (hunterk, Dogway), RA Reshade LUT.
    > and the addition of:
@@ -97,7 +41,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
     ###                                                                                    ###
     ###    NTSC-U                                                                          ###
     ###        Phosphor: P22/SMPTE-C (#1 #-3)(or a SMPTE-C based CRT phosphor gamut)       ###
-    ###        WP: D65 (6504K)               (in practice more like  7000K-7500K range)    ###
+    ###        WP: D65 (6504K)               (in practice more like 7000K-7500K range)     ###
     ###                                                                                    ###
     ###    NTSC-J (Default)                                                                ###
     ###        Phosphor: NTSC-J (#2)         (or a NTSC-J based CRT phosphor gamut)        ###
@@ -155,61 +99,176 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #pragma parameter br             "Blue-Red Tint"        0.0 -1.0 1.0 0.005
 #pragma parameter bg             "Blue-Green Tint"      0.0 -1.0 1.0 0.005
 
-#define M_PI            3.1415926535897932384626433832795/180.0
-#define signal          params.g_signal_type
-#define crtgamut        params.g_crtgamut
-#define SPC             params.g_space_out
-#define hue_degrees     params.g_hue_degrees
-#define U_SHIFT         params.g_U_SHIFT
-#define V_SHIFT         params.g_V_SHIFT
-#define U_MUL           params.g_U_MUL
-#define V_MUL           params.g_V_MUL
-#define g_CRT_l         -(100000.*log((72981.-500000./(3.*max(2.3,params.g_CRT_l)))/9058.))/945461.
-#define lum_fix         params.g_lum_fix
-#define vignette        global.g_vignette
-#define vstr            params.g_vstr
-#define vpower          params.g_vpower
-#define g_sat           params.g_sat
-#define vibr            params.g_vibr
-#define beamr           global.g_CRT_br
-#define beamg           global.g_CRT_bg
-#define beamb           global.g_CRT_bb
-#define satr            global.g_satr
-#define satg            global.g_satg
-#define satb            global.g_satb
-#define lum             params.g_lum
-#define cntrst          params.g_cntrst
-#define mid             params.g_mid
-#define lift            params.g_lift
-#define blr             params.blr
-#define blg             params.blg
-#define blb             params.blb
-#define wlr             params.wlr
-#define wlg             params.wlg
-#define wlb             params.wlb
-#define rg              params.rg
-#define rb              params.rb
-#define gr              params.gr
-#define gb              params.gb
-#define br              params.br
-#define bg              params.bg
 
-#pragma stage vertex
-layout(location = 0) in vec4 Position;
-layout(location = 1) in vec2 TexCoord;
-layout(location = 0) out vec2 vTexCoord;
+
+#if defined(VERTEX)
+
+#if __VERSION__ >= 130
+#define COMPAT_VARYING out
+#define COMPAT_ATTRIBUTE in
+#define COMPAT_TEXTURE texture
+#else
+#define COMPAT_VARYING varying
+#define COMPAT_ATTRIBUTE attribute
+#define COMPAT_TEXTURE texture2D
+#endif
+
+#ifdef GL_ES
+#define COMPAT_PRECISION mediump
+#else
+#define COMPAT_PRECISION
+#endif
+
+COMPAT_ATTRIBUTE vec4 VertexCoord;
+COMPAT_ATTRIBUTE vec4 COLOR;
+COMPAT_ATTRIBUTE vec4 TexCoord;
+COMPAT_VARYING vec4 COL0;
+COMPAT_VARYING vec4 TEX0;
+
+uniform mat4 MVPMatrix;
+uniform COMPAT_PRECISION int FrameDirection;
+uniform COMPAT_PRECISION int FrameCount;
+uniform COMPAT_PRECISION vec2 OutputSize;
+uniform COMPAT_PRECISION vec2 TextureSize;
+uniform COMPAT_PRECISION vec2 InputSize;
+
+// compatibility #defines
+#define vTexCoord TEX0.xy
+#define SourceSize vec4(TextureSize, 1.0 / TextureSize) //either TextureSize or InputSize
+#define OutSize vec4(OutputSize, 1.0 / OutputSize)
 
 void main()
 {
-    gl_Position = global.MVP * Position;
-    vTexCoord = TexCoord;
+   gl_Position = MVPMatrix * VertexCoord;
+   TEX0.xy = TexCoord.xy;
 }
 
-#pragma stage fragment
-layout(location = 0) in vec2 vTexCoord;
-layout(location = 0) out vec4 FragColor;
-layout(set = 0, binding = 2) uniform sampler2D Source;
+#elif defined(FRAGMENT)
 
+#ifdef GL_ES
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+#define COMPAT_PRECISION mediump
+#else
+#define COMPAT_PRECISION
+#endif
+
+#if __VERSION__ >= 130
+#define COMPAT_VARYING in
+#define COMPAT_TEXTURE texture
+out COMPAT_PRECISION vec4 FragColor;
+#else
+#define COMPAT_VARYING varying
+#define FragColor gl_FragColor
+#define COMPAT_TEXTURE texture2D
+#endif
+
+uniform COMPAT_PRECISION int FrameDirection;
+uniform COMPAT_PRECISION int FrameCount;
+uniform COMPAT_PRECISION vec2 OutputSize;
+uniform COMPAT_PRECISION vec2 TextureSize;
+uniform COMPAT_PRECISION vec2 InputSize;
+uniform sampler2D Texture;
+COMPAT_VARYING vec4 TEX0;
+
+// compatibility #defines
+#define Source Texture
+#define vTexCoord TEX0.xy
+
+#define SourceSize vec4(TextureSize, 1.0 / TextureSize)
+#define OutSize vec4(OutputSize, 1.0 / OutputSize)
+
+#ifdef PARAMETER_UNIFORM
+uniform COMPAT_PRECISION float g_signal_type;
+uniform COMPAT_PRECISION float g_crtgamut;
+uniform COMPAT_PRECISION float g_space_out;
+uniform COMPAT_PRECISION float g_Dark_to_Dim;
+uniform COMPAT_PRECISION float g_hue_degrees;
+uniform COMPAT_PRECISION float g_U_SHIFT;
+uniform COMPAT_PRECISION float g_V_SHIFT;
+uniform COMPAT_PRECISION float g_U_MUL;
+uniform COMPAT_PRECISION float g_V_MUL;
+uniform COMPAT_PRECISION float g_CRT_l;
+uniform COMPAT_PRECISION float g_CRT_b;
+uniform COMPAT_PRECISION float g_CRT_c;
+uniform COMPAT_PRECISION float g_CRT_br;
+uniform COMPAT_PRECISION float g_CRT_bg;
+uniform COMPAT_PRECISION float g_CRT_bb;
+uniform COMPAT_PRECISION float g_vignette;
+uniform COMPAT_PRECISION float g_vstr;
+uniform COMPAT_PRECISION float g_vpower;
+uniform COMPAT_PRECISION float g_lum_fix;
+uniform COMPAT_PRECISION float g_lum;
+uniform COMPAT_PRECISION float g_cntrst;
+uniform COMPAT_PRECISION float g_mid;
+uniform COMPAT_PRECISION float wp_temperature;
+uniform COMPAT_PRECISION float g_sat;
+uniform COMPAT_PRECISION float g_vibr;
+uniform COMPAT_PRECISION float g_satr;
+uniform COMPAT_PRECISION float g_satg;
+uniform COMPAT_PRECISION float g_satb;
+uniform COMPAT_PRECISION float g_lift;
+uniform COMPAT_PRECISION float blr;
+uniform COMPAT_PRECISION float blg;
+uniform COMPAT_PRECISION float blb;
+uniform COMPAT_PRECISION float wlr;
+uniform COMPAT_PRECISION float wlg;
+uniform COMPAT_PRECISION float wlb;
+uniform COMPAT_PRECISION float rg;
+uniform COMPAT_PRECISION float rb;
+uniform COMPAT_PRECISION float gr;
+uniform COMPAT_PRECISION float gb;
+uniform COMPAT_PRECISION float br;
+uniform COMPAT_PRECISION float bg;
+#else
+#define g_signal_type 1.0
+#define g_crtgamut 2.0
+#define g_space_out 0.0
+#define g_Dark_to_Dim 0.0
+#define g_hue_degrees 0.0
+#define g_U_SHIFT 0.0
+#define g_V_SHIFT 0.0
+#define g_U_MUL 1.0
+#define g_V_MUL 1.0
+#define g_CRT_l 2.5
+#define g_CRT_b 0.0
+#define g_CRT_c 0.0
+#define g_CRT_br 1.0
+#define g_CRT_bg 1.0
+#define g_CRT_bb 1.0
+#define g_vignette 1.0
+#define g_vstr 50.0
+#define g_vpower 0.50
+#define g_lum_fix 0.0
+#define g_lum 0.0
+#define g_cntrst 0.0
+#define g_mid 0.5
+#define wp_temperature 8604.0
+#define g_sat 0.0
+#define g_vibr 0.0
+#define g_satr 0.0
+#define g_satg 0.0
+#define g_satb 0.0
+#define g_lift 0.0
+#define blr 0.0
+#define blg 0.0
+#define blb 0.0
+#define wlr 1.0
+#define wlg 1.0
+#define wlb 1.0
+#define rg 0.0
+#define rb 0.0
+#define gr 0.0
+#define gb 0.0
+#define br 0.0
+#define bg 0.0
+#endif
+
+#define M_PI 3.1415926535897932384626433832795/180.0
+#define g_bl -(100000.*log((72981.-500000./(3.*max(2.3,g_CRT_l)))/9058.))/945461.
 
 
 ///////////////////////// Color Space Transformations //////////////////////////
@@ -232,7 +291,7 @@ mat3 RGB_to_XYZ_mat(mat3 primaries) {
 
 vec3 RGB_to_XYZ(vec3 RGB, mat3 primaries) {
 
-   return RGB *        RGB_to_XYZ_mat(primaries);
+   return RGB *         RGB_to_XYZ_mat(primaries);
 }
 
 vec3 XYZ_to_RGB(vec3 XYZ, mat3 primaries) {
@@ -267,10 +326,10 @@ vec3 YxytoXYZ(vec3 Yxy) {
 // [x:0.31266142   y:0.3289589]      [x:0.281 y:0.311]
 
 // For NTSC-J there's not a common agreed value, measured consumer units span from 8229.87K to 8945.623K with accounts for 8800K as well.
-// Recently it's been standardized to 9300K which is closer to what master monitors were (x=0.2838 y=0.2984) (~9177.98K)
+// Recently it's been standardized to 9300K which is closer to what master monitors (and not consumer units) were (x=0.2838 y=0.2984) (~9177.98K)
 
 
-// Does a RGB to XYZ -> Temperature -> XYZ to RGB  joint matrix
+// "RGB to XYZ -> Temperature -> XYZ to RGB" joint matrix
 vec3 wp_adjust(vec3 RGB, float temperature, mat3 primaries, mat3 display) {
 
     float temp3 = 1000.       / temperature;
@@ -313,7 +372,7 @@ vec3 wp_adjust(vec3 RGB, float temperature, mat3 primaries, mat3 display) {
 ////////////////////////////////////////////////////////////////////////////////
 
 
-// CRT Curve Function
+// CRT EOTF Function
 //----------------------------------------------------------------------
 
 float EOTF_1886a(float color, float bl, float brightness, float contrast) {
@@ -468,12 +527,10 @@ float SatMask(float color_r, float color_g, float color_b)
 vec3 PCtoTV(vec3 col, float luma_swing, float Umax, float Vmax, float max_swing)
 {
    col *= 255.;
-   Umax = (max_swing == 1.0) ? Umax * 224. : Umax * 239.;
-   Vmax = (max_swing == 1.0) ? Vmax * 224. : Vmax * 239.;
+   vec2 UVmax = (max_swing  == 1.0) ? vec2(Umax,Vmax) * 224. : vec2(Umax,Vmax) * 239.;
 
-   col.x = (luma_swing == 1.0) ? ((col.x * 219.) / 255.) + 16. : col.x;
-   col.y = (((col.y - 128.) * (Umax * 2.)) / 255.) + Umax;
-   col.z = (((col.z - 128.) * (Vmax * 2.)) / 255.) + Vmax;
+   col.x      = (luma_swing == 1.0) ? ((col.x * 219.) / 255.) + 16. : col.x;
+   col.yz     = (((col.yz - 128.) * (UVmax * 2.)) / 255.) + UVmax;
    return col.xyz / 255.;
 }
 
@@ -482,13 +539,11 @@ vec3 PCtoTV(vec3 col, float luma_swing, float Umax, float Vmax, float max_swing)
 vec3 TVtoPC(vec3 col, float luma_swing, float Umax, float Vmax, float max_swing)
 {
    col *= 255.;
-   Umax = (max_swing == 1.0) ? Umax * 224. : Umax * 239.;
-   Vmax = (max_swing == 1.0) ? Vmax * 224. : Vmax * 239.;
+   vec2 UVmax = (max_swing  == 1.0) ? vec2(Umax,Vmax) * 224. : vec2(Umax,Vmax) * 239.;
 
-   float colx = (luma_swing == 1.0) ? ((col.x - 16.) / 219.) * 255. : col.x;
-   float coly = (((col.y - Umax) / (Umax * 2.)) * 255.) + 128.;
-   float colz = (((col.z - Vmax) / (Vmax * 2.)) * 255.) + 128.;
-   return vec3(colx,coly,colz) / 255.;
+   col.x      = (luma_swing == 1.0) ? ((col.x - 16.) / 219.) * 255. : col.x;
+   col.yz     = (((col.yz - UVmax) / (UVmax * 2.)) * 255.) + 128.;
+   return col.xyz / 255.;
 }
 
 
@@ -499,7 +554,7 @@ vec3 TVtoPC(vec3 col, float luma_swing, float Umax, float Vmax, float max_swing)
 // Matrices in OpenGL column-major
 
 
-//----------------------- ITU-R BT.470/601 (B/G)  &  SMPTE RP 145-1994 -----------------------
+//----------------------- Y'UV color model -----------------------
 
 
 
@@ -569,6 +624,8 @@ mat3(
 //*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 
 
+//----------------------- Phosphor Gamuts -----------------------
+
 ////// STANDARDS ///////
 // SMPTE RP 145-1994 (SMPTE-C), 170M-1999
 // SMPTE-C - Standard Phosphor (Rec.601 NTSC)
@@ -627,6 +684,7 @@ const mat3 CRT_95s_ph =
 
 //*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 
+//----------------------- Display Primaries -----------------------
 
 // sRGB (IEC 61966-2-1) and ITU-R BT.709-6 (originally CCIR Rec.709)
 const mat3 sRGB_prims =
@@ -668,9 +726,9 @@ void main()
 {
 
 // Retro Sega Systems: Genesis, 32x, CD and Saturn 2D had color palettes designed in TV levels to save on transformations.
-    float lum_exp = (lum_fix ==  1.0) ? (255./239.) : 1.;
+    float lum_exp = (g_lum_fix ==  1.0) ? (255./239.) : 1.;
 
-    vec3 src = texture(Source, vTexCoord.xy).rgb * lum_exp;
+    vec3 src = COMPAT_TEXTURE(Source, vTexCoord).rgb * lum_exp;
 
 // Clipping Logic / Gamut Limiting
     vec2 UVmax = vec2(0.435812284313725, 0.615857694117647);
@@ -679,24 +737,24 @@ void main()
     vec3 col = clamp(r601_YUV(src), vec3(0.0,   -UVmax.x, -UVmax.y) , \
                                     vec3(1.0,    UVmax.x,  UVmax.y));
 
-    col      = crtgamut < 2.0 ? PCtoTV(col, 1.0, UVmax.x,  UVmax.y, 1.0) : col;
+    col      = g_crtgamut < 2.0 ? PCtoTV(col, 1.0, UVmax.x,  UVmax.y, 1.0) : col;
 
 
 // YUV Analogue Color Controls (HUE + Color Shift + Color Burst)
-    float hue_radians = hue_degrees * M_PI;
+    float hue_radians = g_hue_degrees * M_PI;
     float hue = atan(col.z, col.y) + hue_radians;
     float chroma = sqrt(col.z * col.z + col.y * col.y);
     col   = vec3(col.x, chroma * cos(hue), chroma * sin(hue));
 
-    col.y = (mod((col.y + 1.0) + U_SHIFT, 2.0) - 1.0) * U_MUL;
-    col.z = (mod((col.z + 1.0) + V_SHIFT, 2.0) - 1.0) * V_MUL;
+    col.y = (mod((col.y + 1.0) + g_U_SHIFT, 2.0) - 1.0) * g_U_MUL;
+    col.z = (mod((col.z + 1.0) + g_V_SHIFT, 2.0) - 1.0) * g_V_MUL;
 
 // Back to RGB
-    col   = crtgamut < 2.0 ? TVtoPC(col, 1.0, UVmax.x, UVmax.y, 1.0) : col;
+    col   = g_crtgamut < 2.0 ? TVtoPC(col, 1.0, UVmax.x, UVmax.y, 1.0) : col;
     col   = clamp(YUV_r601(col), 0., 1.);
 
 // CRT EOTF. To Display Referred Linear: Undo developer baked CRT gamma (from 2.40 at default 0.1 CRT black level, to 2.61 at 0.0 CRT black level)
-    col = EOTF_1886a_f3(col, g_CRT_l, params.g_CRT_b, params.g_CRT_c);
+    col = EOTF_1886a_f3(col, g_bl, g_CRT_b, g_CRT_c);
 
 
 //_   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _
@@ -719,27 +777,26 @@ void main()
 // CRT Phosphor Gamut (0.0 is noop)
     mat3 m_in;
 
-    if (crtgamut == -3.0) { m_in = SMPTE170M_ph;         } else
-    if (crtgamut == -2.0) { m_in = CRT_95s_ph;           } else
-    if (crtgamut == -1.0) { m_in = P22_80s_ph;           } else
-    if (crtgamut ==  0.0) { m_in = sRGB_prims;           } else
-    if (crtgamut ==  1.0) { m_in = P22_90s_ph;           } else
-    if (crtgamut ==  2.0) { m_in = P22_J_ph;             } else
-    if (crtgamut ==  3.0) { m_in = SMPTE470BG_ph;        }
+    if (g_crtgamut == -3.0) { m_in = SMPTE170M_ph;         } else
+    if (g_crtgamut == -2.0) { m_in = CRT_95s_ph;           } else
+    if (g_crtgamut == -1.0) { m_in = P22_80s_ph;           } else
+    if (g_crtgamut ==  0.0) { m_in = sRGB_prims;           } else
+    if (g_crtgamut ==  1.0) { m_in = P22_90s_ph;           } else
+    if (g_crtgamut ==  2.0) { m_in = P22_J_ph;             } else
+    if (g_crtgamut ==  3.0) { m_in = SMPTE470BG_ph;        }
 
-    m_in = (global.LUT1_toggle == 0.0) ? m_in : sRGB_prims;
 
 // Display color space
     mat3 m_ou;
 
-    if (SPC ==  1.0) { m_ou = DCIP3_prims;               } else
-    if (SPC ==  2.0) { m_ou = rec2020_prims;             } else
-    if (SPC ==  3.0) { m_ou = Adobe_prims;               } else
-                     { m_ou = sRGB_prims;                }
+    if (g_space_out ==  1.0) { m_ou = DCIP3_prims;         } else
+    if (g_space_out ==  2.0) { m_ou = rec2020_prims;       } else
+    if (g_space_out ==  3.0) { m_ou = Adobe_prims;         } else
+                             { m_ou = sRGB_prims;          }
 
 
 // White Point Mapping
-    col = wp_adjust(screen.rgb, global.wp_temperature, m_in, m_ou);
+    col = wp_adjust(screen.rgb, wp_temperature, m_in, m_ou);
 
 
 //  SAT + HUE vs SAT (in IPT space)
@@ -765,11 +822,11 @@ void main()
     float hue_radians_b = 100.0 * M_PI;
     float hue_b = cos(hue_at + hue_radians_b);
 
-    float msk = dot(clamp(vec3(hue_r, hue_g, hue_b) * chroma * 2, 0., 1.), -vec3(satr, satg, satb));
+    float msk = dot(clamp(vec3(hue_r, hue_g, hue_b) * chroma * 2, 0., 1.), -vec3(g_satr, g_satg, g_satb));
     src_h = mix(col, vec3(dot(coeff, col)), msk);
 
-    float sat_msk = (vibr < 0.0) ? 1.0 - abs(SatMask(src_h.x, src_h.y, src_h.z) - 1.0) * abs(vibr) : \
-                                   1.0 -    (SatMask(src_h.x, src_h.y, src_h.z)        *     vibr) ;
+    float sat_msk = (g_vibr < 0.0) ? 1.0 - abs(SatMask(src_h.x, src_h.y, src_h.z) - 1.0) * abs(g_vibr) : \
+                                     1.0 -    (SatMask(src_h.x, src_h.y, src_h.z)        *     g_vibr) ;
 
     float sat   = g_sat + 1.0;
     float msat  = 1.0 - sat;
@@ -783,7 +840,7 @@ void main()
 
 
     src_h = mix(src_h, adjust * src_h, clamp(sat_msk, 0., 1.));
-    src_h = clamp(src_h*vec3(beamr,beamg,beamb),0.0,1.0);
+    src_h = clamp(src_h*vec3(g_CRT_br,g_CRT_bg,g_CRT_bb),0.0,1.0);
 
 /*
 // Desaturate gamut compression (in linear RGB space) (by John Walker: https://www.fourmilab.ch/documents/specrend)
@@ -797,39 +854,40 @@ void main()
     vec3 Yxy = XYZtoYxy(RGB_to_XYZ(src_h, m_ou));
     float toGamma = clamp(moncurve_r(Yxy.r, 2.40, 0.055), 0., 1.);
     toGamma = (Yxy.r > 0.5) ? contrast_sigmoid_inv(toGamma, 2.3, 0.5) : toGamma;
-    float sigmoid = (cntrst > 0.0) ? contrast_sigmoid(toGamma, cntrst, mid) : contrast_sigmoid_inv(toGamma, cntrst, mid);
+    float sigmoid = (g_cntrst > 0.0) ? contrast_sigmoid(toGamma, g_cntrst, g_mid) : contrast_sigmoid_inv(toGamma, g_cntrst, g_mid);
     vec3 contrast = vec3(moncurve_f(sigmoid, 2.40, 0.055), Yxy.g, Yxy.b);
     vec3 XYZsrgb = XYZ_to_RGB(YxytoXYZ(contrast), m_ou);
-    contrast = (cntrst == 0.0) ? src_h : XYZsrgb;
+    contrast = (g_cntrst == 0.0) ? src_h : XYZsrgb;
 
 
 // Lift + Gain -PP Digital Controls- (Could do in Yxy but performance reasons)
-    src_h = clamp(rolled_gain_v3(contrast, clamp(lum, -0.49, 0.99)), 0., 1.);
-    src_h += (lift / 20.0) * (1.0 - contrast);
+    src_h = clamp(rolled_gain_v3(contrast, clamp(g_lum, -0.49, 0.99)), 0., 1.);
+    src_h += (g_lift / 20.0) * (1.0 - contrast);
 
 
 
 // Vignetting & Black Level (in linear space, so after EOTF^-1 it's power shaped)
-    vec2 vpos = vTexCoord*(global.OriginalSize.xy/global.SourceSize.xy);
+    vec2 vpos = vTexCoord*(TextureSize.xy/InputSize.xy);
 
     vpos *= 1.0 - vpos.xy;
-    float vig = vpos.x * vpos.y * vstr;
-    vig = min(pow(vig, vpower), 1.0);
+    float vig = vpos.x * vpos.y * g_vstr;
+    vig = min(pow(vig, g_vpower), 1.0);
     vig = vig >= 0.5 ? smoothstep(0,1,vig) : vig;
 
-    src_h *= (vignette == 1.0) ? vig : 1.0;
+    src_h *= (g_vignette == 1.0) ? vig : 1.0;
 
 
 // Dark to Dim adaptation OOTF; only for 709 and 2020
-    vec3 src_D = global.g_Dark_to_Dim > 0.0 ? pow(src_h,vec3(0.9811)) : src_h;
+    vec3 src_D = g_Dark_to_Dim > 0.0 ? pow(src_h,vec3(0.9811)) : src_h;
 
 // EOTF^-1 - Inverted Electro-Optical Transfer Function
-    vec3 TRC = (SPC == 3.0) ?     clamp(pow(src_h, vec3(1./(563./256.))),    0., 1.) : \
-               (SPC == 2.0) ? moncurve_r_f3(src_D,          2.20 + 0.022222, 0.0993) : \
-               (SPC == 1.0) ?     clamp(pow(src_h, vec3(1./(2.20 + 0.40))),  0., 1.) : \
-               (SPC == 0.0) ? moncurve_r_f3(src_h,          2.20 + 0.20,     0.0550) : \
-                              clamp(pow(    src_D, vec3(1./(2.20 + 0.20))),  0., 1.) ;
+    vec3 TRC = (g_space_out == 3.0) ?     clamp(pow(src_h, vec3(1./(563./256.))),    0., 1.) : \
+               (g_space_out == 2.0) ? moncurve_r_f3(src_D,          2.20 + 0.022222, 0.0993) : \
+               (g_space_out == 1.0) ?     clamp(pow(src_h, vec3(1./(2.20 + 0.40))),  0., 1.) : \
+               (g_space_out == 0.0) ? moncurve_r_f3(src_h,          2.20 + 0.20,     0.0550) : \
+                                      clamp(pow(    src_D, vec3(1./(2.20 + 0.20))),  0., 1.) ;
 
 
     FragColor = vec4(TRC, 1.0);
 }
+#endif
