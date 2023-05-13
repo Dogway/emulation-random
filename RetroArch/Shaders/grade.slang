@@ -71,9 +71,13 @@ layout(std140, set = 0, binding = 0) uniform UBO
     float g_CRT_br;
     float g_CRT_bg;
     float g_CRT_bb;
+    float g_CRT_rf;
+    float g_CRT_sl;
     float g_satr;
     float g_satg;
     float g_satb;
+    float g_digital;
+    float g_analog;
     float LUT_Size1;
     float LUT1_toggle;
     float LUT_Size2;
@@ -81,7 +85,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 } global;
 
 /*
-   Grade (11-05-2023)
+   Grade (13-05-2023)
    > Ubershader grouping some monolithic color related shaders:
     ::color-mangler (hunterk), ntsc color tuning knobs (Doriphor), white_point (hunterk, Dogway), RA Reshade LUT.
    > and the addition of:
@@ -119,49 +123,53 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #pragma parameter g_Dark_to_Dim  "Dark to Dim adaptation"                                    1.0  0.0 1.0 1.0
 
 // Analogue controls
-#pragma parameter g_hue_degrees  "CRT Hue"              0.0 -360.0 360.0  1.0
-#pragma parameter g_U_SHIFT      "CRT U Shift"          0.0   -0.2   0.2  0.01
-#pragma parameter g_V_SHIFT      "CRT V Shift"          0.0   -0.2   0.2  0.01
-#pragma parameter g_U_MUL        "CRT U Multiplier"     1.0    0.0   2.0  0.01
-#pragma parameter g_V_MUL        "CRT V Multiplier"     1.0    0.0   2.0  0.01
-#pragma parameter g_CRT_l        "CRT Gamma"            2.50   2.30  2.60 0.01
-#pragma parameter g_CRT_b        "CRT Brightness"       0.0    0.0 100.0  1.0
-#pragma parameter g_CRT_c        "CRT Contrast"         100.0 50.0 150.0  1.0
-#pragma parameter g_CRT_br       "CRT Beam Red"         1.0    0.0   1.2  0.01
-#pragma parameter g_CRT_bg       "CRT Beam Green"       1.0    0.0   1.2  0.01
-#pragma parameter g_CRT_bb       "CRT Beam Blue"        1.0    0.0   1.2  0.01
-#pragma parameter g_vignette     "Vignette Toggle"      1.0    0.0   1.0  1.0
-#pragma parameter g_vstr         "Vignette Strength"    50.0   0.0  50.0  1.0
-#pragma parameter g_vpower       "Vignette Power"       0.50   0.0   0.5  0.01
+#pragma parameter g_analog       "// ANALOG CONTROLS //"      0.0    0.0   1.0  1.0
+#pragma parameter wp_temperature "White Point"                8604.0 5004.0 12004.0 100.0
+#pragma parameter g_hue_degrees  "CRT Hue"                    0.0 -180.0 180.0  1.0
+#pragma parameter g_U_SHIFT      "CRT U Shift"                0.0   -0.2   0.2  0.01
+#pragma parameter g_V_SHIFT      "CRT V Shift"                0.0   -0.2   0.2  0.01
+#pragma parameter g_U_MUL        "CRT U Multiplier"           1.0    0.0   2.0  0.01
+#pragma parameter g_V_MUL        "CRT V Multiplier"           1.0    0.0   2.0  0.01
+#pragma parameter g_CRT_l        "CRT Gamma"                  2.50   2.30  2.60 0.01
+#pragma parameter g_CRT_b        "CRT Brightness"            50.0    0.0 100.0  1.0
+#pragma parameter g_CRT_c        "CRT Contrast"              50.0    0.0 100.0  1.0
+#pragma parameter g_CRT_br       "CRT Beam Red"               1.0    0.0   1.2  0.01
+#pragma parameter g_CRT_bg       "CRT Beam Green"             1.0    0.0   1.2  0.01
+#pragma parameter g_CRT_bb       "CRT Beam Blue"              1.0    0.0   1.2  0.01
+#pragma parameter g_CRT_rf       "CRT Lambert Refl. in %"     5.0    2.0   5.0  0.1
+#pragma parameter g_CRT_sl       "Surround Luminance -nits-" 34.0    0.0 100.0  1.0
+#pragma parameter g_vignette     "Vignette Toggle"            1.0    0.0   1.0  1.0
+#pragma parameter g_vstr         "Vignette Strength"          50.0   0.0  50.0  1.0
+#pragma parameter g_vpower       "Vignette Power"             0.50   0.0   0.5  0.01
 
 // Digital controls
-#pragma parameter g_lum_fix      "Sega Luma Fix"        0.0  0.0 1.0 1.0
-#pragma parameter g_lum          "Brightness"           0.0 -0.5 1.0 0.01
-#pragma parameter g_cntrst       "Contrast"             0.0 -1.0 1.0 0.05
-#pragma parameter g_mid          "Contrast Pivot"       0.5  0.0 1.0 0.01
-#pragma parameter wp_temperature "White Point"          8604.0 5004.0 12004.0 100.0
-#pragma parameter g_sat          "Saturation"           0.0 -1.0 1.0 0.01
-#pragma parameter g_vibr         "Dullness/Vibrance"    0.0 -1.0 1.0 0.05
-#pragma parameter g_satr         "Hue vs Sat Red"       0.0 -1.0 1.0 0.01
-#pragma parameter g_satg         "Hue vs Sat Green"     0.0 -1.0 1.0 0.01
-#pragma parameter g_satb         "Hue vs Sat Blue"      0.0 -1.0 1.0 0.01
-#pragma parameter g_lift         "Black Level"          0.0 -0.5 0.5 0.01
-#pragma parameter blr            "Black-Red Tint"       0.0  0.0 1.0 0.01
-#pragma parameter blg            "Black-Green Tint"     0.0  0.0 1.0 0.01
-#pragma parameter blb            "Black-Blue Tint"      0.0  0.0 1.0 0.01
-#pragma parameter wlr            "White-Red Tint"       1.0  0.0 2.0 0.01
-#pragma parameter wlg            "White-Green Tint"     1.0  0.0 2.0 0.01
-#pragma parameter wlb            "White-Blue Tint"      1.0  0.0 2.0 0.01
-#pragma parameter rg             "Red-Green Tint"       0.0 -1.0 1.0 0.005
-#pragma parameter rb             "Red-Blue Tint"        0.0 -1.0 1.0 0.005
-#pragma parameter gr             "Green-Red Tint"       0.0 -1.0 1.0 0.005
-#pragma parameter gb             "Green-Blue Tint"      0.0 -1.0 1.0 0.005
-#pragma parameter br             "Blue-Red Tint"        0.0 -1.0 1.0 0.005
-#pragma parameter bg             "Blue-Green Tint"      0.0 -1.0 1.0 0.005
-#pragma parameter LUT_Size1      "LUT Size 1"           32.0 8.0 64.0 16.0
-#pragma parameter LUT1_toggle    "LUT 1 Toggle"         0.0  0.0 1.0 1.0
-#pragma parameter LUT_Size2      "LUT Size 2"           64.0 0.0 64.0 16.0
-#pragma parameter LUT2_toggle    "LUT 2 Toggle"         0.0  0.0 1.0 1.0
+#pragma parameter g_digital      "// DIGITAL CONTROLS //"     0.0  0.0 1.0 1.0
+#pragma parameter g_lum_fix      "Sega Luma Fix"              0.0  0.0 1.0 1.0
+#pragma parameter g_lum          "Brightness"                 0.0 -0.5 1.0 0.01
+#pragma parameter g_cntrst       "Contrast"                   0.0 -1.0 1.0 0.05
+#pragma parameter g_mid          "Contrast Pivot"             0.5  0.0 1.0 0.01
+#pragma parameter g_sat          "Saturation"                 0.0 -1.0 1.0 0.01
+#pragma parameter g_vibr         "Dullness/Vibrance"          0.0 -1.0 1.0 0.05
+#pragma parameter g_satr         "Hue vs Sat Red"             0.0 -1.0 1.0 0.01
+#pragma parameter g_satg         "Hue vs Sat Green"           0.0 -1.0 1.0 0.01
+#pragma parameter g_satb         "Hue vs Sat Blue"            0.0 -1.0 1.0 0.01
+#pragma parameter g_lift         "Black Level"                0.0 -0.5 0.5 0.01
+#pragma parameter blr            "Black-Red Tint"             0.0  0.0 1.0 0.01
+#pragma parameter blg            "Black-Green Tint"           0.0  0.0 1.0 0.01
+#pragma parameter blb            "Black-Blue Tint"            0.0  0.0 1.0 0.01
+#pragma parameter wlr            "White-Red Tint"             1.0  0.0 2.0 0.01
+#pragma parameter wlg            "White-Green Tint"           1.0  0.0 2.0 0.01
+#pragma parameter wlb            "White-Blue Tint"            1.0  0.0 2.0 0.01
+#pragma parameter rg             "Red-Green Tint"             0.0 -1.0 1.0 0.005
+#pragma parameter rb             "Red-Blue Tint"              0.0 -1.0 1.0 0.005
+#pragma parameter gr             "Green-Red Tint"             0.0 -1.0 1.0 0.005
+#pragma parameter gb             "Green-Blue Tint"            0.0 -1.0 1.0 0.005
+#pragma parameter br             "Blue-Red Tint"              0.0 -1.0 1.0 0.005
+#pragma parameter bg             "Blue-Green Tint"            0.0 -1.0 1.0 0.005
+#pragma parameter LUT_Size1      "LUT Size 1"                 32.0 8.0 64.0 16.0
+#pragma parameter LUT1_toggle    "LUT 1 Toggle"               0.0  0.0 1.0 1.0
+#pragma parameter LUT_Size2      "LUT Size 2"                 64.0 0.0 64.0 16.0
+#pragma parameter LUT2_toggle    "LUT 2 Toggle"               0.0  0.0 1.0 1.0
 
 #define M_PI            3.1415926535897932384626433832795/180.0
 #define signal          params.g_signal_type
@@ -336,12 +344,12 @@ float EOTF_1886a(float color, float bl, float brightness, float contrast) {
     float wl = 100.0;
     float b  = pow(bl, 1/2.4);
     float a  = pow(wl, 1/2.4)-b;
-          b  = brightness>0  ? (brightness/286.+b/a) : b/a;
-          a  = contrast!=100 ? contrast/100.         : 1;
+          b  = (brightness-50) / 250. + b/a;                // -0.20 to +0.20
+          a  = contrast!=50 ? pow(2,(contrast-50)/50.) : 1; //  0.50 to +2.00
 
     float Vc = 0.35;                           // Offset
     float Lw = wl/100. * a;                    // White level
-    float Lb = clamp(b * a,0.01,Vc);           // Black level
+    float Lb = min( b  * a,Vc);                // Black level
     float a1 = 2.6;                            // Shoulder gamma
     float a2 = 3.0;                            // Knee gamma
     float k  = Lw /pow(1  + Lb,    a1);
@@ -566,6 +574,19 @@ vec3 YUV_r601(vec3 YUV) {
  }
 
 
+// FP32 to 8-bit mid-tread uniform quantization
+float Quantize8(float col) {
+    col = min(255,floor(col * 255 + 0.5));
+    return col;
+ }
+
+vec3 Quantize8_f3(vec3 col) {
+    col.r = Quantize8(col.r);
+    col.g = Quantize8(col.g);
+    col.b = Quantize8(col.b);
+    return col.rgb;
+ }
+
 
 
 //------------------------- LMS --------------------------
@@ -696,13 +717,14 @@ void main()
     vec3 src = texture(Source, vTexCoord.xy).rgb * lum_exp;
 
 // Clipping Logic / Gamut Limiting
-    vec2 UVmax = vec2(0.435812284313725, 0.615857694117647);
+    vec2 UVmax = vec2(Quantize8(0.435812284313725), Quantize8(0.615857694117647));
 
 // Assumes framebuffer in Rec.601 full range with baked gamma
-    vec3 col = clamp(r601_YUV(src), vec3(0.0,   -UVmax.x, -UVmax.y) , \
-                                    vec3(1.0,    UVmax.x,  UVmax.y));
+// Quantize to 8-bit to replicate CRT's circuit board arithmetics
+    vec3 col = clamp(Quantize8_f3(r601_YUV(src)), vec3(  0.0,   -UVmax.x, -UVmax.y) ,    \
+                                                  vec3(255.0,    UVmax.x,  UVmax.y))/255.;
 
-    col      = crtgamut < 2.0 ? PCtoTV(col, 1.0, UVmax.x,  UVmax.y, 1.0) : col;
+    col      = crtgamut < 2.0 ? PCtoTV(col, 1.0, UVmax.x/255.,  UVmax.y/255., 1.0) :  col;
 
 
 // YUV Analogue Color Controls (HUE + Color Shift + Color Burst)
@@ -715,8 +737,8 @@ void main()
     col.z = (mod((col.z + 1.0) + V_SHIFT, 2.0) - 1.0) * V_MUL;
 
 // Back to RGB
-    col   = crtgamut < 2.0 ? TVtoPC(col, 1.0, UVmax.x, UVmax.y, 1.0) : col;
-    col   = clamp(YUV_r601(col), 0., 1.);
+    col   = crtgamut < 2.0 ? TVtoPC(col, 1.0, UVmax.x/255., UVmax.y/255., 1.0) : col;
+    col   = signal   > 0.0 ? max(Quantize8_f3(YUV_r601(col))/255.0,       0.0) : src;
 
 // Look LUT - (in SPC space)
     float red   = (col.r * (global.LUT_Size1 - 1.0) + 0.4999) / (global.LUT_Size1 * global.LUT_Size1);
@@ -729,7 +751,7 @@ void main()
     vec3 vcolor = (global.LUT1_toggle == 0.0) ? col : mixfix(color1, color2, mixer);
 
 
-// CRT EOTF. To Display Referred Linear: Undo developer baked CRT gamma (from 2.40 at default 0.1 CRT black level, to 2.61 at 0.0 CRT black level)
+// CRT EOTF. To Display Referred Linear: Undo developer baked CRT gamma (from 2.40 at default 0.1 CRT black level, to 2.60 at 0.0 CRT black level)
     col = EOTF_1886a_f3(vcolor, g_CRT_l, params.g_CRT_b, params.g_CRT_c);
 
 
@@ -863,6 +885,11 @@ void main()
                (SPC == 1.0) ?     clamp(pow(src_h, vec3(1./(2.20 + 0.40))),  0., 1.) : \
                (SPC == 0.0) ? moncurve_r_f3(src_h,          2.20 + 0.20,     0.0550) : \
                               clamp(pow(    src_D, vec3(1./(2.20 + 0.20))),  0., 1.) ;
+
+
+// External Flare for Surround Illuminant 2700K (Soft White) at F0 (Lambertian reflectance); defines offset thus also black lift
+    vec3 Flare = 0.01 * (global.g_CRT_rf/5.0)*(0.049433*global.g_CRT_sl - 0.188367) * vec3(0.459993/0.410702,1.0,0.129305/0.410702);
+    TRC = global.g_CRT_sl>0.0 ? min(TRC+Flare,1.0) : TRC;
 
 
 // Technical LUT - (in SPC space)
