@@ -1,6 +1,6 @@
 // $MinimumShaderProfile: ps_2_0
 /*
- * (C) 2023 Dogway (Jose Linares)
+ * 2023 Dogway (Jose Linares)
  *
  * DolbyVision IPTPQc2 model conversion to SDR Rec709 RGB over GPU (DirectX)
  * Still lacks MMR for DVp8 and polynomial reshaping for DVp5 which are...
