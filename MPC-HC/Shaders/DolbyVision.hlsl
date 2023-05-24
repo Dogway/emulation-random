@@ -5,6 +5,7 @@
  * DolbyVision IPTPQc2 model conversion to SDR Rec709 RGB over GPU (DirectX)
  * Still lacks MMR for DVp8 and polynomial reshaping for DVp5 which are...
  * ...scene-by-scene transfer characteristics driven by the RPU (metadata)
+ * The RPU also allows for some grading trims which are not handled here either.
  *
  */
 
@@ -29,6 +30,7 @@ float4 p0 :  register(c0);
 #define GC (1)					 // 0 or 1 gamut compression
 #define scale (1.0)				 // 1 or 2 depending on source
 #define Peak (11.2)				 // Peak White to tonemap for
+#define Master (10000)			 // Mastering display nits
 
 #define const_1 ( 16.0 / 255.0)
 #define const_2 (255.0 / 219.0)
@@ -43,7 +45,7 @@ float4 p0 :  register(c0);
 
 float3 EOTF_PQ (float3 RGB) {
 
-    static float PL = 10000./203;
+    static float PL = Master/203.;
 
     // From BT.2124-0 Annex 2 Conversion 3
     float3 pw = pow(RGB, 1.0/M1);
@@ -54,7 +56,7 @@ float3 EOTF_PQ (float3 RGB) {
 
 float3 EOTFi_PQ (float3 RGB) {
 
-    static float PL = 203.0/10000;
+    static float PL = 203./Master;
 
     // From BT.2124-0 Annex 2 Conversion 3
     float3 pw  = pow(RGB * PL, N1);
@@ -66,26 +68,27 @@ float3 EOTFi_PQ (float3 RGB) {
 
 float3 TM_Hable (float3 RGB) {
 
-//                                           F L A T               F I L M I C
-// TONE:                   Default      Bright      Dark        Bright      Dark
-// SHAPING:                Default    T.Mansecal   Hejl match   MJP       T.Mansecal
-    float A    = 0.150;  // 0.150,      0.220,      0.265,      0.340,      0.305))   # Shoulder Strength
-    float B    = 0.500;  // 0.500,      0.300,      0.300,      0.250,      0.055))   # Linear Strength
-    float C    = 0.100;  // 0.100,      0.100,      0.110,      0.100,      0.490))   # Linear Angle
-    float D    = 0.200;  // 0.200,      0.200,      0.402,      0.140,      0.225))   # Toe Strength
-    float E    = 0.020;  // 0.020,      0.010,      0.000,      0.020,      0.040))   # Toe Numerator
-    float F    = 0.300;  // 0.300,      0.300,      0.220,      0.240,      0.220))   # Toe Denominator
+//                                            F L A T               F I L M I C
+// TONE:                    Default      Bright      Dark        Bright      Dark
+// SHAPING:                 Default    T.Mansecal   Hejl match   MJP       T.Mansecal
+    float A     = 0.150;  // 0.150,      0.220,      0.265,      0.340,      0.305))   # Shoulder Strength
+    float B     = 0.500;  // 0.500,      0.300,      0.300,      0.250,      0.055))   # Linear Strength
+    float C     = 0.100;  // 0.100,      0.100,      0.110,      0.100,      0.490))   # Linear Angle
+    float D     = 0.200;  // 0.200,      0.200,      0.402,      0.140,      0.225))   # Toe Strength
+    float E     = 0.020;  // 0.020,      0.010,      0.000,      0.020,      0.040))   # Toe Numerator
+    float F     = 0.300;  // 0.300,      0.300,      0.220,      0.240,      0.220))   # Toe Denominator
 
 
-    float CB   = C*B;
-    float DE   = D*E;
-    float DF   = D*F;
-    float EF   = E/F;
-    float Div  = (((Peak*(A*Peak+CB)+DE) / (Peak*(A*Peak+B)+DF)) - EF);
+    float CB    = C*B;
+    float DE    = D*E;
+    float DF    = D*F;
+    float EF    = E/F;
+    float Div   = (((Peak*(A*Peak+CB)+DE) / (Peak*(A*Peak+B)+DF)) - EF);
 
-    float3 RA  = RGB * A;
-    float3 TM  = ((RGB*(RA + CB)+DE) / (RGB*(RA + B)+DF) - EF)/Div;
-
+    float3 RGB2 = RGB * 2;
+    float3 RA   = F!=0.220 ?   RGB2 *  A : RGB * A;
+    float3 TM   = F!=0.220 ? ((RGB2 * (RA + CB)+DE) / (RGB2 * (RA + B)+DF) - EF)/Div : \
+                             ((RGB  * (RA + CB)+DE) / (RGB  * (RA + B)+DF) - EF)/Div ;
     return TM;
 }
 
