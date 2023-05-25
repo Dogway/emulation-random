@@ -21,9 +21,6 @@
 sampler s0 : register(s0);
 float4 p0 :  register(c0);
 
-#define width  (p0[0])
-#define height (p0[1])
-
 
 #define EOTF (2.4)				 // Inverse EOTF power value matching display EOTF. Rec709_Dim: 2.4; Rec709_Dark: 2.45; Black-Box: 2.6
 #define saturation (1.0)		 // Saturation multiplier. Increase to 1.05 to compensate for HDR to SDR, and 1.1 when using a low reference white (ie. 48 nits) to compensate for the Abney effect
