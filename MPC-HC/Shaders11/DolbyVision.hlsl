@@ -16,7 +16,7 @@ SamplerState samp : register(s0);
 
 
 #define EOTF (2.4)				 // Inverse EOTF power value matching display EOTF. Rec709_Dim: 2.4; Rec709_Dark: 2.45; Black-Box: 2.6
-#define saturation (1.0)		 // Saturation multiplier. Increase to 1.05 to compensate for HDR to SDR, and 1.1 when using a low reference white (ie. 48 nits) to compensate for the Abney effect
+#define saturation (1.0)		 // Saturation multiplier. Increase to 1.05 to compensate for HDR to SDR desaturation, and/or LED saturation reduction under lower than reference white levels (ie. using 48nits instead of spec's 100nits for home consumer media) (see: https://www.lightillusion.com/advanced_operation.html#oled)
 #define GC (1)					 // 0 or 1 gamut compression
 #define scale (1.0)				 // 1 or 2 depending on source
 #define Peak (11.2)				 // Peak White to tonemap for
@@ -93,22 +93,17 @@ float3 GamutCompression (float3 rgb) {
     float3 dl = 1.0+float3(0.074934,0.518208,0.063424)*saturation;
 
     // Calculate scale so compression function passes through distance limit: (x=dl, y=1)
-    float3 s;
-    s.x = (1.0-th.x)/sqrt(max(1.001, dl.x)-1.0);
-    s.y = (1.0-th.y)/sqrt(max(1.001, dl.y)-1.0);
-    s.z = (1.0-th.z)/sqrt(max(1.001, dl.z)-1.0);
+    float3 s = (1.0-th)/sqrt(max(1.001, dl)-1.0);
 
     // Achromatic axis
     float ac = max(rgb.x, max(rgb.y, rgb.z));
 
     // Inverse RGB Ratios: distance from achromatic axis
-    float3 d = ac==0.0?float3(0.0,0.0,0.0):(ac-rgb)/abs(ac);
+    float3 d = ac==0.0 ? 0.0 : (ac-rgb)/abs(ac);
 
-    float3 cd; // Compressed distance
-    // Parabolic compression function: https://www.desmos.com/calculator/nvhp63hmtj
-    cd.x = d.x<th.x?d.x:s.x*sqrt(d.x-th.x+s.x*s.x/4.0)-s.x*sqrt(s.x*s.x/4.0)+th.x;
-    cd.y = d.y<th.y?d.y:s.y*sqrt(d.y-th.y+s.y*s.y/4.0)-s.y*sqrt(s.y*s.y/4.0)+th.y;
-    cd.z = d.z<th.z?d.z:s.z*sqrt(d.z-th.z+s.z*s.z/4.0)-s.z*sqrt(s.z*s.z/4.0)+th.z;
+    // Compressed distance. Parabolic compression function: https://www.desmos.com/calculator/nvhp63hmtj
+    float  sf = s*s/4.0;
+    float3 cd = d < th ? d : s*sqrt(d-th+sf)-s*sqrt(sf)+th;
 
     // Inverse RGB Ratios to RGB
     return ac-cd*abs(ac);
