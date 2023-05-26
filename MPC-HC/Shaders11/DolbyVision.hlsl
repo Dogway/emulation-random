@@ -35,7 +35,7 @@ SamplerState samp : register(s0);
 
 float3 EOTF_PQ (float3 RGB) {
 
-    static float PL = Master/203.;
+    float PL = Master/203.;
 
     // From BT.2124-0 Annex 2 Conversion 3
     float3 pw = pow(RGB, 1.0/M1);
@@ -46,7 +46,7 @@ float3 EOTF_PQ (float3 RGB) {
 
 float3 EOTFi_PQ (float3 RGB) {
 
-    static float PL = 203./Master;
+    float PL = 203./Master;
 
     // From BT.2124-0 Annex 2 Conversion 3
     float3 pw  = pow(RGB * PL, N1);
@@ -61,24 +61,24 @@ float3 TM_Hable (float3 RGB) {
 //                                            F L A T               F I L M I C
 // TONE:                    Default      Bright      Dark        Bright      Dark
 // SHAPING:                 Default    T.Mansecal   Hejl match   MJP       T.Mansecal
-    float A     = 0.150;  // 0.150,      0.220,      0.265,      0.340,      0.305))   # Shoulder Strength
-    float B     = 0.500;  // 0.500,      0.300,      0.300,      0.250,      0.055))   # Linear Strength
-    float C     = 0.100;  // 0.100,      0.100,      0.110,      0.100,      0.490))   # Linear Angle
-    float D     = 0.200;  // 0.200,      0.200,      0.402,      0.140,      0.225))   # Toe Strength
-    float E     = 0.020;  // 0.020,      0.010,      0.000,      0.020,      0.040))   # Toe Numerator
-    float F     = 0.300;  // 0.300,      0.300,      0.220,      0.240,      0.220))   # Toe Denominator
+    const float A = 0.150;  // 0.150,      0.220,      0.265,      0.340,      0.305))   # Shoulder Strength
+    const float B = 0.500;  // 0.500,      0.300,      0.300,      0.250,      0.055))   # Linear Strength
+    const float C = 0.100;  // 0.100,      0.100,      0.110,      0.100,      0.490))   # Linear Angle
+    const float D = 0.200;  // 0.200,      0.200,      0.402,      0.140,      0.225))   # Toe Strength
+    const float E = 0.020;  // 0.020,      0.010,      0.000,      0.020,      0.040))   # Toe Numerator
+    const float F = 0.300;  // 0.300,      0.300,      0.220,      0.240,      0.220))   # Toe Denominator
 
 
-    float CB    = C*B;
-    float DE    = D*E;
-    float DF    = D*F;
-    float EF    = E/F;
-    float Div   = (((Peak*(A*Peak+CB)+DE) / (Peak*(A*Peak+B)+DF)) - EF);
-
-    float3 RGB2 = RGB * 2;
-    float3 RA   = F!=0.220 ?   RGB2 *  A : RGB * A;
-    float3 TM   = F!=0.220 ? ((RGB2 * (RA + CB)+DE) / (RGB2 * (RA + B)+DF) - EF)/Div : \
-                             ((RGB  * (RA + CB)+DE) / (RGB  * (RA + B)+DF) - EF)/Div ;
+    float CB      = C*B;
+    float DE      = D*E;
+    float DF      = D*F;
+    float EF      = E/F;
+    float Div     = (((Peak*(A*Peak+CB)+DE) / (Peak*(A*Peak+B)+DF)) - EF);
+                 
+    float3 RGB2   = RGB * 2;
+    float3 RA     = F!=0.220 ?   RGB2 *  A : RGB * A;
+    float3 TM     = F!=0.220 ? ((RGB2 * (RA + CB)+DE) / (RGB2 * (RA + B)+DF) - EF)/Div : \
+                               ((RGB  * (RA + CB)+DE) / (RGB  * (RA + B)+DF) - EF)/Div ;
     return TM;
 }
 
@@ -116,7 +116,7 @@ float4 main(float4 pos : SV_POSITION, float2 coord : TEXCOORD) : SV_Target
     // R'G'B' Full pixels
     float4 c0 = tex.Sample(samp, coord);
 
-    static float3x3 YUV = {
+    const float3x3 YUV = {
             0.212600,-0.114575, 0.500000,
             0.715179,-0.385425,-0.454140,
             0.072221, 0.500000,-0.045861};
@@ -133,7 +133,7 @@ float4 main(float4 pos : SV_POSITION, float2 coord : TEXCOORD) : SV_Target
     float3 ictcp = mul(c0.rgb, mul(YUV,LMS5));
 
     // Joint matrix with 2% Crosstalk for Dolby Vision (IPTPQc2)
-    static float3x3 XLMS = {
+    const float3x3 XLMS = {
             5.801851749420166,-1.2182241678237915,  0.010416880249977112,
            -4.960931777954102, 2.4180879592895510, -0.226645365357399000,
             0.159257173538208,-0.19987814128398895, 1.215838909149170000};
