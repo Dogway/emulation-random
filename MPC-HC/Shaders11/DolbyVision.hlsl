@@ -16,7 +16,11 @@ SamplerState samp : register(s0);
 
 
 #define EOTF (2.4)				 // Inverse EOTF power value matching display EOTF. Rec709_Dim: 2.4; Rec709_Dark: 2.45; Black-Box: 2.6
-#define saturation (1.0)		 // Saturation multiplier. Increase to 1.05 to compensate for HDR to SDR desaturation, and/or LED saturation reduction under lower than reference white levels (ie. using 48nits instead of spec's 100nits for home consumer media) (see: https://www.lightillusion.com/advanced_operation.html#oled)
+
+#define saturation (1.0)		 // Saturation multiplier. Increase to 1.05 to compensate for HDR to SDR desaturation, or higher for lower than reference white display levels (ie. 48nits instead of 100nits for home consumer media)
+								 // which causes the psychovisual Hunt Effect but also a non-linear low luminance desaturation on LED displays (see: https://www.lightillusion.com/advanced_operation.html#oled)
+
+#define BezoldBrucke (0.0)		 // Bezold-Brücke effect. Enable to decrease saturation more in the red/green (magenta/cyan) axis to compensate for the HUE shift in low reference white levels (ie. 48nits)
 #define GC (1)					 // 0 or 1 gamut compression
 #define scale (1.0)				 // 1 or 2 depending on source
 #define Peak (11.2)				 // Peak White to tonemap for
@@ -74,7 +78,7 @@ float3 TM_Hable (float3 RGB) {
     float DF      = D*F;
     float EF      = E/F;
     float Div     = (((Peak*(A*Peak+CB)+DE) / (Peak*(A*Peak+B)+DF)) - EF);
-                 
+
     float3 RGB2   = RGB * 2;
     float3 RA     = F!=0.220 ?   RGB2 *  A : RGB * A;
     float3 TM     = F!=0.220 ? ((RGB2 * (RA + CB)+DE) / (RGB2 * (RA + B)+DF) - EF)/Div : \
@@ -123,12 +127,12 @@ float4 main(float4 pos : SV_POSITION, float2 coord : TEXCOORD) : SV_Target
 
     // IPTPQc2 to LMS joint matrix
 
-    float scl = scale*saturation;
+    float2 scl = scale*float2(BezoldBrucke==1.0?(((saturation-1)/2.0)+1):saturation,saturation);
 
     float3x3 LMS5 = {
-            1.000000,     1.000000,     1.000000,
-        scl*0.097600,scl*-0.113900,scl* 0.032600,
-        scl*0.205200,scl* 0.133200,scl*-0.676900};
+            1.000000,       1.000000,       1.000000,
+      scl.x*0.097600,scl.x*-0.113900,scl.x* 0.032600,
+      scl.y*0.205200,scl.y* 0.133200,scl.y*-0.676900};
 
     float3 ictcp = mul(c0.rgb, mul(YUV,LMS5));
 
