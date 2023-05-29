@@ -21,7 +21,9 @@
 
 
 /*
-   Grade (13-05-2023)
+   Grade (29-05-2023)
+   > See settings decriptions at: https://forums.libretro.com/t/dogways-grading-shader-slang/27148/442
+
    > Ubershader grouping some monolithic color related shaders:
     ::color-mangler (hunterk), ntsc color tuning knobs (Doriphor), white_point (hunterk, Dogway), RA Reshade LUT.
    > and the addition of:
@@ -57,6 +59,7 @@
 #pragma parameter g_crtgamut     "Phosphor (-2:CRT-95s -1:P22-80s 1:P22-90s 2:NTSC-J 3:PAL)" 0.0 -3.0 3.0 1.0
 #pragma parameter g_space_out    "Diplay Color Space (-1:709 0:sRGB 1:DCI 2:2020 3:Adobe)"   0.0 -1.0 3.0 1.0
 #pragma parameter g_Dark_to_Dim  "Dark to Dim adaptation"                                    0.0  0.0 1.0 1.0
+#pragma parameter g_GCompress    "Gamut Compression"                                         0.0  0.0 1.0 1.0
 
 // Analogue controls
 #pragma parameter g_analog       "// ANALOG CONTROLS //"      0.0    0.0   1.0  1.0
@@ -190,6 +193,7 @@ uniform COMPAT_PRECISION float g_signal_type;
 uniform COMPAT_PRECISION float g_crtgamut;
 uniform COMPAT_PRECISION float g_space_out;
 uniform COMPAT_PRECISION float g_Dark_to_Dim;
+uniform COMPAT_PRECISION float g_GCompress;
 uniform COMPAT_PRECISION float g_hue_degrees;
 uniform COMPAT_PRECISION float g_U_SHIFT;
 uniform COMPAT_PRECISION float g_V_SHIFT;
@@ -234,6 +238,7 @@ uniform COMPAT_PRECISION float bg;
 #define g_crtgamut 0.0
 #define g_space_out 0.0
 #define g_Dark_to_Dim 0.0
+#define g_GCompress 0.0
 #define g_hue_degrees 0.0
 #define g_U_SHIFT 0.0
 #define g_V_SHIFT 0.0
@@ -555,6 +560,85 @@ vec3 TVtoPC(vec3 col, float luma_swing, float Umax, float Vmax, float max_swing)
 }
 
 
+//---------------------- Gamut Compression -------------------
+
+
+// RGB 'Desaturate' Gamut Compression (by Jed Smith: https://github.com/jedypod/gamut-compress)
+vec3 GamutCompression (vec3 rgb, float grey) {
+
+    // Limit/Thres order is Cyan, Magenta, Yellow
+    vec3  beam = max(vec3(0.0),vec3(g_CRT_bg,(g_CRT_bb+g_CRT_br)/2,(g_CRT_br+g_CRT_bg)/2));
+    vec3  sat  = max(vec3(0.0),vec3(g_satg,  (g_satb  +g_satr  )/2,(g_satr  +g_satg)  /2)+1); // center at 1
+    float temp = max(0,abs(wp_temperature-7000)-1000)/825.0+1;                                // center at 1
+    vec3  WPD  = wp_temperature < 7000 ? vec3(1,temp,(temp-1)/2+1) : vec3((temp-1)/2+1,temp,1);
+          sat  = max(0.0,g_sat+1)*(sat*beam) * WPD;
+
+    mat2x3 LimThres =
+                      mat2x3(0.100000,0.100000,0.100000,
+                             0.125000,0.125000,0.125000);
+    if (g_space_out<1.0) {
+
+    mat2x3 LimThres =
+       g_crtgamut == 3.0 ? mat2x3( 0.000000,0.044065,0.000000,
+                                   0.000000,0.095638,0.000000) : \
+       g_crtgamut == 2.0 ? mat2x3( 0.006910,0.092133,0.000000,
+                                   0.039836,0.121390,0.000000) : \
+       g_crtgamut == 1.0 ? mat2x3( 0.018083,0.059489,0.017911,
+                                   0.066570,0.105996,0.066276) : \
+       g_crtgamut ==-1.0 ? mat2x3( 0.014947,0.098571,0.017911,
+                                   0.060803,0.123793,0.066276) : \
+       g_crtgamut ==-2.0 ? mat2x3( 0.004073,0.030307,0.012697,
+                                   0.028222,0.083075,0.056029) : \
+       g_crtgamut ==-3.0 ? mat2x3( 0.018424,0.053469,0.016841,
+                                   0.067146,0.102294,0.064393) : LimThres;
+    } else if (g_space_out==1.0) {
+
+    mat2x3 LimThres =
+       g_crtgamut == 3.0 ? mat2x3( 0.000000,0.234229,0.007680,
+                                   0.000000,0.154983,0.042446) : \
+       g_crtgamut == 2.0 ? mat2x3( 0.078526,0.108432,0.006143,
+                                   0.115731,0.127194,0.037039) : \
+       g_crtgamut == 1.0 ? mat2x3( 0.021531,0.237184,0.013466,
+                                   0.072018,0.155438,0.057731) : \
+       g_crtgamut ==-1.0 ? mat2x3( 0.051640,0.103332,0.013550,
+                                   0.101092,0.125474,0.057912) : \
+       g_crtgamut ==-2.0 ? mat2x3( 0.032717,0.525361,0.023928,
+                                   0.085609,0.184491,0.075381) : \
+       g_crtgamut ==-3.0 ? mat2x3( 0.000000,0.377522,0.043076,
+                                   0.000000,0.172390,0.094873) : LimThres;
+    } else {
+    mat2x3 LimThres = LimThres;
+    }
+
+    // Amount of outer gamut to affect
+    vec3 th = 1.0-vec3(LimThres[1])*(0.4*sat+0.3);
+
+    // Distance limit: How far beyond the gamut boundary to compress
+    vec3 dl = 1.0+vec3(LimThres[0])*sat;
+
+    // Calculate scale so compression function passes through distance limit: (x=dl, y=1)
+    vec3 s = (vec3(1)-th)/sqrt(max(vec3(1.001), dl)-1.0);
+
+    // Achromatic axis
+    float ac = max(rgb.x, max(rgb.y, rgb.z));
+
+    // Inverse RGB Ratios: distance from achromatic axis
+    vec3 d = ac==0.0?vec3(0.0):(ac-rgb)/abs(ac);
+
+    // Compressed distance. Parabolic compression function: https://www.desmos.com/calculator/nvhp63hmtj
+    vec3 cd;
+    vec3 sf = s*sqrt(d-th+s*s/4.0)-s*sqrt(s*s/4.0)+th;
+    cd.x = (d.x < th.x) ? d.x : sf.x;
+    cd.y = (d.y < th.y) ? d.y : sf.y;
+    cd.z = (d.z < th.z) ? d.z : sf.z;
+
+    // Inverse RGB Ratios to RGB
+    // and Mask with "luma"
+    return mix(rgb, ac-cd.xyz*abs(ac), pow(grey,1/2.4));
+    }
+
+
+
 //*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 
 
@@ -844,7 +928,7 @@ void main()
     float hue_radians_b = 100.0 * M_PI;
     float hue_b = cos(hue_at + hue_radians_b);
 
-    float msk = dot(clamp(vec3(hue_r, hue_g, hue_b) * chroma * 2, 0., 1.), -vec3(g_satr, g_satg, g_satb));
+    float msk = dot(clamp(vec3(hue_r, hue_g, hue_b) * chroma * 2, 0.0, 1.0), -vec3(g_satr, g_satg, g_satb));
     src_h = mix(col, vec3(dot(coeff, col)), msk);
 
     float sat_msk = (g_vibr < 0.0) ? 1.0 - abs(SatMask(src_h.x, src_h.y, src_h.z) - 1.0) * abs(g_vibr) : \
@@ -861,20 +945,18 @@ void main()
                        msatz      , msatz      , msatz + sat);
 
 
-    src_h = mix(src_h, adjust * src_h, clamp(sat_msk, 0., 1.));
-    src_h = clamp(src_h*vec3(g_CRT_br,g_CRT_bg,g_CRT_bb),0.0,1.0);
+    src_h = mix(src_h, adjust * src_h, clamp(sat_msk, 0.0, 1.0));
+    src_h = src_h*vec3(g_CRT_br,g_CRT_bg,g_CRT_bb);
 
-/*
-// Desaturate gamut compression (in linear RGB space) (by John Walker: https://www.fourmilab.ch/documents/specrend)
-    float w  = -min(min(min(src_h.r,0),src_h.g),src_h.b);
-    float w2 =  max(max(src_h.b+w,src_h.g+w),src_h.r+w);
-    src_h    = (w2 > 1.0) ? src_h / w2 : src_h;
-*/
+
+// RGB 'Desaturate' Gamut Compression (by Jed Smith: https://github.com/jedypod/gamut-compress)
+    coeff = RGB_to_XYZ_mat(m_ou)[1];
+    src_h = g_GCompress==1.0 ? clamp(GamutCompression(src_h, dot(coeff.xyz, src_h)), 0.0, 1.0) : clamp(src_h, 0.0, 1.0);
 
 
 // Sigmoidal Luma Contrast under 'Yxy' decorrelated model (in gamma space)
     vec3 Yxy = XYZtoYxy(RGB_to_XYZ(src_h, m_ou));
-    float toGamma = clamp(moncurve_r(Yxy.r, 2.40, 0.055), 0., 1.);
+    float toGamma = clamp(moncurve_r(Yxy.r, 2.40, 0.055), 0.0, 1.0);
     toGamma = (Yxy.r > 0.5) ? contrast_sigmoid_inv(toGamma, 2.3, 0.5) : toGamma;
     float sigmoid = (g_cntrst > 0.0) ? contrast_sigmoid(toGamma, g_cntrst, g_mid) : contrast_sigmoid_inv(toGamma, g_cntrst, g_mid);
     vec3 contrast = vec3(moncurve_f(sigmoid, 2.40, 0.055), Yxy.g, Yxy.b);
@@ -883,12 +965,11 @@ void main()
 
 
 // Lift + Gain -PP Digital Controls- (Could do in Yxy but performance reasons)
-    src_h = clamp(rolled_gain_v3(contrast, clamp(g_lum, -0.49, 0.99)), 0., 1.);
+    src_h = clamp(rolled_gain_v3(contrast, clamp(g_lum, -0.49, 0.99)), 0.0, 1.0);
     src_h += (g_lift / 20.0) * (1.0 - contrast);
 
 
-
-// Vignetting & Black Level (in linear space, so after EOTF^-1 it's power shaped)
+// Vignetting (in linear space, so after EOTF^-1 it's power shaped; 0.5 thres converts to ~0.75)
     vec2 vpos = vTexCoord*(TextureSize.xy/InputSize.xy);
 
     vpos *= 1.0 - vpos.xy;
