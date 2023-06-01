@@ -49,6 +49,10 @@
 */
 
 
+// Test the following Phosphor gamuts and try to reach to a conclusion
+// For GC Japanese games you can use -2 or 2.
+// For Wii Japanese games probably either -3, -2 or 0 (sRGB/noop)
+
 /*
 [configuration]
 
@@ -61,10 +65,10 @@ StepAmount = 1
 DefaultValue = 2
 
 [OptionRangeInteger]
-GUIName = Diplay Color Space (0:709 1:sRGB 2:P3-D65)
+GUIName = Diplay Color Space (0:709 1:sRGB 2:P3-D65 3:Custom (Edit L550))
 OptionName = g_space_out
 MinValue = 0
-MaxValue = 2
+MaxValue = 3
 StepAmount = 1
 DefaultValue = 0
 
@@ -184,17 +188,6 @@ mat3 RGB_to_XYZ_mat(mat3 primaries) {
                  0.0, 0.0, T.z);
 
    return TB * primaries;
-}
-
-
-float3 RGB_to_XYZ(float3 RGB, mat3 primaries) {
-
-   return RGB *         RGB_to_XYZ_mat(primaries);
-}
-
-float3 XYZ_to_RGB(float3 XYZ, mat3 primaries) {
-
-   return XYZ * inverse(RGB_to_XYZ_mat(primaries));
 }
 
 
@@ -340,7 +333,7 @@ float3 GamutCompression (float3 rgb, float grey) {
                                    0.028222,0.083075,0.056029) : \
        g_crtgamut ==-3.0 ? mat2x3( 0.018424,0.053469,0.016841,
                                    0.067146,0.102294,0.064393) : LimThres;
-    } else if (g_space_out==1.0) {
+    } else if (g_space_out==2.0) {
 
        LimThres =
        g_crtgamut == 3.0 ? mat2x3( 0.000000,0.234229,0.007680,
@@ -539,6 +532,15 @@ const mat3 DCIP3_prims = mat3(
      0.320, 0.690, 0.060,
      0.000, 0.045, 0.790);
 
+// Custom - Add here the primaries of your D65 calibrated display to -partially- color manage Dolphin. Only the matrix part (hue+saturation, gamma is lef out)
+// How: Check the log of DisplayCAL calibration/profiling, search where it says "Increasing saturation of actual primaries..."
+// Note down the R xy, G xy and B xy values before "->" mark
+// Alongside you should have DisplayCAL Profile Loader enabled with the display profile to also load VCGT/LUT part (white point, grey balance and tone response)
+const mat3 Custom_prims = mat3(
+     1.000, 0.000, 0.000,
+     0.000, 1.000, 0.000,
+     0.000, 0.000, 1.000);
+
 
 
 
@@ -599,6 +601,7 @@ void main()
 // Display color space
     mat3 m_ou;
 
+    if (g_space_out ==  3.0) { m_ou = Custom_prims;    } else
     if (g_space_out ==  2.0) { m_ou = DCIP3_prims;     } else
                              { m_ou = sRGB_prims;      }
 
