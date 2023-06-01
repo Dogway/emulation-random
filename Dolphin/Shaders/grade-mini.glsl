@@ -21,16 +21,10 @@
 
 
 /*
-   Grade-mini (30-05-2023)
-   > See settings decriptions at: https://forums.libretro.com/t/dogways-grading-shader-slang/27148/442
+   Grade-mini (01-06-2023)
 
-   > Ubershader grouping some monolithic color related shaders:
-    ::color-mangler (hunterk), ntsc color tuning knobs (Doriphor), white_point (hunterk, Dogway), RA Reshade LUT.
-   > and the addition of:
-    ::analogue color emulation, phosphor gamut and color space + TRC support.
-
-   **Thanks to those that helped me out keep motivated by continuous feedback and bug reports:
-   **Syh, Nesguy, hunterk, and the libretro forum members.
+   > CRT emulation shader (NTSC Composite, phosphor, gamma, temperature...)
+   > Abridged port of RetroArch's Grade shader.
 
 
     ######################################...PRESETS...#######################################
@@ -47,7 +41,7 @@
     ###                                                                                    ###
     ###    NTSC-J (Default)                                                                ###
     ###        Phosphor: NTSC-J (#2)         (or a NTSC-J based CRT phosphor gamut)        ###
-    ###        WP: 9300K+27MPCD (8945K)      (CCT from x:0.281 y:0.311)(in practice ~8600K)###
+    ###        WP: 9300K+27MPCD (8945K)      (CCT from x:0.281 y:0.311)(in practice ~8500K)###
     ###                                                                                    ###
     ###                                                                                    ###
     ##########################################################################################
@@ -67,7 +61,7 @@ StepAmount = 1
 DefaultValue = 2
 
 [OptionRangeInteger]
-GUIName = Diplay Color Space (0:709 1:sRGB 2:DCI)
+GUIName = Diplay Color Space (0:709 1:sRGB 2:P3-D65)
 OptionName = g_space_out
 MinValue = 0
 MaxValue = 2
@@ -94,8 +88,8 @@ GUIName = White Point
 OptionName = wp_temperature
 MinValue = 5004
 MaxValue = 12004
-StepAmount = 1
-DefaultValue = 7104
+StepAmount = 50
+DefaultValue = 8504
 
 [OptionRangeInteger]
 GUIName = CRT Hue
@@ -179,15 +173,15 @@ DefaultValue = 1.0, 1.0, 1.0
 
 ///////////////////////// Color Space Transformations //////////////////////////
 
-// 'D65' based
+// mat3 type fails for DX11 backend
 mat3 RGB_to_XYZ_mat(mat3 primaries) {
 
-    float3 T   = RW * inverse(primaries);
+    float3 T = RW * inverse(primaries);
 
-    mat3 TB = mat3(
-                T.x, 0, 0,
-                0, T.y, 0,
-                0, 0, T.z);
+    mat3  TB = mat3(
+                 T.x, 0.0, 0.0,
+                 0.0, T.y, 0.0,
+                 0.0, 0.0, T.z);
 
    return TB * primaries;
 }
@@ -215,7 +209,6 @@ float3 XYZ_to_RGB(float3 XYZ, mat3 primaries) {
 // For NTSC-J there's not a common agreed value, measured consumer units span from 8229.87K to 8945.623K with accounts for 8800K as well.
 // Recently it's been standardized to 9300K which is closer to what master monitors (and not consumer units) were (x=0.2838 y=0.2984) (~9177.98K)
 
-
 // "RGB to XYZ -> Temperature -> XYZ to RGB" joint matrix
 float3 wp_adjust(float3 RGB, float temperature, mat3 primaries, mat3 display) {
 
@@ -231,7 +224,6 @@ float3 wp_adjust(float3 RGB, float temperature, mat3 primaries, mat3 display) {
 
     wp.y = -0.275275 + 2.87396 * wp.x - 3.02034 * pow(wp.x,2) + 0.0297408 * pow(wp.x,3);
     wp.z = 1. - wp.x - wp.y;
-
 
     const mat3 CAT16 = mat3(
      0.401288,-0.250268, -0.002079,
@@ -320,37 +312,6 @@ float3 moncurve_r_f3( float3 color, float gamma, float offs)
 }
 
 
-
-//---------------------- Range Expansion/Compression -------------------
-
-//  0-235 YUV PAL
-//  0-235 YUV NTSC-J
-// 16-235 YUV NTSC
-
-//  to Studio Swing/Broadcast Safe/SMPTE legal/Limited Range
-float3 PCtoTV(float3 col, float luma_swing, float Umax, float Vmax, float max_swing)
-{
-   col *= 255.;
-   float2 UVmax = (max_swing  == 1.0) ? float2(Umax,Vmax) * 224. : float2(Umax,Vmax) * 239.;
-
-   col.x        = (luma_swing == 1.0) ? ((col.x * 219.) / 255.) + 16. : col.x;
-   col.yz       = (((col.yz - 128.) * (UVmax * 2.)) / 255.) + UVmax;
-   return col.xyz / 255.;
-}
-
-
-//  to Full Swing/Full Range
-float3 TVtoPC(float3 col, float luma_swing, float Umax, float Vmax, float max_swing)
-{
-   col *= 255.;
-   float2 UVmax = (max_swing  == 1.0) ? float2(Umax,Vmax) * 224. : float2(Umax,Vmax) * 239.;
-
-   col.x        = (luma_swing == 1.0) ? ((col.x - 16.) / 219.) * 255. : col.x;
-   col.yz       = (((col.yz - UVmax) / (UVmax * 2.)) * 255.) + 128.;
-   return col.xyz / 255.;
-}
-
-
 //---------------------- Gamut Compression -------------------
 
 
@@ -359,14 +320,14 @@ float3 GamutCompression (float3 rgb, float grey) {
 
     // Limit/Thres order is Cyan, Magenta, Yellow
     float temp = max(0,abs(GetOption(wp_temperature)-7000)-1000)/825.0+1; // center at 1
-    float3  sat  = GetOption(wp_temperature) < 7000 ? float3(1,temp,(temp-1)/2+1) : float3((temp-1)/2+1,temp,1);
+    float3 sat = GetOption(wp_temperature) < 7000 ? float3(1,temp,(temp-1)/2+1) : float3((temp-1)/2+1,temp,1);
 
     mat2x3 LimThres =
-                      mat2x3(0.100000,0.100000,0.100000,
-                             0.125000,0.125000,0.125000);
+                           mat2x3( 0.100000,0.100000,0.100000,
+                                   0.125000,0.125000,0.125000);
     if (g_space_out<2.0) {
 
-    mat2x3 LimThres =
+       LimThres =
        g_crtgamut == 3.0 ? mat2x3( 0.000000,0.044065,0.000000,
                                    0.000000,0.095638,0.000000) : \
        g_crtgamut == 2.0 ? mat2x3( 0.006910,0.092133,0.000000,
@@ -381,7 +342,7 @@ float3 GamutCompression (float3 rgb, float grey) {
                                    0.067146,0.102294,0.064393) : LimThres;
     } else if (g_space_out==1.0) {
 
-    mat2x3 LimThres =
+       LimThres =
        g_crtgamut == 3.0 ? mat2x3( 0.000000,0.234229,0.007680,
                                    0.000000,0.154983,0.042446) : \
        g_crtgamut == 2.0 ? mat2x3( 0.078526,0.108432,0.006143,
@@ -395,7 +356,7 @@ float3 GamutCompression (float3 rgb, float grey) {
        g_crtgamut ==-3.0 ? mat2x3( 0.000000,0.377522,0.043076,
                                    0.000000,0.172390,0.094873) : LimThres;
     } else {
-    mat2x3 LimThres = LimThres;
+       LimThres = LimThres;
     }
 
     // Amount of outer gamut to affect
@@ -437,6 +398,10 @@ float3 GamutCompression (float3 rgb, float grey) {
 //----------------------- Y'UV color model -----------------------
 
 
+//  0-235 YUV PAL
+//  0-235 YUV NTSC-J
+// 16-235 YUV NTSC
+
 
 // Bymax 0.885515
 // Rymax 0.701088
@@ -450,13 +415,14 @@ const mat3 YByRy = mat3(
 
 // Umax 0.435812284313725
 // Vmax 0.615857694117647
+// R'G'B' full to Y'UV limited
 // YUV is defined with headroom and footroom (TV range),
-// we need to limit the excursion to 16-235.
-// This is still R'G'B' full to YUV full though
-float3 r601_YUV(float3 RGB) {
+// UV excursion is limited to Umax and Vmax
+// Y  excursion is limited to 16-235 for NTSC-U and 0-235 for PAL and NTSC-J
+float3 r601_YUV(float3 RGB, float NTSC_U) {
 
-    float sclU = ((0.5*(235-16)+16)/255.); // This yields Luma   grey  at around 0.49216 or 125.5 in 8-bit
-    float sclV =       (240-16)    /255. ; // This yields Chroma range at around 0.87843 or 224   in 8-bit
+    const float sclU = ((0.5*(235-16)+16)/255.); // This yields Luma   grey  at around 0.49216 or 125.5 in 8-bit
+    const float sclV =       (240-16)    /255. ; // This yields Chroma range at around 0.87843 or 224   in 8-bit
 
     mat3 conv_mat = mat3(
                    float3(YByRy[0]),
@@ -465,17 +431,22 @@ float3 r601_YUV(float3 RGB) {
 
 // -0.147111592156863  -0.288700692156863   0.435812284313725
 //  0.615857694117647  -0.515290478431373  -0.100567215686275
-    return RGB.rgb * conv_mat;
+
+    float3 YUV    = RGB.rgb * conv_mat;
+           YUV.x *= ((NTSC_U==1.0 ? 219.0 : 235.0)/255.0) + (NTSC_U==1.0 ? 16.0/255.0 : 0.0);
+    return YUV.xyz;
  }
 
 
-float3 YUV_r601(float3 YUV) {
+// Y'UV limited to R'G'B' full
+float3 YUV_r601(float3 YUV, float NTSC_U) {
 
 const mat3 conv_mat = mat3(
     1.0000000, -0.000000029378826483,  1.1383928060531616,
     1.0000000, -0.396552562713623050, -0.5800843834877014,
     1.0000000,  2.031872510910034000,  0.0000000000000000);
 
+    YUV.x = (YUV.x - (NTSC_U == 1.0 ? 16.0/255.0 : 0.0 )) * (255.0/(NTSC_U == 1.0 ? 219.0 : 235.0));
     return YUV.xyz * conv_mat;
  }
 
@@ -521,7 +492,7 @@ const mat3 SMPTE470BG_ph = mat3(
 // NTSC-J P22
 // Mix between averaging KV-20M20, KDS VS19, Dell D93, 4-TR-B09v1_0.pdf and Phosphor Handbook 'P22'
 // ILLUMINANT: D93->[0.281000,0.311000] (CCT of 8945.436K)
-// ILLUMINANT: D97->[0.285000,0.285000] (CCT of 9696K) for Nanao MS-2930s series
+// ILLUMINANT: D97->[0.285000,0.285000] (CCT of 9696K) for Nanao MS-2930s series (in practice prolly more like ~9177.98K)
 const mat3 P22_J_ph = mat3(
      0.625, 0.280, 0.152,
      0.350, 0.605, 0.062,
@@ -553,6 +524,7 @@ const mat3 CRT_95s_ph = mat3(
 
 //*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
 
+
 //----------------------- Display Primaries -----------------------
 
 // sRGB (IEC 61966-2-1) and ITU-R BT.709-6 (originally CCIR Rec.709)
@@ -581,31 +553,31 @@ void main()
     float3 src = Sample().rgb;
 
 // Clipping Logic / Gamut Limiting
-    float2 UVmax = float2(Quantize8(0.435812284313725), Quantize8(0.615857694117647));
+    bool   NTSC_U = g_crtgamut < 2.0;
+
+    float2 UVmax  = float2(Quantize8(0.435812284313725), Quantize8(0.615857694117647));
+    float2 Ymax   = NTSC_U ? float2(16.0, 235.0) : float2(0.0, 235.0);
+
 
 // Assumes framebuffer in Rec.601 full range with baked gamma
 // Quantize to 8-bit to replicate CRT's circuit board arithmetics
-    float3 col = clamp(Quantize8_f3(r601_YUV(src)), float3(  0.0,   -UVmax.x, -UVmax.y) ,    \
-                                                    float3(255.0,    UVmax.x,  UVmax.y))/255.;
-
-    col        = g_crtgamut < 2.0 ? PCtoTV(col, 1.0, UVmax.x/255.,  UVmax.y/255., 1.0) : col;
-
+    float3 col = clamp(Quantize8_f3(r601_YUV(src, NTSC_U ? 1.0 : 0.0)), float3(Ymax.x,  -UVmax.x, -UVmax.y),     \
+                                                                        float3(Ymax.y,   UVmax.x,  UVmax.y))/255.;
 
 // YUV Analogue Color Controls (HUE + Color Shift + Color Burst)
     float hue_radians = GetOption(g_hue_degrees) * M_PI;
     float    hue = atan(col.z,  col.y) + hue_radians;
-    float chroma = sqrt(col.z * col.z  + col.y * col.y);
+    float chroma = sqrt(col.z * col.z  + col.y * col.y);  // Euclidean Distance
     col          = float3(col.x, chroma * cos(hue), chroma * sin(hue));
 
     col.y = (mod((col.y + 1.0) + g_U_SHIFT, 2.0) - 1.0) * g_U_MUL;
     col.z = (mod((col.z + 1.0) + g_V_SHIFT, 2.0) - 1.0) * g_V_MUL;
 
-// Back to RGB
-    col   = g_crtgamut    < 2.0 ? TVtoPC(col, 1.0, UVmax.x/255., UVmax.y/255., 1.0) : col;
-    col   = OptionEnabled(g_signal_type) ? max(Quantize8_f3(YUV_r601(col))/255.0,       0.0) : src;
+// Back to R'G'B' full
+    col   = OptionEnabled(g_signal_type) ? max(Quantize8_f3(YUV_r601(col, NTSC_U ? 1.0 : 0.0))/255.0, 0.0) : src;
 
 // CRT EOTF. To Display Referred Linear: Undo developer baked CRT gamma (from 2.40 at default 0.1 CRT black level, to 2.60 at 0.0 CRT black level)
-    col = EOTF_1886a_f3(col, g_bl, GetOption(g_CRT_b), GetOption(g_CRT_c));
+    col   = EOTF_1886a_f3(col, g_bl, GetOption(g_CRT_b), GetOption(g_CRT_c));
 
 
 //_   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _
@@ -615,20 +587,20 @@ void main()
 // CRT Phosphor Gamut (0.0 is noop)
     mat3 m_in;
 
-    if (g_crtgamut == -3.0) { m_in = SMPTE170M_ph;         } else
-    if (g_crtgamut == -2.0) { m_in = CRT_95s_ph;           } else
-    if (g_crtgamut == -1.0) { m_in = P22_80s_ph;           } else
-    if (g_crtgamut ==  0.0) { m_in = sRGB_prims;           } else
-    if (g_crtgamut ==  1.0) { m_in = P22_90s_ph;           } else
-    if (g_crtgamut ==  2.0) { m_in = P22_J_ph;             } else
-    if (g_crtgamut ==  3.0) { m_in = SMPTE470BG_ph;        }
+    if (g_crtgamut  == -3.0) { m_in = SMPTE170M_ph;    } else
+    if (g_crtgamut  == -2.0) { m_in = CRT_95s_ph;      } else
+    if (g_crtgamut  == -1.0) { m_in = P22_80s_ph;      } else
+    if (g_crtgamut  ==  0.0) { m_in = sRGB_prims;      } else
+    if (g_crtgamut  ==  1.0) { m_in = P22_90s_ph;      } else
+    if (g_crtgamut  ==  2.0) { m_in = P22_J_ph;        } else
+    if (g_crtgamut  ==  3.0) { m_in = SMPTE470BG_ph;   }
 
 
 // Display color space
     mat3 m_ou;
 
-    if (g_space_out ==  2.0) { m_ou = DCIP3_prims;         } else
-                             { m_ou = sRGB_prims;          }
+    if (g_space_out ==  2.0) { m_ou = DCIP3_prims;     } else
+                             { m_ou = sRGB_prims;      }
 
 
 // White Point Mapping
