@@ -1,5 +1,5 @@
 /*
-   Grade-mini - CRT emulated color manipulation shader
+   Grade-mini - CRT emulation and color manipulation shader
 
    Copyright (C) 2020-2023 Dogway (Jose Linares)
 
@@ -21,9 +21,9 @@
 
 
 /*
-   Grade-mini (01-06-2023)
+   Grade-mini (03-06-2023)
 
-   > CRT emulation shader (NTSC Composite, phosphor, gamma, temperature...)
+   > CRT emulation shader (Composite signal, phosphor, gamma, temperature...)
    > Abridged port of RetroArch's Grade shader.
 
 
@@ -50,11 +50,16 @@
 
 
 // Test the following Phosphor gamuts and try to reach to a conclusion
-// For GC Japanese games you can use -2 or 2.
-// For Wii Japanese games probably either -3, -2 or 0 (sRGB/noop)
+// For GC  Japan developed games you can use -2 or 2.
+// For Wii Japan developed games probably -3 or 0 (sRGB/noop)
 
 /*
 [configuration]
+
+[OptionBool]
+GUIName = Composite Signal Type
+OptionName = g_signal_type
+DefaultValue = true
 
 [OptionRangeInteger]
 GUIName = Phosphor (-3:170M -2:CRT-95s -1:P22-80s 1:P22-90s 2:NTSC-J 3:PAL)
@@ -65,27 +70,12 @@ StepAmount = 1
 DefaultValue = 2
 
 [OptionRangeInteger]
-GUIName = Diplay Color Space (0:709 1:sRGB 2:P3-D65 3:Custom (Edit L550))
+GUIName = Diplay Color Space (0:709 1:sRGB 2:P3-D65 3:Custom (Edit L503))
 OptionName = g_space_out
 MinValue = 0
 MaxValue = 3
 StepAmount = 1
 DefaultValue = 0
-
-[OptionBool]
-GUIName = Composite Signal Type
-OptionName = g_signal_type
-DefaultValue = true
-
-[OptionBool]
-GUIName = Gamut Compression
-OptionName = g_GCompress
-DefaultValue = false
-
-[OptionBool]
-GUIName = Dark to Dim adaptation
-OptionName = g_Dark_to_Dim
-DefaultValue = true
 
 [OptionRangeInteger]
 GUIName = White Point
@@ -94,22 +84,6 @@ MinValue = 5004
 MaxValue = 12004
 StepAmount = 50
 DefaultValue = 8504
-
-[OptionRangeInteger]
-GUIName = CRT Hue
-OptionName = g_hue_degrees
-MinValue = -180
-MaxValue = 180
-StepAmount = 1
-DefaultValue = 0
-
-[OptionRangeFloat]
-GUIName = CRT U/V Shift
-OptionName = g_SHIFT
-MinValue = -0.2, -0.2
-MaxValue = 0.2, 0.2
-StepAmount = 0.01, 0.01
-DefaultValue = 0.0, 0.0
 
 [OptionRangeFloat]
 GUIName = CRT U/V Multiplier
@@ -127,21 +101,15 @@ MaxValue = 2.60
 StepAmount = 0.05
 DefaultValue = 2.50
 
-[OptionRangeInteger]
-GUIName = CRT Brightness
-OptionName = g_CRT_b
-MinValue = 0
-MaxValue = 100
-StepAmount = 1
-DefaultValue = 50
+[OptionBool]
+GUIName = Dark to Dim adaptation
+OptionName = g_Dark_to_Dim
+DefaultValue = true
 
-[OptionRangeInteger]
-GUIName = CRT Contrast
-OptionName = g_CRT_c
-MinValue = 0
-MaxValue = 100
-StepAmount = 1
-DefaultValue = 50
+[OptionBool]
+GUIName = Gamut Compression
+OptionName = g_GCompress
+DefaultValue = false
 
 [OptionRangeFloat]
 GUIName = CRT Beam (Red, Gren, Blue)
@@ -158,8 +126,6 @@ DefaultValue = 1.0, 1.0, 1.0
 #define g_crtgamut GetOption(g_crtgamut)
 #define g_space_out GetOption(g_space_out)
 
-#define g_U_SHIFT GetOption(g_SHIFT.x)
-#define g_V_SHIFT GetOption(g_SHIFT.y)
 #define g_U_MUL GetOption(g_MUL.x)
 #define g_V_MUL GetOption(g_MUL.y)
 
@@ -168,7 +134,7 @@ DefaultValue = 1.0, 1.0, 1.0
 #define g_CRT_bb GetOption(g_CRT.z)
 
 // D65 Reference White
-#define RW float3(0.950457397565471, 1., 1.089436035930324)
+#define RW float3(0.950457397565471, 1.0, 1.089436035930324)
 #define M_PI 3.1415926535897932384626433832795/180.0
 #define g_bl -(100000.*log((72981.-500000./(3.*max(2.3,GetOption(g_CRT_l))))/9058.))/945461.
 
@@ -255,8 +221,8 @@ float EOTF_1886a(float color, float bl, float brightness, float contrast) {
     const float wl = 100.0;
           float b  = pow(bl, 1/2.4);
           float a  = pow(wl, 1/2.4)-b;
-                b  = (brightness-50) / 250. + b/a;                // -0.20 to +0.20
-                a  = contrast!=50 ? pow(2,(contrast-50)/50.) : 1; //  0.50 to +2.00
+                b  = (brightness-50) / 250. + b/a;                 // -0.20 to +0.20
+                a  = contrast!=50 ? pow(2,(contrast-50)/50.) : 1.; //  0.50 to +2.00
 
     const float Vc = 0.35;                           // Offset
           float Lw = wl/100. * a;                    // White level
@@ -348,8 +314,6 @@ float3 GamutCompression (float3 rgb, float grey) {
                                    0.085609,0.184491,0.075381) : \
        g_crtgamut ==-3.0 ? mat2x3( 0.000000,0.377522,0.043076,
                                    0.000000,0.172390,0.094873) : LimThres;
-    } else {
-       LimThres = LimThres;
     }
 
     // Amount of outer gamut to affect
@@ -359,7 +323,7 @@ float3 GamutCompression (float3 rgb, float grey) {
     float3 dl = 1.0+float3(LimThres[0])*sat;
 
     // Calculate scale so compression function passes through distance limit: (x=dl, y=1)
-    float3 s = (float3(1)-th)/sqrt(max(float3(1.001), dl)-1.0);
+    float3 s = (float3(1.0)-th)/sqrt(max(float3(1.001), dl)-1.0);
 
     // Achromatic axis
     float ac = max(rgb.x, max(rgb.y, rgb.z));
@@ -425,9 +389,9 @@ float3 r601_YUV(float3 RGB, float NTSC_U) {
 // -0.147111592156863  -0.288700692156863   0.435812284313725
 //  0.615857694117647  -0.515290478431373  -0.100567215686275
 
-    float3 YUV    = RGB.rgb * conv_mat;
-           YUV.x *= ((NTSC_U==1.0 ? 219.0 : 235.0)/255.0) + (NTSC_U==1.0 ? 16.0/255.0 : 0.0);
-    return YUV.xyz;
+    float3 YUV   = RGB.rgb * conv_mat;
+           YUV.x = NTSC_U==1.0 ? YUV.x * 219.0 + 16.0 : YUV.x * 235.0;
+    return float3(YUV.x/255.0,YUV.yz);
  }
 
 
@@ -446,7 +410,7 @@ const mat3 conv_mat = mat3(
 
 // FP32 to 8-bit mid-tread uniform quantization
 float Quantize8(float col) {
-    col = min(255,floor(col * 255 + 0.5));
+    col = min(255.0,floor(col * 255.0 + 0.5));
     return col;
  }
 
@@ -535,7 +499,7 @@ const mat3 DCIP3_prims = mat3(
 // Custom - Add here the primaries of your D65 calibrated display to -partially- color manage Dolphin. Only the matrix part (hue+saturation, gamma is lef out)
 // How: Check the log of DisplayCAL calibration/profiling, search where it says "Increasing saturation of actual primaries..."
 // Note down the R xy, G xy and B xy values before "->" mark
-// Alongside you should have DisplayCAL Profile Loader enabled with the display profile to also load VCGT/LUT part (white point, grey balance and tone response)
+// Alongside you should have DisplayCAL Profile Loader enabled (since it will also load the VCGT/LUT part -white point, grey balance and tone response-)
 const mat3 Custom_prims = mat3(
      1.000, 0.000, 0.000,
      0.000, 1.000, 0.000,
@@ -552,7 +516,7 @@ const mat3 Custom_prims = mat3(
 void main()
 {
 
-    float3 src = Sample().rgb;
+    float3    src = Sample().rgb;
 
 // Clipping Logic / Gamut Limiting
     bool   NTSC_U = g_crtgamut < 2.0;
@@ -563,30 +527,27 @@ void main()
 
 // Assumes framebuffer in Rec.601 full range with baked gamma
 // Quantize to 8-bit to replicate CRT's circuit board arithmetics
-    float3 col = clamp(Quantize8_f3(r601_YUV(src, NTSC_U ? 1.0 : 0.0)), float3(Ymax.x,  -UVmax.x, -UVmax.y),     \
-                                                                        float3(Ymax.y,   UVmax.x,  UVmax.y))/255.;
+    float3 col    = clamp(Quantize8_f3(r601_YUV(src, NTSC_U ? 1.0 : 0.0)), float3(Ymax.x,  -UVmax.x, -UVmax.y),      \
+                                                                           float3(Ymax.y,   UVmax.x,  UVmax.y))/255.0;
 
-// YUV Analogue Color Controls (HUE + Color Shift + Color Burst)
-    float hue_radians = GetOption(g_hue_degrees) * M_PI;
-    float    hue = atan(col.z,  col.y) + hue_radians;
-    float chroma = sqrt(col.z * col.z  + col.y * col.y);  // Euclidean Distance
-    col          = float3(col.x, chroma * cos(hue), chroma * sin(hue));
-
-    col.y = (mod((col.y + 1.0) + g_U_SHIFT, 2.0) - 1.0) * g_U_MUL;
-    col.z = (mod((col.z + 1.0) + g_V_SHIFT, 2.0) - 1.0) * g_V_MUL;
+// YUV Analogue Color Controls (Color Burst)
+    float hue_radians = 0 * M_PI;
+    float    hue  = atan(col.z,  col.y) + hue_radians;
+    float chroma  = sqrt(col.z * col.z  + col.y * col.y);  // Euclidean Distance
+    col.yz        = float2(chroma * cos(hue), chroma * sin(hue)) * float2(g_U_MUL,g_V_MUL);
 
 // Back to R'G'B' full
-    col   = OptionEnabled(g_signal_type) ? max(Quantize8_f3(YUV_r601(col, NTSC_U ? 1.0 : 0.0))/255.0, 0.0) : src;
+    col   = OptionEnabled(g_signal_type) ? max(Quantize8_f3(YUV_r601(col.xyz, NTSC_U ? 1.0 : 0.0))/255.0, 0.0) : src;
 
 // CRT EOTF. To Display Referred Linear: Undo developer baked CRT gamma (from 2.40 at default 0.1 CRT black level, to 2.60 at 0.0 CRT black level)
-    col   = EOTF_1886a_f3(col, g_bl, GetOption(g_CRT_b), GetOption(g_CRT_c));
+    col   = EOTF_1886a_f3(col, g_bl, 50, 50);
 
 
 //_   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _
 // \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \
 
 
-// CRT Phosphor Gamut (0.0 is noop)
+// CRT Phosphor Gamut (0.0 is sRGB/noop)
     mat3 m_in;
 
     if (g_crtgamut  == -3.0) { m_in = SMPTE170M_ph;    } else
@@ -616,7 +577,7 @@ void main()
     src_h = OptionEnabled(g_GCompress) ? clamp(GamutCompression(src_h, dot(coeff.xyz, src_h)), 0.0, 1.0) : clamp(src_h, 0.0, 1.0);
 
 
-// Dark to Dim adaptation OOTF; only for 709 and 2020
+// Dark to Dim adaptation OOTF; only for 709 and Custom
     float3 src_D = OptionEnabled(g_Dark_to_Dim) ? pow(src_h,float3(0.9811)) : src_h;
 
 // EOTF^-1 - Inverted Electro-Optical Transfer Function
