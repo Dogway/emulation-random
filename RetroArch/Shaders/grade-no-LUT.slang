@@ -82,7 +82,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 } global;
 
 /*
-   Grade (01-06-2023)
+   Grade (03-06-2023)
    > See settings decriptions at: https://forums.libretro.com/t/dogways-grading-shader-slang/27148/442
 
    > Ubershader grouping some monolithic color related shaders:
@@ -119,7 +119,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #pragma parameter g_signal_type  "Signal Type (0:RGB 1:Composite)"                            0.0  0.0 1.0 1.0
 #pragma parameter g_crtgamut     "Phosphor (-2:CRT-95s -1:P22-80s 1:P22-90s 2:NTSC-J 3:PAL)"  0.0 -3.0 3.0 1.0
 #pragma parameter g_space_out    "Diplay Color Space (-1:709 0:sRGB 1:P3-D65 2:2020 3:Adobe)" 0.0 -1.0 3.0 1.0
-#pragma parameter g_Dark_to_Dim  "Dark to Dim adaptation"                                     0.0  0.0 1.0 1.0
+#pragma parameter g_Dark_to_Dim  "Dark to Dim adaptation"                                     1.0  0.0 1.0 1.0
 #pragma parameter g_GCompress    "Gamut Compression"                                          0.0  0.0 1.0 1.0
 
 // Analogue controls
@@ -223,6 +223,9 @@ void main()
 layout(location = 0) in vec2 vTexCoord;
 layout(location = 0) out vec4 FragColor;
 layout(set = 0, binding = 2) uniform sampler2D Source;
+
+
+
 
 
 
@@ -334,8 +337,8 @@ float EOTF_1886a(float color, float bl, float brightness, float contrast) {
     const float wl = 100.0;
           float b  = pow(bl, 1/2.4);
           float a  = pow(wl, 1/2.4)-b;
-                b  = (brightness-50) / 250. + b/a;                // -0.20 to +0.20
-                a  = contrast!=50 ? pow(2,(contrast-50)/50.) : 1; //  0.50 to +2.00
+                b  = (brightness-50) / 250. + b/a;                 // -0.20 to +0.20
+                a  = contrast!=50 ? pow(2,(contrast-50)/50.) : 1.; //  0.50 to +2.00
 
     const float Vc = 0.35;                           // Offset
           float Lw = wl/100. * a;                    // White level
@@ -512,8 +515,6 @@ vec3 GamutCompression (vec3 rgb, float grey) {
                                  0.085609,0.184491,0.075381) : \
        crtgamut ==-3.0 ? mat2x3( 0.000000,0.377522,0.043076,
                                  0.000000,0.172390,0.094873) : LimThres;
-    } else {
-    LimThres = LimThres;
     }
 
     // Amount of outer gamut to affect
@@ -590,9 +591,9 @@ vec3 r601_YUV(vec3 RGB, float NTSC_U) {
 // -0.147111592156863  -0.288700692156863   0.435812284313725
 //  0.615857694117647  -0.515290478431373  -0.100567215686275
 
-    vec3 YUV    = RGB.rgb * conv_mat;
-         YUV.x *= ((NTSC_U==1.0 ? 219.0 : 235.0)/255.0) + (NTSC_U==1.0 ? 16.0/255.0 : 0.0);
-    return YUV.xyz;
+    vec3 YUV   = RGB.rgb * conv_mat;
+         YUV.x = NTSC_U==1.0 ? YUV.x * 219.0 + 16.0 : YUV.x * 235.0;
+    return vec3(YUV.x/255.0,YUV.yz);
  }
 
 
@@ -611,7 +612,7 @@ const mat3 conv_mat = mat3(
 
 // FP32 to 8-bit mid-tread uniform quantization
 float Quantize8(float col) {
-    col = min(255,floor(col * 255 + 0.5));
+    col = min(255.0,floor(col * 255.0 + 0.5));
     return col;
  }
 
@@ -748,7 +749,7 @@ void main()
 {
 
 // Retro Sega Systems: Genesis, 32x, CD and Saturn 2D had color palettes designed in TV levels to save on transformations.
-    float lum_exp = (lum_fix ==  1.0) ? (255./239.) : 1.;
+    float lum_exp = (lum_fix ==  1.0) ? (255.0/239.0) : 1.0;
 
     vec3 src = texture(Source, vTexCoord.xy).rgb * lum_exp;
 
@@ -761,20 +762,19 @@ void main()
 
 // Assumes framebuffer in Rec.601 full range with baked gamma
 // Quantize to 8-bit to replicate CRT's circuit board arithmetics
-    vec3 col = clamp(Quantize8_f3(r601_YUV(src, NTSC_U ? 1.0 : 0.0)), vec3(Ymax.x,  -UVmax.x, -UVmax.y),     \
-                                                                      vec3(Ymax.y,   UVmax.x,  UVmax.y))/255.;
+    vec3 col = clamp(Quantize8_f3(r601_YUV(src, NTSC_U ? 1.0 : 0.0)), vec3(Ymax.x,  -UVmax.x, -UVmax.y),      \
+                                                                      vec3(Ymax.y,   UVmax.x,  UVmax.y))/255.0;
 
 // YUV Analogue Color Controls (HUE + Color Shift + Color Burst)
     float hue_radians = hue_degrees * M_PI;
     float hue = atan(col.z, col.y) + hue_radians;
     float chroma = sqrt(col.z * col.z + col.y * col.y);  // Euclidean Distance
-    col   = vec3(col.x, chroma * cos(hue), chroma * sin(hue));
 
-    col.y = (mod((col.y + 1.0) + U_SHIFT, 2.0) - 1.0) * U_MUL;
-    col.z = (mod((col.z + 1.0) + V_SHIFT, 2.0) - 1.0) * V_MUL;
+    col.y    = (mod((chroma * cos(hue) + 1.0) + U_SHIFT, 2.0) - 1.0) * U_MUL;
+    col.z    = (mod((chroma * sin(hue) + 1.0) + V_SHIFT, 2.0) - 1.0) * V_MUL;
 
 // Back to R'G'B' full
-    col   = signal > 0.0 ? max(Quantize8_f3(YUV_r601(col, NTSC_U ? 1.0 : 0.0))/255.0, 0.0) : src;
+    col      = signal > 0.0 ? max(Quantize8_f3(YUV_r601(col.xyz, NTSC_U ? 1.0 : 0.0))/255.0, 0.0) : src;
 
 // CRT EOTF. To Display Referred Linear: Undo developer baked CRT gamma (from 2.40 at default 0.1 CRT black level, to 2.60 at 0.0 CRT black level)
     col = EOTF_1886a_f3(col, g_CRT_l, params.g_CRT_b, params.g_CRT_c);
@@ -862,8 +862,8 @@ void main()
                        msatz      , msatz      , msatz + sat);
 
 
-    src_h = mix(src_h, adjust * src_h, clamp(sat_msk, 0.0, 1.0));
-    src_h = src_h*vec3(beamr,beamg,beamb);
+    src_h  = mix(src_h, adjust * src_h, clamp(sat_msk, 0.0, 1.0));
+    src_h *= vec3(beamr,beamg,beamb);
 
 
 // RGB 'Desaturate' Gamut Compression (by Jed Smith: https://github.com/jedypod/gamut-compress)
