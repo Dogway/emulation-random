@@ -335,7 +335,7 @@ vec3 YxytoXYZ(vec3 Yxy) {
 ///////////////////////// White Point Mapping /////////////////////////
 //
 //
-// PAL: D65        NTSC-U: D65       NTSC-J: CCT NTSC-J
+// PAL: D65        NTSC-U: D65       NTSC-J: CCT 9300K+27MPCD
 // PAL: 6503.512K  NTSC-U: 6503.512K NTSC-J: ~8945.436K
 // [x:0.31266142   y:0.3289589]      [x:0.281 y:0.311]
 
@@ -345,7 +345,7 @@ vec3 YxytoXYZ(vec3 Yxy) {
 // "RGB to XYZ -> Temperature -> XYZ to RGB" joint matrix
 vec3 wp_adjust(vec3 RGB, float temperature, mat3 primaries, mat3 display) {
 
-    float temp3 = 1000.       / temperature;
+    float temp3 = 1000.       /     temperature;
     float temp6 = 1000000.    / pow(temperature, 2.);
     float temp9 = 1000000000. / pow(temperature, 3.);
 
