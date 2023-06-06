@@ -50,10 +50,11 @@
 
 
 // Test the following Phosphor gamuts and try to reach to a conclusion
-// For GC  Japan developed games you can use -2 or 2.
+// For GC  Japan developed games you can use -2 or 2
 // For Wii Japan developed games probably -3 or 0 (sRGB/noop)
 // For Japan developed games use a temperature ~8500K (default)
 // For EU/US developed games use a temperature ~7100K
+
 
 /*
 [configuration]
@@ -145,7 +146,7 @@ DefaultValue = 1.0, 1.0, 1.0
 
 ///////////////////////// Color Space Transformations //////////////////////////
 
-// mat3 type fails for DX11 backend (float3x3)
+// mat3 type fails in Dolphin's HLSL translation for DX11 backend (float3x3)
 mat3 RGB_to_XYZ_mat(mat3 primaries) {
 
     float3 T = RW * inverse(primaries);
