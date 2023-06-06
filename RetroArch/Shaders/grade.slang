@@ -1,7 +1,7 @@
 #version 450
 
 /*
-   Grade - CRT emulated color manipulation shader
+   Grade - CRT emulation and color manipulation shader
 
    Copyright (C) 2020-2023 Dogway (Jose Linares)
 
@@ -86,7 +86,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 } global;
 
 /*
-   Grade (03-06-2023)
+   Grade (06-06-2023)
    > See settings decriptions at: https://forums.libretro.com/t/dogways-grading-shader-slang/27148/442
 
    > Ubershader grouping some monolithic color related shaders:
@@ -507,8 +507,7 @@ vec3 GamutCompression (vec3 rgb, float grey) {
     vec3  WPD  = global.wp_temperature < 7000 ? vec3(1,temp,(temp-1)/2+1) : vec3((temp-1)/2+1,temp,1);
           sat  = max(0.0,g_sat+1)*(sat*beam) * WPD;
 
-    mat2x3 LimThres = \
-                         mat2x3( 0.100000,0.100000,0.100000,
+    mat2x3 LimThres =    mat2x3( 0.100000,0.100000,0.100000,
                                  0.125000,0.125000,0.125000);
     if (SPC < 1.0) {
 
@@ -575,7 +574,7 @@ vec3 GamutCompression (vec3 rgb, float grey) {
 
 
 
-// Matrices in OpenGL column-major
+// Matrices in column-major
 
 
 //----------------------- Y'UV color model -----------------------
@@ -695,7 +694,7 @@ const mat3 SMPTE470BG_ph =
 // NTSC-J P22
 // Mix between averaging KV-20M20, KDS VS19, Dell D93, 4-TR-B09v1_0.pdf and Phosphor Handbook 'P22'
 // ILLUMINANT: D93->[0.281000,0.311000] (CCT of 8945.436K)
-// ILLUMINANT: D97->[0.285000,0.285000] (CCT of 9696K) for Nanao MS-2930s series (in practice prolly more like ~9177.98K)
+// ILLUMINANT: D97->[0.285000,0.285000] (CCT of 9696K) for Nanao MS-2930s series (around 10000.0K for wp_adjust() daylight fit)
 const mat3 P22_J_ph =
     mat3(
      0.625, 0.280, 0.152,
