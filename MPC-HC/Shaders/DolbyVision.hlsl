@@ -27,7 +27,7 @@ float4 p0 :  register(c0);
 #define saturation (1.0)		 // Saturation multiplier. Increase to 1.05 to compensate for HDR to SDR desaturation, or higher for lower than reference white display levels (ie. 48nits instead of 100nits for home consumer media)
 								 // which causes the psychovisual Hunt Effect but also a non-linear low luminance desaturation on LED displays (see: https://www.lightillusion.com/advanced_operation.html#oled)
 
-#define BezoldBrucke (0.0)		 // Bezold-Brücke effect. Enable to decrease saturation more in the red/green (magenta/cyan) axis to compensate for the HUE shift in low reference white levels (ie. 48nits)
+#define BezoldBrucke (0.0)		 // Bezold-BrÃ¼cke effect. Enable to decrease saturation more in the red/green (magenta/cyan) axis to compensate for the HUE shift in low reference white levels (ie. 48nits)
 #define GC (1)					 // 0 or 1 gamut compression
 #define scale (1.0)				 // 1 or 2 depending on source
 #define Peak (11.2)				 // Peak White to tonemap for
@@ -113,11 +113,15 @@ float3 GamutCompression (float3 rgb) {
     float3 d = ac==0.0 ? 0.0 : (ac-rgb)/abs(ac);
 
     // Compressed distance. Parabolic compression function: https://www.desmos.com/calculator/nvhp63hmtj
-    float  sf = s*s/4.0;
-    float3 cd = d < th ? d : s*sqrt(d-th+sf)-s*sqrt(sf)+th;
+    float3 cd;
+    float3 ss = s*s/4.0;
+    float3 sf = s*sqrt(d-th+ss)-s*sqrt(ss)+th;
+    cd.x = (d.x < th.x) ? d.x : sf.x;
+    cd.y = (d.y < th.y) ? d.y : sf.y;
+    cd.z = (d.z < th.z) ? d.z : sf.z;
 
     // Inverse RGB Ratios to RGB
-    return ac-cd*abs(ac);
+    return ac-cd.xyz*abs(ac);
 }
 
 
@@ -127,7 +131,8 @@ float4 main(float2 tex : TEXCOORD0) : COLOR
     // R'G'B' Full pixels
     float4 c0 = tex2D(s0, tex);
 
-    const float3x3 YUV = {
+    // row-major but pre-transposed
+    const float3x3 YCbCr = {
             0.212600,-0.114575, 0.500000,
             0.715179,-0.385425,-0.454140,
             0.072221, 0.500000,-0.045861};
@@ -141,7 +146,7 @@ float4 main(float2 tex : TEXCOORD0) : COLOR
       scl.x*0.097600,scl.x*-0.113900,scl.x* 0.032600,
       scl.y*0.205200,scl.y* 0.133200,scl.y*-0.676900};
 
-    float3 ictcp = mul(c0.rgb, mul(YUV,LMS5));
+    float3 ictcp = mul(c0.rgb, mul(YCbCr,LMS5));
 
     // Joint matrix with 2% Crosstalk for Dolby Vision (IPTPQc2)
     const float3x3 XLMS = {
