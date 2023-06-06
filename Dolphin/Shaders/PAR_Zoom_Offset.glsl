@@ -1,5 +1,5 @@
 /*
-   PAR/ZOOM/OFFSET
+   PAR/ZOOM/OFFSET (or stretch/scale/offset)
 
    Copyright (C) 2023 Dogway (Jose Linares)
 
