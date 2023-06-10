@@ -20,10 +20,10 @@ SamplerState samp : register(s0);
 #define saturation (1.0)		 // Saturation multiplier. Increase to 1.05 to compensate for HDR to SDR desaturation, or higher for lower than reference white display levels (ie. 48nits instead of 100nits for home consumer media)
 								 // which causes the psychovisual Hunt Effect but also a non-linear low luminance desaturation on LED displays (see: https://www.lightillusion.com/advanced_operation.html#oled)
 
-#define BezoldBrucke (0.0)		 // Bezold-Brücke effect. Enable to decrease saturation more in the red/green (magenta/cyan) axis to compensate for the HUE shift in low reference white levels (ie. 48nits)
+#define BezoldBrucke (0.0)		 // Bezold-Brücke effect. Enable to decrease saturation (when <>1.0) more in the red/green (magenta/cyan) axis to compensate for the HUE shift in low reference white levels (ie. 48nits)
 #define GC (1)					 // 0 or 1 gamut compression
 #define scale (1.0)				 // 1 or 2 depending on source
-#define Peak (11.2)				 // Peak White to tonemap for
+#define Peak (30.0)				 // Peak White to tonemap for
 #define Master (10000)			 // Mastering display nits
 
 #define const_1 ( 16.0 / 255.0)
@@ -35,6 +35,7 @@ SamplerState samp : register(s0);
 #define C2 ((2413./4096) * 32)
 #define C3 ((2392./4096) * 32)
 
+#define BBS float3(saturation,BezoldBrucke==1.0?(((saturation-1)/2.0)+1):saturation,saturation)
 
 
 float3 EOTF_PQ (float3 RGB) {
@@ -91,19 +92,19 @@ float3 TM_Hable (float3 RGB) {
 float3 GamutCompression (float3 rgb) {
 
     // Amount of outer gamut to affect
-    float3 th = 1.0-float3(0.114080,0.183988,0.108230)*(0.4*saturation+0.3);
+    float3 th = 1.0-float3(0.114080,0.183988,0.108230)*(0.4*BBS+0.3);
 
     // Distance limit: How far beyond the gamut boundary to compress
-    float3 dl = 1.0+float3(0.074934,0.518208,0.063424)*saturation;
+    float3 dl = 1.0+float3(0.074934,0.518208,0.063424)*BBS;
 
     // Calculate scale so compression function passes through distance limit: (x=dl, y=1)
-    float3 s = (1.0-th)/sqrt(max(1.001, dl)-1.0);
+    float3 s  = (1.0-th)/sqrt(max(1.001, dl)-1.0);
 
     // Achromatic axis
-    float ac = max(rgb.x, max(rgb.y, rgb.z));
+    float ac  = max(rgb.x, max(rgb.y, rgb.z));
 
     // Inverse RGB Ratios: distance from achromatic axis
-    float3 d = ac==0.0 ? 0.0 : (ac-rgb)/abs(ac);
+    float3 d  = ac==0.0 ? 0.0 : (ac-rgb)/abs(ac);
 
     // Compressed distance. Parabolic compression function: https://www.desmos.com/calculator/nvhp63hmtj
     float3 cd;
@@ -132,7 +133,7 @@ float4 main(float4 pos : SV_POSITION, float2 coord : TEXCOORD) : SV_Target
 
     // IPTPQc2 to LMS joint matrix
 
-    float2 scl = scale*float2(BezoldBrucke==1.0?(((saturation-1)/2.0)+1):saturation,saturation);
+    float2 scl = scale*BBS.yz;
 
     float3x3 LMS5 = {
             1.000000,       1.000000,       1.000000,
