@@ -21,13 +21,13 @@
 
 
 /*
-   Grade-mini (06-06-2023)
+   Grade-mini (14-06-2023)
 
    > CRT emulation shader (composite signal, phosphor, gamma, temperature...)
    > Abridged port of RetroArch's Grade shader.
 
 
-    ######################################...PRESETS...#######################################
+    ####################################...STANDARDS...#######################################
     ##########################################################################################
     ###                                                                                    ###
     ###    PAL                                                                             ###
@@ -50,8 +50,8 @@
 
 
 // Test the following Phosphor gamuts and try to reach to a conclusion
-// For GC  Japan developed games you can use -2 or 2
-// For Wii Japan developed games probably -3 or 0 (sRGB/noop)
+// For GC  Japan developed games you can use -2 (Rear Projection CRT) or 2 (CRT Tube)
+// For Wii Japan developed games probably -3 (SMPTE-C), -2 (Rear Projection CRT) or 0 (sRGB/noop)
 // For Japan developed games use a temperature ~8500K (default)
 // For EU/US developed games use a temperature ~7100K
 
@@ -73,7 +73,7 @@ StepAmount = 1
 DefaultValue = 2
 
 [OptionRangeInteger]
-GUIName = Diplay Color Space (0:709 1:sRGB 2:P3-D65 3:Custom (Edit L503))
+GUIName = Diplay Color Space (0:709 1:sRGB 2:P3-D65 3:Custom (Edit L506))
 OptionName = g_space_out
 MinValue = 0
 MaxValue = 3
@@ -94,7 +94,7 @@ OptionName = g_MUL
 MinValue = 0.0, 0.0
 MaxValue = 2.0, 2.0
 StepAmount = 0.01, 0.01
-DefaultValue = 1.0, 1.0
+DefaultValue = 0.9, 0.9
 
 [OptionRangeFloat]
 GUIName = CRT Gamma
@@ -146,7 +146,7 @@ DefaultValue = 1.0, 1.0, 1.0
 
 ///////////////////////// Color Space Transformations //////////////////////////
 
-// mat3 type fails in Dolphin's HLSL translation for DX11 backend (float3x3)
+
 mat3 RGB_to_XYZ_mat(mat3 primaries) {
 
     float3 T = RW * inverse(primaries);
@@ -519,7 +519,8 @@ const mat3 Custom_prims = mat3(
 void main()
 {
 
-    float3    src = Sample().rgb;
+    float4    c0  = Sample();
+    float3    src = c0.rgb;
 
 // Clipping Logic / Gamut Limiting
     bool   NTSC_U = g_crtgamut < 2.0;
@@ -556,10 +557,10 @@ void main()
     if (g_crtgamut  == -3.0) { m_in = SMPTE170M_ph;    } else
     if (g_crtgamut  == -2.0) { m_in = CRT_95s_ph;      } else
     if (g_crtgamut  == -1.0) { m_in = P22_80s_ph;      } else
-    if (g_crtgamut  ==  0.0) { m_in = sRGB_prims;      } else
     if (g_crtgamut  ==  1.0) { m_in = P22_90s_ph;      } else
     if (g_crtgamut  ==  2.0) { m_in = P22_J_ph;        } else
-    if (g_crtgamut  ==  3.0) { m_in = SMPTE470BG_ph;   }
+    if (g_crtgamut  ==  3.0) { m_in = SMPTE470BG_ph;   } else
+                             { m_in = sRGB_prims;      }
 
 
 // Display color space
@@ -588,5 +589,5 @@ void main()
                  (g_space_out == 1.0) ? moncurve_r_f3(src_h,            2.20 + 0.20,     0.0550) : \
                                         clamp(pow(    src_D, float3(1./(2.20 + 0.20))),  0., 1.) ;
 
-    SetOutput(float4(TRC, 1.0));
+    SetOutput(float4(TRC, c0.a));
 }
