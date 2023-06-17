@@ -21,13 +21,13 @@
 
 
 /*
-   Grade-mini (14-06-2023)
+   Grade-mini (16-06-2023)
 
    > CRT emulation shader (composite signal, phosphor, gamma, temperature...)
    > Abridged port of RetroArch's Grade shader.
 
 
-    ####################################...STANDARDS...#######################################
+    #####################################...STANDARDS...######################################
     ##########################################################################################
     ###                                                                                    ###
     ###    PAL                                                                             ###
@@ -50,8 +50,8 @@
 
 
 // Test the following Phosphor gamuts and try to reach to a conclusion
-// For GC  Japan developed games you can use -2 (Rear Projection CRT) or 2 (CRT Tube)
-// For Wii Japan developed games probably -3 (SMPTE-C), -2 (Rear Projection CRT) or 0 (sRGB/noop)
+// For GC  Japan developed games you can use -2 (Rear Projection TVs) or 2 (CRT Tube)
+// For Wii Japan developed games probably -3 (SMPTE-C), -2 (Rear Projection TVs) or 0 (sRGB/noop)
 // For Japan developed games use a temperature ~8500K (default)
 // For EU/US developed games use a temperature ~7100K
 
@@ -73,7 +73,7 @@ StepAmount = 1
 DefaultValue = 2
 
 [OptionRangeInteger]
-GUIName = Diplay Color Space (0:709 1:sRGB 2:P3-D65 3:Custom (Edit L506))
+GUIName = Diplay Color Space (0:709 1:sRGB 2:P3-D65 3:Custom (Edit L508))
 OptionName = g_space_out
 MinValue = 0
 MaxValue = 3
@@ -156,8 +156,8 @@ mat3 RGB_to_XYZ_mat(mat3 primaries) {
                  0.0, T.y, 0.0,
                  0.0, 0.0, T.z);
 
-   return TB * primaries;
-}
+    return TB * primaries;
+ }
 
 
 
@@ -205,7 +205,7 @@ float3 wp_adjust(float3 RGB, float temperature, mat3 primaries, mat3 display) {
     mat3 matb = RGB_to_XYZ_mat(display);
 
     return RGB.rgb * ((mata * CAM) * inverse(matb));
-}
+ }
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -228,8 +228,8 @@ float EOTF_1886a(float color, float bl, float brightness, float contrast) {
                 a  = contrast!=50 ? pow(2,(contrast-50)/50.) : 1.; //  0.50 to +2.00
 
     const float Vc = 0.35;                           // Offset
-          float Lw = wl/100. * a;                    // White level
-          float Lb = min( b  * a,Vc);                // Black level
+          float Lw =   wl/100. * a;                  // White level
+          float Lb = clamp( b  * a,0.0,Vc);          // Black level
     const float a1 = 2.6;                            // Shoulder gamma
     const float a2 = 3.0;                            // Knee gamma
           float k  = Lw /pow(1  + Lb,    a1);
@@ -253,8 +253,8 @@ float3 EOTF_1886a_f3( float3 color, float BlackLevel, float brightness, float co
 //----------------------------------------------------------------------
 
 
-float moncurve_r( float color, float gamma, float offs)
-{
+float moncurve_r( float color, float gamma, float offs) {
+
     // Reverse monitor curve
     color = clamp(color, 0.0, 1.0);
     float yb = pow( offs * gamma / ( ( gamma - 1.0) * ( 1.0 + offs)), gamma);
@@ -262,16 +262,16 @@ float moncurve_r( float color, float gamma, float offs)
 
     color = ( color > yb) ? ( 1.0 + offs) * pow( color, 1.0 / gamma) - offs : color * rs;
     return color;
-}
+ }
 
 
-float3 moncurve_r_f3( float3 color, float gamma, float offs)
-{
+float3 moncurve_r_f3( float3 color, float gamma, float offs) {
+
     color.r = moncurve_r( color.r, gamma, offs);
     color.g = moncurve_r( color.g, gamma, offs);
     color.b = moncurve_r( color.b, gamma, offs);
     return color.rgb;
-}
+ }
 
 
 //---------------------- Gamut Compression -------------------
@@ -343,7 +343,7 @@ float3 GamutCompression (float3 rgb, float grey) {
 
     // Inverse RGB Ratios to RGB
     // and Mask with "luma"
-    return mix(rgb, ac-cd.xyz*abs(ac), pow(grey,1/2.4));
+    return mix(rgb, ac-cd.xyz*abs(ac), pow(grey,1.0/GetOption(g_CRT_l)));
     }
 
 
@@ -475,7 +475,7 @@ const mat3 P22_90s_ph = mat3(
      0.3329, 0.6310, 0.0642,
      0.0010, 0.0556, 0.7886);
 
-// CRT for Projection Tubes for NTSC-U late 90s, early 00s
+// RPTV (Rear Projection TV) for NTSC-U late 90s, early 00s
 const mat3 CRT_95s_ph = mat3(
      0.640, 0.341, 0.150,
      0.335, 0.586, 0.070,
@@ -502,7 +502,8 @@ const mat3 DCIP3_prims = mat3(
 // Custom - Add here the primaries of your D65 calibrated display to -partially- color manage Dolphin. Only the matrix part (hue+saturation, gamma is left out)
 // How: Check the log of DisplayCAL calibration/profiling, search where it says "Increasing saturation of actual primaries..."
 // Note down in vertical order (column-major) the R xy, G xy and B xy values before "->" mark
-// Alongside you should have DisplayCAL Profile Loader enabled (since it will also load the VCGT/LUT part -white point, grey balance and tone response-)
+// For full Dolphin color management, alongside the custom matrix you should also have DisplayCAL Profile Loader enabled...
+// ...since it will also load the VCGT/LUT part -white point, grey balance and tone response-)
 const mat3 Custom_prims = mat3(
      1.000, 0.000, 0.000,
      0.000, 1.000, 0.000,
@@ -581,13 +582,12 @@ void main()
     src_h = OptionEnabled(g_GCompress) ? clamp(GamutCompression(src_h, dot(coeff.xyz, src_h)), 0.0, 1.0) : clamp(src_h, 0.0, 1.0);
 
 
-// Dark to Dim adaptation OOTF; only for 709 and Custom
-    float3 src_D = OptionEnabled(g_Dark_to_Dim) ? pow(src_h,float3(0.9811)) : src_h;
+// Dark to Dim adaptation OOTF
+    float3 src_D = OptionEnabled(g_Dark_to_Dim) ? pow(  src_h, float3(0.9811)) : src_h;
 
 // EOTF^-1 - Inverted Electro-Optical Transfer Function
-    float3 TRC = (g_space_out == 2.0) ?     clamp(pow(src_h, float3(1./(2.20 + 0.40))),  0., 1.) : \
-                 (g_space_out == 1.0) ? moncurve_r_f3(src_h,            2.20 + 0.20,     0.0550) : \
-                                        clamp(pow(    src_D, float3(1./(2.20 + 0.20))),  0., 1.) ;
+    float3 TRC   = (g_space_out == 1.0) ? moncurve_r_f3(src_h,            2.20 + 0.20,    0.0550) : \
+                                          clamp(  pow(  src_D, float3(1./(2.20 + 0.20))), 0., 1.) ;
 
     SetOutput(float4(TRC, c0.a));
 }
