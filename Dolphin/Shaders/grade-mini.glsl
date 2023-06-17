@@ -65,7 +65,7 @@ OptionName = g_signal_type
 DefaultValue = true
 
 [OptionRangeInteger]
-GUIName = Phosphor (-3:170M -2:CRT-95s -1:P22-80s 1:P22-90s 2:NTSC-J 3:PAL)
+GUIName = Phosphor (-3:170M -2:RPTV-95s -1:P22-80s 1:P22-90s 2:NTSC-J 3:PAL)
 OptionName = g_crtgamut
 MinValue = -3
 MaxValue = 3
@@ -476,7 +476,7 @@ const mat3 P22_90s_ph = mat3(
      0.0010, 0.0556, 0.7886);
 
 // RPTV (Rear Projection TV) for NTSC-U late 90s, early 00s
-const mat3 CRT_95s_ph = mat3(
+const mat3 RPTV_95s_ph = mat3(
      0.640, 0.341, 0.150,
      0.335, 0.586, 0.070,
      0.025, 0.073, 0.780);
@@ -556,7 +556,7 @@ void main()
     mat3 m_in;
 
     if (g_crtgamut  == -3.0) { m_in = SMPTE170M_ph;    } else
-    if (g_crtgamut  == -2.0) { m_in = CRT_95s_ph;      } else
+    if (g_crtgamut  == -2.0) { m_in = RPTV_95s_ph;     } else
     if (g_crtgamut  == -1.0) { m_in = P22_80s_ph;      } else
     if (g_crtgamut  ==  1.0) { m_in = P22_90s_ph;      } else
     if (g_crtgamut  ==  2.0) { m_in = P22_J_ph;        } else
