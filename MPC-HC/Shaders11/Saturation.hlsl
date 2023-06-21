@@ -16,21 +16,19 @@ SamplerState samp : register(s0);
 
 #define saturation (1.2)		 // Saturation multiplier. Increase to compensate for the sum of the Hunt Effect (colorfulness increases with luminance -at low luminance levels-)
 								 // and LED saturation reduction under lower than reference white levels (ie. using 48nits instead of typical 100nits for home consumer media) (see: https://www.lightillusion.com/advanced_operation.html#oled)
-#define BezoldBrucke (1.0)		 // Bezold-Brücke effect. Enable to decrease saturation more in the red/green (magenta/cyan) axis to compensate for the HUE shift in low reference white levels (ie. 48nits)
+#define BezoldBrucke (1.0)		 // Bezold-BrÃ¼cke effect. Enable to decrease saturation more in the red/green (magenta/cyan) axis to compensate for the HUE shift in low reference white levels (ie. 48nits)
 #define masked (1.0)		     // Saturation is masked via luminance, to affect more the mid to shadow areas given the LED desaturation effect
 
 
 static const float3x3 YUV = {
      0.212600, 0.715179, 0.072221,
     -0.114575,-0.385425, 0.500000,
-     0.500000,-0.454140,-0.045861,
-};
+     0.500000,-0.454140,-0.045861};
 
 static const float3x3 SRGB = {
      1.000000, 1.000000, 1.000000,
      0.000000,-0.187380, 1.855558,
-     1.574800,-0.468138, 0.000000,
-};
+     1.574800,-0.468138, 0.000000};
 
 
 float4 main(float4 pos : SV_POSITION, float2 coord : TEXCOORD) : SV_Target
