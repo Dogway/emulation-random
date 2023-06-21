@@ -22,6 +22,7 @@ sampler s0 : register(s0);
 float4 p0 :  register(c0);
 
 
+
 #define EOTF (2.4)				 // Inverse EOTF power value matching display EOTF. Rec709_Dim: 2.4; Rec709_Dark: 2.45; Black-Box: 2.6
 
 #define saturation (1.0)		 // Saturation multiplier. Increase to 1.05 to compensate for HDR to SDR desaturation, or higher for lower than reference white display levels (ie. 48nits instead of 100nits for home consumer media)
@@ -33,6 +34,9 @@ float4 p0 :  register(c0);
 #define Peak (30.0)				 // Peak White to tonemap for
 #define Master (10000)			 // Mastering display nits
 
+
+
+// Don't modify these
 #define const_1 ( 16.0 / 255.0)
 #define const_2 (255.0 / 219.0)
 
@@ -164,7 +168,7 @@ float4 main(float2 tex : TEXCOORD0) : COLOR
     crgbf = lerp(rgbf, crgbf, pow(rgbf.g,1/EOTF));
 
     // Tonemappping
-    rgbf = TM_Hable(crgbf);
+    rgbf  = TM_Hable(crgbf);
 
     // Inverse EOTF
     return float4(pow(rgbf,1/EOTF), 1);
