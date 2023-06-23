@@ -20,9 +20,26 @@
 */
 
 
-// For "Beyond Good & Evil" letterbox fix use 0.75,0.97,0.89
+/*
+    For NTSC:
+    // For "Wave Race"                       use "Stretch to Window" (for a 16:9 display), and then 1.33 for PAR and 0.75 for Zoom (results into DAR: 1.73)
+    // For "Beyond Good & Evil"              use "Stretch to Window" (for a 16:9 display), and then 1.33 for PAR
+    For PAL:
+    // For "Star Fox: Assault"               use "Stretch to Window" (for a 16:9 display), and then 1.25 for PAR and 0.80 for Zoom (results into DAR: 1.63 -aiming to European Widescreen?-)
+    // For "Star Wars: Rogue Leader II"      use "Auto",                                   and then 0.92 for PAR and 1.00 for Zoom
+    // For "Star Wars: Rogue Squadron III"   use "Force 16:9",                             and then 1.25 for PAR and 0.80 for Zoom
+
+    With AR Widescreen Patch (HUD and some cut-scenes will look highly stretched tho)
+    // For "Prince of Persia: Two thrones"   use "Stretch to Window" (for a 16:9 display), and shader disabled (HUD and FMVs are not adapted though)
+    // For "Prince of Persia: Warrior Within"use "Force 16:9",                             and then 0.92 for PAR and 1.00 for Zoom (HUD and FMVs are not adapted though)
+    // For "Prince of Persia: Sands of Time" use "Auto",                                   and then 1.09 for PAR and 1.00 for Zoom
+    // For "Star Fox: Assault"               use "Stretch to Window" (for a 16:9 display), and then 0.92 for PAR and 1.00 for Zoom
+    // For "Star Wars: Rogue Leader II"      use "Stretch to Window" (for a 16:9 display), and shader disabled
+*/
 
 /*
+
+
 [configuration]
 
 [OptionRangeFloat]
