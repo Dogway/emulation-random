@@ -2,10 +2,13 @@
 /*
  * 2023 Dogway (Jose Linares)
  *
- * Fix wrong matrix* encoding in SD sources (BT.709 [HD] for SD)
+ * Fix wrong matrix encoded pixels in SD sources (BT.709 [HD] pixels in BT.601 tagged SD video)
  *
- * * Beware only model conversion matrix coefficients, color space primaries are kept.
+ * Note 1: Beware only model conversion matrix coefficients, color space primaries are kept.
  *
+ * Note 2: This fix is for actual wrong mastering (RGB to YCbCr) conversions, while the tagging
+ *         is still specification correct for SD Video (BT.601).
+ *         (https://forum.doom9.org/showpost.php?p=1988786)
  */
 
 
