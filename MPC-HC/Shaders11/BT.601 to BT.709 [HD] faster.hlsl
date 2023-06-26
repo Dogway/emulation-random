@@ -2,10 +2,14 @@
 /*
  * 2023 Dogway (Jose Linares)
  *
- * Fix wrong matrix* encoding in HD sources (BT.601 [SD] in HD)
+ * Fix wrong matrix encoded pixels in HD sources (BT.601 [SD] pixels in BT.709 tagged HD video)
  *
- * * Beware only model conversion matrix coefficients, color space primaries are kept.
+ * Note 1: Beware only model conversion matrix coefficients, color space primaries are kept.
  *
+ * Note 2: This fix is for actual wrong mastering (RGB to YCbCr) conversions, while the tagging
+ *         is still specification correct for HD Video. Differs from MPC-HC bundled "BT.601 to BT.709 [HD].hlsl"
+ *         in that it only tries to correct wrong metadata (HD Video tagged as BT.601 instead of BT.709)
+ *         (https://forum.doom9.org/showpost.php?p=1988786)
  */
 
 
