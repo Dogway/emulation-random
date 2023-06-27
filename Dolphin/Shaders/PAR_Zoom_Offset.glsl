@@ -29,7 +29,10 @@
     // For "Star Wars: Rogue Leader II"      use "Auto",                                   and then 0.92 for PAR and 1.00 for Zoom
     // For "Star Wars: Rogue Squadron III"   use "Force 16:9",                             and then 1.25 for PAR and 0.80 for Zoom
 
-    With AR Widescreen Patch (HUD and some cut-scenes will look highly stretched tho)
+    With NTSC Dolphin internal Widescreen Hack (no patches seemed to work)
+    // For "Wave Race"                       use "Stretch to Window" (for a 16:9 display), and then 0.92 for PAR and 1.00 for Zoom
+    // For "Beyond Good & Evil"              use "Stretch to Window" (for a 16:9 display), and shader disabled
+    With PAL AR Widescreen Patches (HUD and some cut-scenes will look highly stretched tho)
     // For "Prince of Persia: Two thrones"   use "Stretch to Window" (for a 16:9 display), and shader disabled (HUD and FMVs are not adapted though)
     // For "Prince of Persia: Warrior Within"use "Force 16:9",                             and then 0.92 for PAR and 1.00 for Zoom (HUD and FMVs are not adapted though)
     // For "Prince of Persia: Sands of Time" use "Auto",                                   and then 1.09 for PAR and 1.00 for Zoom
@@ -37,31 +40,30 @@
     // For "Star Wars: Rogue Leader II"      use "Stretch to Window" (for a 16:9 display), and shader disabled
 */
 
+
 /*
-
-
 [configuration]
 
 [OptionRangeFloat]
 GUIName = Pixel Aspect Ratio (PAR)
 OptionName = ASPECT
-MinValue = 0.5
-MaxValue = 2.0
+MinValue = 0.50
+MaxValue = 2.00
 StepAmount = 0.01
 DefaultValue = 1.00
 
 [OptionRangeFloat]
 GUIName = Zoom
 OptionName = ZOOM
-MinValue = 0.5
-MaxValue = 1.5
+MinValue = 0.50
+MaxValue = 1.50
 StepAmount = 0.01
 DefaultValue = 1.00
 
 [OptionRangeFloat]
 GUIName = Y Offset
 OptionName = OFFSET
-MinValue = 0.8
+MinValue = 0.80
 MaxValue = 1.25
 StepAmount = 0.01
 DefaultValue = 1.00
@@ -73,6 +75,7 @@ DefaultValue = 1.00
 void main()
 {
     float2   ZMA = GetOption(ZOOM)*float2(1.0,GetOption(ASPECT));
-    float2 coord = (GetCoordinates()-float2(0.5)) / ZMA + float2(0.5,GetOption(OFFSET)-0.5);
-    SetOutput(clamp(coord,0.0,1.0)==coord ? SampleLocation(coord) : float4(0.0));
+    float2 coord = (GetCoordinates()-float2(0.5,0.5)) / ZMA + float2(0.5,GetOption(OFFSET)-0.5);
+    float2 crdcl = clamp(coord,0.0,1.0);
+    SetOutput(crdcl.x==coord.x && crdcl.y==coord.y ? SampleLocation(coord) : float4(0.0, 0.0, 0.0, 0.0));
 }
