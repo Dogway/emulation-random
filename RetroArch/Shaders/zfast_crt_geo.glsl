@@ -1,3 +1,5 @@
+#version 110
+
 /*
     zfast_crt_geo - A simple, fast CRT shader.
 
@@ -187,10 +189,11 @@ uniform COMPAT_PRECISION float g_bsize;
 
 
 // NTSC-J (D93) -> Rec709 D65 Joint Matrix (with D93 simulation)
+// This is compensated (7604K) for a linearization hack (RGB*RGB and then sqrt())
 const mat3 P22D93 = mat3(
-     0.719689, 0.002630,-0.126582,
-     0.016088, 1.070051, 0.011596,
-    -0.001039, 0.027167, 1.473131);
+     0.818379,-0.099110,-0.070670,
+     0.034175, 1.027733, 0.005360,
+    -0.005770, 0.036670, 1.382350);
 
 
 //  Borrowed from cgwg's crt-geom, under GPL
@@ -252,8 +255,8 @@ void main()
     COMPAT_PRECISION float mask = 1.0 + float(fract(whichmask) < 0.5000) * -MASK_DARK;
     COMPAT_PRECISION vec3 colour = COMPAT_TEXTURE(Source, vec2(xy.x,p)).rgb;
 
-    vec3 P22 = (pow(colour,vec3(2.4)) * P22D93) * vig;
-    colour = PHOSPHOR == 1.0 ? pow(max(vec3(0.0),P22), vec3(0.416667)) : colour * vig;
+    vec3 P22 = ((colour*colour) * P22D93) * vig;
+    colour = PHOSPHOR == 1.0 ? sqrt(max(vec3(0.0),P22)) : colour * vig;
 
     COMPAT_PRECISION float scanLineWeight = (BRIGHTBOOST - LOWLUMSCAN*(Y - 2.05*YY));
     COMPAT_PRECISION float scanLineWeightB = 1.0 - HILUMSCAN*(YY-2.8*YY*Y);
