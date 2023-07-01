@@ -12,13 +12,12 @@
     any later version.
 
 
-Notes:  This shader does scaling with a weighted linear filter for adjustable
-        sharpness on the x and y axes based on the algorithm by Inigo Quilez here:
+Notes:  This shader does scaling with a weighted linear filter
+        based on the algorithm by Inigo Quilez here:
         http://http://www.iquilezles.org/www/articles/texture/texture.htm
-        but modified to be somewhat sharper.  Then a scanline effect that varies
+        but modified to be somewhat sharper. Then a scanline effect that varies
         based on pixel brighness is applied along with a monochrome aperture mask.
-        This shader runs at 60fps on the Raspberry Pi 3 hardware at 2mpix/s
-        resolutions (1920x1080 or 1600x1200).
+        This shader runs at ~40fps on the Chromecast HD on a 1080p display.
 */
 
 //For testing compilation
@@ -38,7 +37,6 @@ Notes:  This shader does scaling with a weighted linear filter for adjustable
 #pragma parameter g_vstr      "Vignette Strength"               40.0 0.0 50.0 1.0
 #pragma parameter g_vpower    "Vignette Power"                  0.20 0.0 0.5 0.01
 #pragma parameter g_csize     "Corner Size"                     0.02 0.0 0.07 0.01
-#pragma parameter g_bsize     "Border Smoothness"               150.0 100.0 600.0 25.0
 
 #if defined(VERTEX)
 
@@ -92,7 +90,6 @@ uniform COMPAT_PRECISION float MASK_FADE;
 uniform COMPAT_PRECISION float g_vstr;
 uniform COMPAT_PRECISION float g_vpower;
 uniform COMPAT_PRECISION float g_csize;
-uniform COMPAT_PRECISION float g_bsize;
 #else
 #define PHOSPHOR 1.0
 #define CURVATURE 1.0
@@ -106,7 +103,6 @@ uniform COMPAT_PRECISION float g_bsize;
 #define g_vstr 40.0
 #define g_vpower 0.20
 #define g_csize 0.02
-#define g_bsize 150.0
 #endif
 
 void main()
@@ -170,7 +166,6 @@ uniform COMPAT_PRECISION float MASK_FADE;
 uniform COMPAT_PRECISION float g_vstr;
 uniform COMPAT_PRECISION float g_vpower;
 uniform COMPAT_PRECISION float g_csize;
-uniform COMPAT_PRECISION float g_bsize;
 #else
 #define PHOSPHOR 1.0
 #define CURVATURE 1.0
@@ -184,7 +179,6 @@ uniform COMPAT_PRECISION float g_bsize;
 #define g_vstr 40.0
 #define g_vpower 0.20
 #define g_csize 0.02
-#define g_bsize 150.0
 #endif
 
 
@@ -201,11 +195,11 @@ float corner(vec2 coord) {
 
     coord = coord * scale;
     coord = min(coord, 1.0-coord) * vec2(1.0, OutputSize.y/OutputSize.x);
-    vec2 cdist = vec2(max(g_csize, max((1.0-smoothstep(100.0,600.0,g_bsize))*0.01, 0.002)));
+    const vec2 cdist = vec2(0.02);
 
     coord = (cdist - min(coord,cdist));
     float dist = sqrt(dot(coord,coord));
-    return clamp((cdist.x-dist)*g_bsize, 0.0, 1.0);
+    return clamp((cdist.x-dist)*150.0, 0.0, 1.0);
  }
 
 
