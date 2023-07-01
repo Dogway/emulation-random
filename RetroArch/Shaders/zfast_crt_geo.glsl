@@ -17,7 +17,7 @@ Notes:  This shader does scaling with a weighted linear filter
         http://http://www.iquilezles.org/www/articles/texture/texture.htm
         but modified to be somewhat sharper. Then a scanline effect that varies
         based on pixel brighness is applied along with a monochrome aperture mask.
-        This shader runs at ~60fps on the Chromecast HD (20GFlops) on a 1080p display.
+        This shader runs at ~60fps on the Chromecast HD (10GFlops) on a 1080p display.
         (https://forums.libretro.com/t/android-googletv-compatible-shaders-nitpicky)
 */
 
@@ -26,11 +26,9 @@ Notes:  This shader does scaling with a weighted linear filter
 //#define VERTEX
 
 // Parameter lines go here:
-#pragma parameter PHOSPHOR    "P22 Phosphor D93"    1.0 0.0 1.0 1.0
 #pragma parameter MASK_DARK   "Mask Effect Amount"  0.5 0.0 1.0 0.05
-#pragma parameter MASK_FADE   "Mask/Scanline Fade"  0.9 0.0 1.0 0.05
-#pragma parameter g_vstr      "Vignette Strength"   40.0 0.0 50.0 1.0
-#pragma parameter g_vpower    "Vignette Power"      0.20 0.0 0.5 0.01
+#pragma parameter g_vstr      "Vignette Strength"   50.0 0.0 50.0 1.0
+#pragma parameter g_vpower    "Vignette Power"      0.40 0.0 0.5 0.01
 
 #if defined(VERTEX)
 
@@ -55,7 +53,6 @@ COMPAT_ATTRIBUTE vec4 COLOR;
 COMPAT_ATTRIBUTE vec4 TexCoord;
 COMPAT_VARYING vec4 COL0;
 COMPAT_VARYING vec4 TEX0;
-COMPAT_VARYING float maskFade;
 COMPAT_VARYING vec2 invDims;
 COMPAT_VARYING vec2 scale;
 
@@ -72,15 +69,11 @@ uniform COMPAT_PRECISION vec2 InputSize;
 
 #ifdef PARAMETER_UNIFORM
 // All parameter floats need to have COMPAT_PRECISION in front of them
-uniform COMPAT_PRECISION float PHOSPHOR;
 uniform COMPAT_PRECISION float MASK_DARK;
-uniform COMPAT_PRECISION float MASK_FADE;
 uniform COMPAT_PRECISION float g_vstr;
 uniform COMPAT_PRECISION float g_vpower;
 #else
-#define PHOSPHOR 1.0
 #define MASK_DARK 0.5
-#define MASK_FADE 0.9
 #define g_vstr 50.0
 #define g_vpower 0.40
 #endif
@@ -90,7 +83,6 @@ void main()
     gl_Position = MVPMatrix * VertexCoord;
 
     TEX0.xy = TexCoord.xy*1.00001;
-    maskFade = 0.3333*MASK_FADE;
     invDims = 1.0/TextureSize.xy;
 }
 
@@ -124,7 +116,6 @@ uniform COMPAT_PRECISION vec2 TextureSize;
 uniform COMPAT_PRECISION vec2 InputSize;
 uniform sampler2D Texture;
 COMPAT_VARYING vec4 TEX0;
-COMPAT_VARYING float maskFade;
 COMPAT_VARYING vec2 invDims;
 
 // compatibility #defines
@@ -134,34 +125,31 @@ COMPAT_VARYING vec2 invDims;
 
 #ifdef PARAMETER_UNIFORM
 // All parameter floats need to have COMPAT_PRECISION in front of them
-uniform COMPAT_PRECISION float PHOSPHOR;
 uniform COMPAT_PRECISION float MASK_DARK;
-uniform COMPAT_PRECISION float MASK_FADE;
 uniform COMPAT_PRECISION float g_vstr;
 uniform COMPAT_PRECISION float g_vpower;
 #else
-#define PHOSPHOR 1.0
 #define MASK_DARK 0.5
-#define MASK_FADE 0.9
 #define g_vstr 50.0
 #define g_vpower 0.40
 #endif
 
 
 // NTSC-J (D93) -> Rec709 D65 Joint Matrix (with D93 simulation)
-// This is compensated (7604K) for a linearization hack (RGB*RGB and then sqrt())
+// This is compensated for a linearization hack (RGB*RGB and then sqrt())
 const mat3 P22D93 = mat3(
-     0.818379,-0.099110,-0.070670,
-     0.034175, 1.027733, 0.005360,
-    -0.005770, 0.036670, 1.382350);
+     1.00000,  0.00000, -0.06173,
+     0.07111,  0.96887, -0.01136,
+     0.00000,  0.08197,  1.07280);
+
 
 vec2 Warp(vec2 pos)
 {
     pos  = pos*2.0-1.0;
-    pos *= vec2(1.0 + (pos.y*pos.y)*0.03, 1.0 + (pos.x*pos.x)*0.05);
-
+    pos *= vec2(1.0 + (pos.y*pos.y)*0.0276, 1.0 + (pos.x*pos.x)*0.0414);
     return pos*0.5 + 0.5;
 }
+
 
 void main()
 {
@@ -192,11 +180,11 @@ void main()
     COMPAT_PRECISION vec3 colour = COMPAT_TEXTURE(Source, vec2(xy.x,p)).rgb;
 
     vec3 P22 = ((colour*colour) * P22D93) * vig;
-    colour = PHOSPHOR == 1.0 ? sqrt(max(vec3(0.0),P22)) : colour * vig;
+    colour = sqrt(max(vec3(0.0),P22));
 
     COMPAT_PRECISION float scanLineWeight = (1.5 - 8.0*(Y - 2.05*Y*Y));
 
-    FragColor.rgba = vec4(colour.rgb*(mix(scanLineWeight*mask, 1.0, dot(colour.rgb,vec3(maskFade)))),1.0);
+    FragColor.rgba = vec4(colour.rgb*(mix(scanLineWeight*mask, 1.0, dot(colour.rgb,vec3(0.29997)))),1.0);
 
 }
 #endif
