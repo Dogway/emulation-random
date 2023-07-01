@@ -17,7 +17,8 @@ Notes:  This shader does scaling with a weighted linear filter
         http://http://www.iquilezles.org/www/articles/texture/texture.htm
         but modified to be somewhat sharper. Then a scanline effect that varies
         based on pixel brighness is applied along with a monochrome aperture mask.
-        This shader runs at ~40fps on the Chromecast HD on a 1080p display.
+        This shader runs at ~60fps on the Chromecast HD (20GFlops) on a 1080p display.
+        (https://forums.libretro.com/t/android-googletv-compatible-shaders-nitpicky)
 */
 
 //For testing compilation
@@ -25,18 +26,11 @@ Notes:  This shader does scaling with a weighted linear filter
 //#define VERTEX
 
 // Parameter lines go here:
-#pragma parameter PHOSPHOR    "P22 Phosphor D93"                1.0 0.0 1.0 1.0
-#pragma parameter CURVATURE   "CURVATURE"                       1.0 0.0 1.0 1.0
-#pragma parameter CURVATURE_X "  Screen curvature - horizontal" 0.12 0.0 1.0 0.01
-#pragma parameter CURVATURE_Y "  Screen curvature - vertical"   0.18 0.0 1.0 0.01
-#pragma parameter LOWLUMSCAN  "Scanline Darkness - Low"         8.0 0.0 10.0 0.5
-#pragma parameter HILUMSCAN   "Scanline Darkness - High"        0.0 0.0 50.0 1.0
-#pragma parameter BRIGHTBOOST "Dark Pixel Brightness Boost"     1.5 0.5 1.5 0.05
-#pragma parameter MASK_DARK   "Mask Effect Amount"              0.5 0.0 1.0 0.05
-#pragma parameter MASK_FADE   "Mask/Scanline Fade"              0.9 0.0 1.0 0.05
-#pragma parameter g_vstr      "Vignette Strength"               40.0 0.0 50.0 1.0
-#pragma parameter g_vpower    "Vignette Power"                  0.20 0.0 0.5 0.01
-#pragma parameter g_csize     "Corner Size"                     0.02 0.0 0.07 0.01
+#pragma parameter PHOSPHOR    "P22 Phosphor D93"    1.0 0.0 1.0 1.0
+#pragma parameter MASK_DARK   "Mask Effect Amount"  0.5 0.0 1.0 0.05
+#pragma parameter MASK_FADE   "Mask/Scanline Fade"  0.9 0.0 1.0 0.05
+#pragma parameter g_vstr      "Vignette Strength"   40.0 0.0 50.0 1.0
+#pragma parameter g_vpower    "Vignette Power"      0.20 0.0 0.5 0.01
 
 #if defined(VERTEX)
 
@@ -79,30 +73,16 @@ uniform COMPAT_PRECISION vec2 InputSize;
 #ifdef PARAMETER_UNIFORM
 // All parameter floats need to have COMPAT_PRECISION in front of them
 uniform COMPAT_PRECISION float PHOSPHOR;
-uniform COMPAT_PRECISION float CURVATURE;
-uniform COMPAT_PRECISION float CURVATURE_X;
-uniform COMPAT_PRECISION float CURVATURE_Y;
-uniform COMPAT_PRECISION float LOWLUMSCAN;
-uniform COMPAT_PRECISION float HILUMSCAN;
-uniform COMPAT_PRECISION float BRIGHTBOOST;
 uniform COMPAT_PRECISION float MASK_DARK;
 uniform COMPAT_PRECISION float MASK_FADE;
 uniform COMPAT_PRECISION float g_vstr;
 uniform COMPAT_PRECISION float g_vpower;
-uniform COMPAT_PRECISION float g_csize;
 #else
 #define PHOSPHOR 1.0
-#define CURVATURE 1.0
-#define CURVATURE_X 0.12
-#define CURVATURE_Y 0.18
-#define LOWLUMSCAN 8.0
-#define HILUMSCAN  0.0
-#define BRIGHTBOOST 1.5
 #define MASK_DARK 0.5
 #define MASK_FADE 0.9
-#define g_vstr 40.0
-#define g_vpower 0.20
-#define g_csize 0.02
+#define g_vstr 50.0
+#define g_vpower 0.40
 #endif
 
 void main()
@@ -155,30 +135,16 @@ COMPAT_VARYING vec2 invDims;
 #ifdef PARAMETER_UNIFORM
 // All parameter floats need to have COMPAT_PRECISION in front of them
 uniform COMPAT_PRECISION float PHOSPHOR;
-uniform COMPAT_PRECISION float CURVATURE;
-uniform COMPAT_PRECISION float CURVATURE_X;
-uniform COMPAT_PRECISION float CURVATURE_Y;
-uniform COMPAT_PRECISION float LOWLUMSCAN;
-uniform COMPAT_PRECISION float HILUMSCAN;
-uniform COMPAT_PRECISION float BRIGHTBOOST;
 uniform COMPAT_PRECISION float MASK_DARK;
 uniform COMPAT_PRECISION float MASK_FADE;
 uniform COMPAT_PRECISION float g_vstr;
 uniform COMPAT_PRECISION float g_vpower;
-uniform COMPAT_PRECISION float g_csize;
 #else
 #define PHOSPHOR 1.0
-#define CURVATURE 1.0
-#define CURVATURE_X 0.12
-#define CURVATURE_Y 0.18
-#define LOWLUMSCAN 8.0
-#define HILUMSCAN  0.0
-#define BRIGHTBOOST 1.5
 #define MASK_DARK 0.5
 #define MASK_FADE 0.9
-#define g_vstr 40.0
-#define g_vpower 0.20
-#define g_csize 0.02
+#define g_vstr 50.0
+#define g_vpower 0.40
 #endif
 
 
@@ -189,47 +155,24 @@ const mat3 P22D93 = mat3(
      0.034175, 1.027733, 0.005360,
     -0.005770, 0.036670, 1.382350);
 
+vec2 Warp(vec2 pos)
+{
+    pos  = pos*2.0-1.0;
+    pos *= vec2(1.0 + (pos.y*pos.y)*0.03, 1.0 + (pos.x*pos.x)*0.05);
 
-//  Borrowed from cgwg's crt-geom, under GPL
-float corner(vec2 coord) {
-
-    coord = coord * scale;
-    coord = min(coord, 1.0-coord) * vec2(1.0, OutputSize.y/OutputSize.x);
-    const vec2 cdist = vec2(0.02);
-
-    coord = (cdist - min(coord,cdist));
-    float dist = sqrt(dot(coord,coord));
-    return clamp((cdist.x-dist)*150.0, 0.0, 1.0);
- }
-
-
-vec2 Distort(vec2 coord) {
-
-    vec2 CURVATURE_DISTORTION = vec2(CURVATURE_X, CURVATURE_Y);
-
-    // Barrel distortion shrinks the display area a bit, this will allow us to counteract that.
-    vec2 barrelScale = 1.0 - (0.23 * CURVATURE_DISTORTION);
-    coord = (coord * scale) - 0.5;
-    float rsq = coord.x * coord.x + coord.y * coord.y;
-    coord += coord * (CURVATURE_DISTORTION * rsq);
-
-    // If out of bounds, return an invalid value.
-    return (coord * barrelScale + 0.5) / scale;
- }
-
-
+    return pos*0.5 + 0.5;
+}
 
 void main()
 {
     vec2 vpos = vTexCoord*scale;
+    vec2 xy = Warp(vpos)/scale;
 
     vpos *= (1.0 - vpos.xy);
     float vig = vpos.x * vpos.y * g_vstr;
     vig = min(pow(vig, g_vpower), 1.0);
-    vig = g_vpower < 0.01 ? 1.0 : vig >= 0.5 ? smoothstep(0.0,1.0,vig) : vig;
+    vig = vig >= 0.5 ? smoothstep(0.0,1.0,vig) : vig;
 
-    vec2 xy = CURVATURE == 1.0 ? Distort(TEX0.xy) : TEX0.xy;
-    float cmask = g_csize == 0.0 ? 1.0 : corner(xy);
 
     // Of all the pixels that are mapped onto the texel we are
     // currently rendering, which pixel are we currently rendering?
@@ -243,7 +186,6 @@ void main()
     float f = ratio_scale - i;
     COMPAT_PRECISION float Y = f*f;
     float p = (i + 4.0*Y*f)*invDims.y;
-    COMPAT_PRECISION float YY = Y*Y;
 
     COMPAT_PRECISION float whichmask = floor(vTexCoord.x*4.0*OutputSize.x)*-0.499999;
     COMPAT_PRECISION float mask = 1.0 + float(fract(whichmask) < 0.5000) * -MASK_DARK;
@@ -252,10 +194,9 @@ void main()
     vec3 P22 = ((colour*colour) * P22D93) * vig;
     colour = PHOSPHOR == 1.0 ? sqrt(max(vec3(0.0),P22)) : colour * vig;
 
-    COMPAT_PRECISION float scanLineWeight = (BRIGHTBOOST - LOWLUMSCAN*(Y - 2.05*YY));
-    COMPAT_PRECISION float scanLineWeightB = 1.0 - HILUMSCAN*(YY-2.8*YY*Y);
+    COMPAT_PRECISION float scanLineWeight = (1.5 - 8.0*(Y - 2.05*Y*Y));
 
-    FragColor.rgba = vec4(colour.rgb*(cmask*mix(scanLineWeight*mask, scanLineWeightB, dot(colour.rgb,vec3(maskFade)))),1.0);
+    FragColor.rgba = vec4(colour.rgb*(mix(scanLineWeight*mask, 1.0, dot(colour.rgb,vec3(maskFade)))),1.0);
 
 }
 #endif
