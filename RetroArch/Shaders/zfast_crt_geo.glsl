@@ -13,10 +13,10 @@
 
 
 Notes:  This shader does scaling with a weighted linear filter
-        based on the algorithm by Inigo Quilez here:
-        http://http://www.iquilezles.org/www/articles/texture/texture.htm
+        based on the algorithm by Iñigo Quilez here:
+        https://iquilezles.org/articles/texture/
         but modified to be somewhat sharper. Then a scanline effect that varies
-        based on pixel brighness is applied along with a monochrome aperture mask.
+        based on pixel brightness is applied along with a monochrome aperture mask.
         This shader runs at ~60fps on the Chromecast HD (10GFlops) on a 1080p display.
         (https://forums.libretro.com/t/android-googletv-compatible-shaders-nitpicky)
 */
@@ -138,9 +138,9 @@ uniform COMPAT_PRECISION float g_vpower;
 // NTSC-J (D93) -> Rec709 D65 Joint Matrix (with D93 simulation)
 // This is compensated for a linearization hack (RGB*RGB and then sqrt())
 const mat3 P22D93 = mat3(
-     1.00000,  0.00000, -0.06173,
-     0.07111,  0.96887, -0.01136,
-     0.00000,  0.08197,  1.07280);
+     1.00000, 0.00000, -0.06173,
+     0.07111, 0.96887, -0.01136,
+     0.00000, 0.08197,  1.07280);
 
 
 vec2 Warp(vec2 pos)
@@ -154,7 +154,7 @@ vec2 Warp(vec2 pos)
 void main()
 {
     vec2 vpos = vTexCoord*scale;
-    vec2 xy = Warp(vpos)/scale;
+    vec2 xy   = Warp(vpos)/scale;
 
     vpos *= (1.0 - vpos.xy);
     float vig = vpos.x * vpos.y * g_vstr;
@@ -175,16 +175,24 @@ void main()
     COMPAT_PRECISION float Y = f*f;
     float p = (i + 4.0*Y*f)*invDims.y;
 
-    COMPAT_PRECISION float whichmask = floor(vTexCoord.x*4.0*OutputSize.x)*-0.499999;
-    COMPAT_PRECISION float mask = 1.0 + float(fract(whichmask) < 0.5000) * -MASK_DARK;
+    vec2 MSCL = OutputSize.y > 1499.0 ? vec2(0.30) : vec2(0.499999, 0.5);
+
+    COMPAT_PRECISION float whichmask = floor(vTexCoord.x*4.0*OutputSize.x)*-MSCL.x;
+    COMPAT_PRECISION float mask = 1.0 + float(fract(whichmask) < MSCL.y) * -MASK_DARK;
     COMPAT_PRECISION vec3 colour = COMPAT_TEXTURE(Source, vec2(xy.x,p)).rgb;
 
     vec3 P22 = ((colour*colour) * P22D93) * vig;
-    colour = sqrt(max(vec3(0.0),P22));
+    colour = max(vec3(0.0),P22);
 
-    COMPAT_PRECISION float scanLineWeight = (1.5 - 8.0*(Y - 2.05*Y*Y));
+    COMPAT_PRECISION float scanLineWeight = (1.5 - 9.0*(Y - 2.05*Y*Y));
 
-    FragColor.rgba = vec4(colour.rgb*(mix(scanLineWeight*mask, 1.0, dot(colour.rgb,vec3(0.29997)))),1.0);
+	#if defined GL_ES
+	// hacky clamp fix for GLES
+    		if ( xy.x < 0.0001)
+        	colour = vec3(0.0);
+	#endif
+
+    FragColor.rgba = vec4(sqrt(colour.rgb*(mix(scanLineWeight*mask, 1.0, dot(colour.rgb,vec3(0.26667))))),1.0);
 
 }
 #endif
