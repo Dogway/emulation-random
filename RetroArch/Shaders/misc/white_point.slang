@@ -84,6 +84,7 @@ vec3 wp_adjust(vec3 color){
     return color * wp;
 }
 
+// Update coeffs
 vec3 sRGB_to_XYZ(vec3 RGB){
 
     const mat3x3 m = mat3x3(
@@ -121,7 +122,7 @@ vec3 YxytoXYZ(vec3 Yxy){
     return XYZ;
 }
 
-
+// update with moncurve
 vec3 linear_to_sRGB(vec3 color, float gamma){
 
     color = clamp(color, 0.0, 1.0);

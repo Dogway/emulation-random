@@ -19,6 +19,15 @@ Notes:  This shader does scaling with a weighted linear filter
         based on pixel brightness is applied along with a monochrome aperture mask.
         This shader runs at ~60fps on the Chromecast HD (10GFlops) on a 1080p display.
         (https://forums.libretro.com/t/android-googletv-compatible-shaders-nitpicky)
+
+Notes2: I (Dogway) modified zfast_crt.glsl shader to include screen curvature,
+        vignetting and phosphor*temperature. S-Video kind of pixel horizontal
+        blur is emulated with the original shader implementation of Quilez' algo (read above).
+        The scanlines and mask are also now performed in the recommended linear light.
+        For this to run smoothly on GPU deprived platforms like the Chromecast and
+        older consoles, I had to remove several parameters and hardcode them into the shader.
+        Another POV is to run the shader on handhelds like the Switch or SteamDeck so they consume less battery.
+
 */
 
 //For testing compilation
@@ -170,7 +179,7 @@ void main()
     // Snap to the center of the underlying texel.
     float i = floor(ratio_scale) + 0.5;
 
-    //This is just like "Quilez Scaling" but sharper
+    // This is just like "Quilez Scaling" but sharper
     float f = ratio_scale - i;
     COMPAT_PRECISION float Y = f*f;
     float p = (i + 4.0*Y*f)*invDims.y;
@@ -186,11 +195,11 @@ void main()
 
     COMPAT_PRECISION float scanLineWeight = (1.5 - 9.0*(Y - 2.05*Y*Y));
 
-	#if defined GL_ES
-	// hacky clamp fix for GLES
-    		if ( xy.x < 0.0001)
-        	colour = vec3(0.0);
-	#endif
+    #if defined GL_ES
+    // hacky clamp fix for GLES
+            if ( xy.x < 0.0001 )
+            colour = vec3(0.0);
+    #endif
 
     FragColor.rgba = vec4(sqrt(colour.rgb*(mix(scanLineWeight*mask, 1.0, dot(colour.rgb,vec3(0.26667))))),1.0);
 
