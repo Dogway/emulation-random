@@ -21,34 +21,6 @@
 
 
 /*
-Exact PAR
-          PAL     NTSC
-    4:3  128/117  4320/4739
-    16:9 512/351  5760/4739
-
-MPEG-4 PAR taken directly from the MPEG-4 standard documents. Very similar to exact ITU figures and usually used for MPEG-4 encodings.
-          PAL   NTSC
-    4:3  12/11  10/11
-    16:9 16/11  40/33
-
-Generic PAR (i.e. ignoring ITU)
-This leads to an exact 16:9 DAR for an uncropped 16:9 PAL frame.
-          PAL   NTSC
-    4:3  16/15  8/9
-    16:9 64/45  32/27
-
-PAL  720x574 (SAR 16:15) (PAR 4:5)
-NTSC 720x480 (SAR  8:9 ) (PAR 5:4)
-
-
-https://es.dolphin-emu.org/blog/2015/08/01/dolphin-progress-report-july-2015/?cr=es#40-7138-pixel-aspect-ratio-adjustment-vi-scaling-fix-by-mirrorbender
-https://forums.dolphin-emu.org/Thread-game-configuration-ini-s
-https://forums.dolphin-emu.org/Thread-correct-aspect-ratio-option?page=12
-https://bugs.dolphin-emu.org/issues/9024
-https://bugs.dolphin-emu.org/issues/12684
-https://github.com/dolphin-emu/dolphin/pull/2796
-
-
     For NTSC:
     // For "Wave Race"                       use "Stretch to Window" (for a 16:9 display), and then 1.33 for PAR and 0.75 for Zoom (results into DAR: 1.73)
     // For "Beyond Good & Evil"              use "Stretch to Window" (for a 16:9 display), and then 1.33 for PAR
