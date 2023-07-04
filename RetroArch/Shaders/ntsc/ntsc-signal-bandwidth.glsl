@@ -2,30 +2,25 @@
 // https://forums.libretro.com/t/please-show-off-what-crt-shaders-can-do/19193/1482
 
 // Other NTSC
-// Y:2.0    I: 0.30   Q: 0.30 (1993-2020) (for     NTSC   VHS analogue standard) (band limited)
-// Y:5.5    I: 0.30   Q: 0.30 (1993-2020) (for     NTSC S-VHS or LD analogue standard) (chroma band limited)
+// Y:2.0    U: 0.30   V: 0.30 (1993-2020) (for     NTSC   VHS analogue standard) (band limited)
+// Y:5.5    U: 0.30   V: 0.30 (1993-2020) (for     NTSC S-VHS or LD analogue standard) (chroma band limited)
 
-// Suggestions (NTSC):
-// Y:4.20   I: 1.30   Q: 0.40 (1953-1993) (for FCC NTSC analogue standard -old-)
-// Y:4.20   I: 1.50   Q: 0.50 (1953-1993) (for FCC NTSC analogue standard -old-)
-// Y:4.20   I: 0.60   Q: 0.60 (1993-2020) (for     NTSC Broadcast analogue standard) (band limited)
+// Suggestions (NTSC-U and NTSC-J):
+// Y:4.20   I: 1.30   Q: 0.40 (1953-1979) (for FCC NTSC analogue standard -old-)
+// Y:4.20   I: 1.50   Q: 0.50 (1953-1979) (for FCC NTSC analogue standard -old-)
+// Y:4.20   U: 0.60   V: 0.60 (1979-2020) (for     NTSC Broadcast analogue standard) (band limited)
 // Y:4.20   U: 1.30   V: 1.30 (1998-2020) (for     NTSC digital standard 4:1:1, DVDs) (chroma band limited)
 // Y:4.20   U: 1.79   V: 1.79 (1998-2020) (for     NTSC S-Video & digital -new- 4:2:2) (max subcarrier width)
-
-// Suggestions (NTSC-J):
-// Y:4.20   I: 1.30   Q: 0.40  (for NTSC-J analogue standard -old-)
-// Y:4.20   I: 1.30   Q: 1.30  (for NTSC-J digital standard 4:1:1) (chroma band limited)
-// Y:4.20   I: 1.79   Q: 1.79  (for NTSC-J S-Video & digital -new- 4:2:2) (max subcarrier width)
 
 // Suggestions (PAL):
 // PAL should be a little bit more desaturated than NTSC
 // PAL chroma is also band limited -in analogue- to 1.30Mhz despite using a wider subcarrier than NTSC (4.4336)
-// Y:5.0   U: 0.60   V: 0.60  PAL-B (for EBU 601 VHS analogue standard) (band limited)
-// Y:5.5   U: 1.30   V: 1.30  PAL-A (for EBU 601 analogue standard -old-) (System I: UK, Italy, Australia)
-// Y:5.0   U: 1.30   V: 1.30  PAL-B (for EBU 601 analogue standard -old-) (chroma band limited)
-// Y:5.5   U: 1.80   V: 1.80  PAL-A (for EBU 601 digital standard 4:2:2)  (chroma band limited)
-// Y:5.0   U: 1.80   V: 1.80  PAL-B (for EBU 601 digital standard 4:2:2)  (chroma band limited)
-// Y:5.5   U: 2.217  V: 2.217 PAL-A (for EBU 601 digital standard 4:2:2) (max subcarrier width)
+// Y:5.0   U: 0.60   V: 0.60  PAL-B       (for     EBU 601 VHS analogue standard) (band limited)
+// Y:5.5   U: 1.30   V: 1.30  PAL-A       (for     EBU 601 analogue standard -old-) (System I: UK, Italy, Australia)
+// Y:5.0   U: 1.30   V: 1.30  PAL-B       (for     EBU 601 analogue standard -old-) (chroma band limited)
+// Y:5.5   U: 1.80   V: 1.80  PAL-A       (for     EBU 601 digital standard 4:2:2)  (chroma band limited)
+// Y:5.0   U: 1.80   V: 1.80  PAL-B       (for     EBU 601 digital standard 4:2:2)  (chroma band limited)
+// Y:5.5   U: 2.217  V: 2.217 PAL-A       (for     EBU 601 digital standard 4:2:2) (max subcarrier width)
 
 
 #pragma parameter SPLIT "Split" 0.0 -1.0 1.0 0.1

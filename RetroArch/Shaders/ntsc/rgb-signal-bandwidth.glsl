@@ -6,7 +6,7 @@
 ////////////////////////////////////////////////////////
 
 
-// this shader is meant to be used when running
+// This shader is meant to be used when running
 // an emulator on a real CRT-TV @240p or @480i
 ////////////////////////////////////////////////////////
 // Basic settings:
@@ -40,7 +40,7 @@
 // to simulate different signal resolutions(bandwidth)
 // for luma (Y) and chroma ( I and Q )
 // this is just an approximation
-// and will only simulate the low bandwidth anspect of
+// and will only simulate the low bandwidth aspect of
 // composite signal, not the crosstalk between luma and chroma
 // Y = 4MHz I=1.3MHz Q=0.4MHz
 // #pragma parameter TVOUT_RESOLUTION_Y "TVOut Luma (Y) Resolution" 256.0 0.0 1024.0 32.0
