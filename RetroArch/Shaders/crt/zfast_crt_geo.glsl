@@ -174,8 +174,6 @@ void main()
     // Of all the pixels that are mapped onto the texel we are
     // currently rendering, which pixel are we currently rendering?
     float ratio_scale = xy.y * TextureSize.y - 0.5;
-    float uv_ratio = fract(ratio_scale);
-
     // Snap to the center of the underlying texel.
     float i = floor(ratio_scale) + 0.5;
 
