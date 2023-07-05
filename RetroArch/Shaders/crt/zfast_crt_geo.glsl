@@ -21,7 +21,7 @@ Notes:  This shader does scaling with a weighted linear filter
         (https://forums.libretro.com/t/android-googletv-compatible-shaders-nitpicky)
 
 Notes2: I (Dogway) modified zfast_crt.glsl shader to include screen curvature,
-        vignetting and phosphor*temperature. S-Video kind of pixel horizontal
+        vignetting, round corners and phosphor*temperature. S-Video kind of pixel horizontal
         blur is emulated with the original shader implementation of Quilez' algo (read above).
         The scanlines and mask are also now performed in the recommended linear light.
         For this to run smoothly on GPU deprived platforms like the Chromecast and
@@ -35,9 +35,10 @@ Notes2: I (Dogway) modified zfast_crt.glsl shader to include screen curvature,
 //#define VERTEX
 
 // Parameter lines go here:
-#pragma parameter MASK_DARK   "Mask Effect Amount"  0.5 0.0 1.0 0.05
-#pragma parameter g_vstr      "Vignette Strength"   50.0 0.0 50.0 1.0
-#pragma parameter g_vpower    "Vignette Power"      0.40 0.0 0.5 0.01
+#pragma parameter SCANLINE_WEIGHT "Scanline Amount"     7.0 0.0 15.0 0.5
+#pragma parameter MASK_DARK       "Mask Effect Amount"  0.5 0.0 1.0 0.05
+#pragma parameter g_vstr          "Vignette Strength"   50.0 0.0 50.0 1.0
+#pragma parameter g_vpower        "Vignette Power"      0.40 0.0 0.5 0.01
 
 #if defined(VERTEX)
 
@@ -78,10 +79,12 @@ uniform COMPAT_PRECISION vec2 InputSize;
 
 #ifdef PARAMETER_UNIFORM
 // All parameter floats need to have COMPAT_PRECISION in front of them
+uniform COMPAT_PRECISION float SCANLINE_WEIGHT;
 uniform COMPAT_PRECISION float MASK_DARK;
 uniform COMPAT_PRECISION float g_vstr;
 uniform COMPAT_PRECISION float g_vpower;
 #else
+#define SCANLINE_WEIGHT 7.0
 #define MASK_DARK 0.5
 #define g_vstr 50.0
 #define g_vpower 0.40
@@ -134,10 +137,12 @@ COMPAT_VARYING vec2 invDims;
 
 #ifdef PARAMETER_UNIFORM
 // All parameter floats need to have COMPAT_PRECISION in front of them
+uniform COMPAT_PRECISION float SCANLINE_WEIGHT;
 uniform COMPAT_PRECISION float MASK_DARK;
 uniform COMPAT_PRECISION float g_vstr;
 uniform COMPAT_PRECISION float g_vpower;
 #else
+#define SCANLINE_WEIGHT 7.0
 #define MASK_DARK 0.5
 #define g_vstr 50.0
 #define g_vpower 0.40
@@ -163,7 +168,12 @@ vec2 Warp(vec2 pos)
 void main()
 {
     vec2 vpos = vTexCoord*scale;
-    vec2 xy   = Warp(vpos)/scale;
+    vec2 xy   = Warp(vpos);
+
+    vec2 corn = min(xy,vec2(1.0)-xy); //This is used to mask the rounded
+    corn.x = 0.0001/corn.x;           //corners later on
+
+    xy    = xy/scale;
 
     vpos *= (1.0 - vpos.xy);
     float vig = vpos.x * vpos.y * g_vstr;
@@ -191,13 +201,10 @@ void main()
     vec3 P22 = ((colour*colour) * P22D93) * vig;
     colour = max(vec3(0.0),P22);
 
-    COMPAT_PRECISION float scanLineWeight = (1.5 - 9.0*(Y - 2.05*Y*Y));
+    COMPAT_PRECISION float scanLineWeight = (1.5 - SCANLINE_WEIGHT*(Y - Y*Y));
 
-    #if defined GL_ES
-    // hacky clamp fix for GLES
-            if ( xy.x < 0.0001 )
-            colour = vec3(0.0);
-    #endif
+    if (corn.y <= corn.x || corn.x < 0.0001 )
+    colour = vec3(0.0);
 
     FragColor.rgba = vec4(sqrt(colour.rgb*(mix(scanLineWeight*mask, 1.0, dot(colour.rgb,vec3(0.26667))))),1.0);
 
