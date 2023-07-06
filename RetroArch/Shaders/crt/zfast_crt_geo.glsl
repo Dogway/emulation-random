@@ -170,12 +170,12 @@ void main()
     vec2 vpos = vTexCoord*scale;
     vec2 xy   = Warp(vpos);
 
-    vec2 corn = min(xy,vec2(1.0)-xy); //This is used to mask the rounded
-    corn.x = 0.0001/corn.x;           //corners later on
+    vec2 corn = min(xy,vec2(1.0)-xy); // This is used to mask the rounded
+    corn.x = 0.0001/corn.x;           // corners later on
 
-    xy    = xy/scale;
+    xy    /= scale;
 
-    vpos *= (1.0 - vpos.xy);
+    vpos  *= (1.0 - vpos.xy);
     float vig = vpos.x * vpos.y * g_vstr;
     vig = min(pow(vig, g_vpower), 1.0);
     vig = vig >= 0.5 ? smoothstep(0.0,1.0,vig) : vig;
