@@ -21,7 +21,7 @@
 
 
 /*
-   Grade-mini (29-06-2023)
+   Grade-mini (06-07-2023)
 
    > CRT emulation shader (composite signal, phosphor, gamma, temperature...)
    > Abridged port of RetroArch's Grade shader.
@@ -228,8 +228,8 @@ float EOTF_1886a(float color, float bl, float brightness, float contrast) {
                 a  = contrast!=50. ? pow(2.,(contrast-50.)/50.) : 1.; //  0.50 to +2.00
 
     const float Vc = 0.35;                           // Offset
-          float Lw =   wl/100. * a;                  // White level
-          float Lb = clamp( b  * a,0.0,Vc);          // Black level
+          float Lw = wl/100. * a;                    // White level
+          float Lb = min( b  * a,Vc);                // Black level
     const float a1 = 2.6;                            // Shoulder gamma
     const float a2 = 3.0;                            // Knee gamma
           float k  = Lw /pow(1. + Lb,    a1);
@@ -539,10 +539,10 @@ void main()
     float hue_radians = 0.0 * M_PI;
     float    hue  = atan(col.z,  col.y) + hue_radians;
     float chroma  = sqrt(col.z * col.z  + col.y * col.y);  // Euclidean Distance
-    col.yz        = float2(chroma * cos(hue), chroma * sin(hue)) * float2(g_U_MUL,g_V_MUL);
+    col.yz        = clamp(float2(chroma * cos(hue), chroma * sin(hue)) * float2(g_U_MUL,g_V_MUL), -UVmax.x, UVmax.y);
 
 // Back to R'G'B' full
-    col   = OptionEnabled(g_signal_type) ? max(Quantize8_f3(YUV_r601(col.xyz, NTSC_U ? 1.0 : 0.0))/255.0, 0.0) : src;
+    col   = OptionEnabled(g_signal_type) ? Quantize8_f3(clamp(YUV_r601(col.xyz, NTSC_U ? 1.0 : 0.0), 0.0, 1.0))/255.0 : src;
 
 // CRT EOTF. To Display Referred Linear: Undo developer baked CRT gamma (from 2.40 at default 0.1 CRT black level, to 2.60 at 0.0 CRT black level)
     col   = EOTF_1886a_f3(col, g_bl, 50., 50.);
