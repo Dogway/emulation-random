@@ -20,7 +20,7 @@ Notes:  This shader does scaling with a weighted linear filter
         This shader runs at ~60fps on the Chromecast HD (10GFlops) on a 1080p display.
         (https://forums.libretro.com/t/android-googletv-compatible-shaders-nitpicky)
 
-Notes2: This is the same as zfast_crt_geo but without the screen curvature for extra
+Dogway: This is the same as zfast_crt_geo but without the screen curvature for extra
         performance, specially for (320x240) "widescreen" games like Sega Genesis, NeoGeo, etc.
 
 */

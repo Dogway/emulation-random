@@ -20,9 +20,9 @@ Notes:  This shader does scaling with a weighted linear filter
         This shader runs at ~60fps on the Chromecast HD (10GFlops) on a 1080p display.
         (https://forums.libretro.com/t/android-googletv-compatible-shaders-nitpicky)
 
-Notes2: I (Dogway) modified zfast_crt.glsl shader to include screen curvature,
-        vignetting, round corners and phosphor*temperature. S-Video kind of pixel horizontal
-        blur is emulated with the original shader implementation of Quilez' algo (read above).
+Dogway: I modified zfast_crt.glsl shader to include screen curvature,
+        vignetting, round corners and phosphor*temperature. Horizontal pixel is left out
+        from the Quilez' algo (read above) to provide a more S-Video like horizontal blur.
         The scanlines and mask are also now performed in the recommended linear light.
         For this to run smoothly on GPU deprived platforms like the Chromecast and
         older consoles, I had to remove several parameters and hardcode them into the shader.
