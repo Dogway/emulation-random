@@ -30,10 +30,10 @@ Notes2: This is the same as zfast_crt_geo but without the screen curvature for e
 //#define VERTEX
 
 // Parameter lines go here:
-#pragma parameter SCANLINE_WEIGHT "Scanline Amount"     7.0 0.0 15.0 0.5
-#pragma parameter MASK_DARK       "Mask Effect Amount"  0.5 0.0 1.0 0.05
+#pragma parameter SCANLINE_WEIGHT "Scanline Amount"     9.0 0.0 15.0 0.5
+#pragma parameter MASK_DARK       "Mask Effect Amount"  0.1 0.0 1.0 0.05
 #pragma parameter g_vstr          "Vignette Strength"   50.0 0.0 50.0 1.0
-#pragma parameter g_vpower        "Vignette Power"      0.40 0.0 0.5 0.01
+#pragma parameter g_vpower        "Vignette Power"      0.30 0.0 0.5 0.01
 
 #if defined(VERTEX)
 
@@ -156,6 +156,9 @@ void main()
 {
     vec2 vpos = vTexCoord*scale;
 
+    vec2 corn = min(vpos,vec2(1.0)-vpos); // This is used to mask the rounded
+    corn.x = 0.0001/corn.x;               // corners later on
+
     vpos *= (1.0 - vpos.xy);
     float vig = vpos.x * vpos.y * g_vstr;
     vig = min(pow(vig, g_vpower), 1.0);
@@ -179,6 +182,9 @@ void main()
     colour = max(vec3(0.0),P22);
 
     COMPAT_PRECISION float scanLineWeight = (1.5 - SCANLINE_WEIGHT*(Y - Y*Y));
+
+    if (corn.y <= corn.x)
+    colour = vec3(0.0);
 
     FragColor.rgba = vec4(sqrt(colour.rgb*(mix(scanLineWeight*mask, 1.0, dot(colour.rgb,vec3(0.26667))))),1.0);
 
