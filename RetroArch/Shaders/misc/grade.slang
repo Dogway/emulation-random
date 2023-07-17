@@ -86,7 +86,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 } global;
 
 /*
-   Grade (29-06-2023)
+   Grade (17-07-2023)
    > See settings decriptions at: https://forums.libretro.com/t/dogways-grading-shader-slang/27148/442
 
    > Ubershader grouping some monolithic color related shaders:
@@ -669,6 +669,7 @@ const mat3 IPT = mat3(
 ////// STANDARDS ///////
 // SMPTE RP 145-1994 (SMPTE-C), 170M-1999
 // SMPTE-C - Standard Phosphor (Rec.601 NTSC)
+// Standardized in 1982 (as CCIR Rec.601-1) after "Conrac Corp. & RCA" P22 phosphors (circa 1969) for consumer CRTs
 // ILLUMINANT: D65->[0.31266142,0.3289589]
 const mat3 SMPTE170M_ph = mat3(
      0.630, 0.310, 0.155,
@@ -676,7 +677,7 @@ const mat3 SMPTE170M_ph = mat3(
      0.030, 0.095, 0.775);
 
 // ITU-R BT.470/601 (B/G)
-// EBU Tech.3213 PAL - Standard Phosphor for Studio Monitors
+// EBU Tech.3213 PAL - Standard Phosphor for Studio Monitors (also used in Sony BVMs and Higher-end PVMs)
 // ILLUMINANT: D65->[0.31266142,0.3289589]
 const mat3 SMPTE470BG_ph = mat3(
      0.640, 0.290, 0.150,
@@ -685,6 +686,8 @@ const mat3 SMPTE470BG_ph = mat3(
 
 // NTSC-J P22
 // Mix between averaging KV-20M20, KDS VS19, Dell D93, 4-TR-B09v1_0.pdf and Phosphor Handbook 'P22'
+// Phosphors based on 1975's EBU Tech.3123-E (formerly known as JEDEC-P22)
+// Typical P22 phosphors used in Japanese consumer CRTs with 9300K+27MPCD white point
 // ILLUMINANT: D93->[0.281000,0.311000] (CCT of 8945.436K)
 // ILLUMINANT: D97->[0.285000,0.285000] (CCT of 9696K) for Nanao MS-2930s series (around 10000.0K for wp_adjust() daylight fit)
 const mat3 P22_J_ph = mat3(
