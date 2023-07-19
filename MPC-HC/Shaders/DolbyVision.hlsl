@@ -31,10 +31,11 @@ float4 p0 :  register(c0);
 #define BezoldBrucke (0.0)		 // Bezold-Brücke effect. Enable to decrease saturation (when <>1.0) more in the red/green (magenta/cyan) axis to compensate for the HUE shift in low reference white levels (ie. 48nits)
 #define GC (1)					 // 0 or 1 gamut compression
 #define scale (1.0)				 // 1 or 2 depending on source
-#define Master (10000)			 // Mastering display nits
-#define Peak (30.0)				 // Peak White to tonemap for (100.0 and above enables OpenDRT tonemapper)
-#define Cont (1.0)				 // OOTF/Filmic look (for OpenDRT tonemapper)
 
+// <100.0 to enable Hable tonemapper
+#define Peak (120.0)				 // Peak White to tonemap for (120.0 and 0.85 to mimic Hable Default, 203.0 and 0.75 for more rolloff)
+#define Cont (0.85)				 // OOTF/Filmic look (for OpenDRT tonemapper)
+#define Master (10000)			 // Mastering display nits
 
 
 // Don't modify these
@@ -123,9 +124,10 @@ float3 TM_DRT (float3 RGB, float Pk, float Ct, float Grey, float Flare) {
     float pm = pow(m0, ip);
     float s = (px*gx*(pm - pow(s0, ip)))/(px*pow(s0, ip) - gx*pm);
     float m = pm*(s + px)/px;
+    float L = max(0.00001, RGB.r * 0.20 + RGB.g * 0.55 + RGB.b * 0.25);
 
-    float3 TS = pow(max(0.0,m*RGB/(RGB + s)),Ct); // Tonescale
-    float3 Ds = RGB / TS;                         // Distance
+    float3 Ds = RGB / L;                          // Distance
+    float3 TS = pow(max(0.0,(m*L)/(RGB + s)),Ct); // Tonescale
            TS = pow(TS, 2.0)/(TS+Flare);          // Flare
 
     return (TS * Ds) * (100.0 / Pk);
