@@ -31,8 +31,9 @@ float4 p0 :  register(c0);
 #define BezoldBrucke (0.0)		 // Bezold-Brücke effect. Enable to decrease saturation (when <>1.0) more in the red/green (magenta/cyan) axis to compensate for the HUE shift in low reference white levels (ie. 48nits)
 #define GC (1)					 // 0 or 1 gamut compression
 #define scale (1.0)				 // 1 or 2 depending on source
-#define Peak (30.0)				 // Peak White to tonemap for
 #define Master (10000)			 // Mastering display nits
+#define Peak (30.0)				 // Peak White to tonemap for (100.0 and above enables OpenDRT tonemapper)
+#define Cont (1.0)				 // OOTF/Filmic look (for OpenDRT tonemapper)
 
 
 
@@ -97,6 +98,39 @@ float3 TM_Hable (float3 RGB) {
                                ((RGB  * (RA + CB)+DE) / (RGB  * (RA + B)+DF) - EF)/Div ;
     return TM;
 }
+
+
+// Jed Smith's OpenDRT modification of Daniele Siragusano's tone scale
+// inspired by "Michaelis-Menten Constrained" tonescale function.
+// https://community.acescentral.com/t/output-transform-tone-scale/3498/224
+float3 TM_DRT (float3 RGB, float Pk, float Ct, float Grey, float Flare) {
+
+    // input  scene-linear   peak 'x' intercept
+    float px = 128.0*log(Pk)/log(100.0) - 64.0;
+    // output display-linear peak 'y' intercept
+    float py = Pk/100.0;
+
+    // input  scene-linear   middle grey 'x' intercept
+    float gx = 0.18;
+    // output display-linear middle grey 'y' intercept
+    float gy = 11.696/100.0*(1.0 + Grey*log(py)/log(2.0));
+
+    // s0 and s are input  'x' scale for middle grey intersection constraint
+    // m0 and m are output 'y' scale for peak white  intersection constraint
+    float s0 = (gy + sqrt(gy*(4.0*Flare + gy)))/2.0;
+    float m0 = (py + sqrt(py*(4.0*Flare + py)))/2.0;
+    float ip = 1.0/Ct;
+    float pm = pow(m0, ip);
+    float s = (px*gx*(pm - pow(s0, ip)))/(px*pow(s0, ip) - gx*pm);
+    float m = pm*(s + px)/px;
+
+    float3 TS = pow(max(0.0,m*RGB/(RGB + s)),Ct); // Tonescale
+    float3 Ds = RGB / TS;                         // Distance
+           TS = pow(TS, 2.0)/(TS+Flare);          // Flare
+
+    return (TS * Ds) * (100.0 / Pk);
+}
+
 
 
 // RGB 'Desaturate' Gamut Compression (by Jed Smith: https://github.com/jedypod/gamut-compress)
@@ -167,8 +201,8 @@ float4 main(float2 tex : TEXCOORD0) : COLOR
     // Mask with "luma" (green channel)
     crgbf = lerp(rgbf, crgbf, pow(rgbf.g,1/EOTF));
 
-    // Tonemappping
-    rgbf  = TM_Hable(crgbf);
+    // Tonemapping
+    rgbf  = Peak >= 100.0 ? TM_DRT(crgbf,Peak,Cont,0.11696,0.01) : TM_Hable(crgbf);
 
     // Inverse EOTF
     return float4(pow(rgbf,1/EOTF), 1);
