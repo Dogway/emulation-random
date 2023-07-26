@@ -1,7 +1,7 @@
 #version 110
 
 /*
-    zfast_crt_geo_composite - A simple, fast CRT shader.
+    zfast_crt_geo_svideo - A simple, fast CRT shader.
 
     Copyright (C) 2017 Greg Hogan (SoltanGris42)
     Copyright (C) 2023 Jose Linares (Dogway)
@@ -37,10 +37,10 @@ Dogway: I modified zfast_crt.glsl shader to include screen curvature,
 // Parameter lines go here:
 #pragma parameter SCANLINE_WEIGHT "Scanline Amount"     7.0 0.0 15.0 0.5
 #pragma parameter MASK_DARK       "Mask Effect Amount"  0.5 0.0 1.0 0.05
-#pragma parameter g_vstr          "Vignette Strength"   15.0 0.0 50.0 1.0
+#pragma parameter g_vstr          "Vignette Strength"   20.0 0.0 50.0 1.0
 #pragma parameter g_vpower        "Vignette Power"      0.40 0.0 0.5 0.01
-#pragma parameter blurx           "Convergence X-Axis"  0.70 -2.0 2.0 0.05
-#pragma parameter blury           "Convergence Y-Axis" -0.25 -2.0 2.0 0.05
+#pragma parameter blurx           "Convergence X-Axis"  0.50 -2.0 2.0 0.05
+#pragma parameter blury           "Convergence Y-Axis" -0.20 -2.0 2.0 0.05
 
 #if defined(VERTEX)
 
@@ -89,16 +89,15 @@ uniform COMPAT_PRECISION float blury;
 #else
 #define SCANLINE_WEIGHT 7.0
 #define MASK_DARK 0.5
-#define g_vstr 15.0
+#define g_vstr 20.0
 #define g_vpower 0.40
-#define blurx 0.70
-#define blury -0.25
+#define blurx 0.50
+#define blury -0.20
 #endif
 
 void main()
 {
     gl_Position = MVPMatrix * VertexCoord;
-
     TEX0.xy = TexCoord.xy*1.00001;
 }
 
@@ -151,10 +150,10 @@ uniform COMPAT_PRECISION float blury;
 #else
 #define SCANLINE_WEIGHT 7.0
 #define MASK_DARK 0.5
-#define g_vstr 15.0
+#define g_vstr 20.0
 #define g_vpower 0.40
-#define blurx 0.70
-#define blury -0.25
+#define blurx 0.50
+#define blury -0.20
 #endif
 
 
