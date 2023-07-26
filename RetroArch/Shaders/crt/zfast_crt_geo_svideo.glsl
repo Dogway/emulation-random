@@ -21,8 +21,7 @@ Notes:  This shader does scaling with a weighted linear filter
         (https://forums.libretro.com/t/android-googletv-compatible-shaders-nitpicky)
 
 Dogway: I modified zfast_crt.glsl shader to include screen curvature,
-        vignetting, round corners and phosphor*temperature. Horizontal pixel is left out
-        from the Quilez' algo (read above) to provide a more S-Video like horizontal blur.
+        vignetting, round corners, S-Video like blur, phosphor*temperature and some desaturation.
         The scanlines and mask are also now performed in the recommended linear light.
         For this to run smoothly on GPU deprived platforms like the Chromecast and
         older consoles, I had to remove several parameters and hardcode them into the shader.
@@ -157,12 +156,28 @@ uniform COMPAT_PRECISION float blury;
 #endif
 
 
+/*
 // NTSC-J (D93) -> Rec709 D65 Joint Matrix (with D93 simulation)
 // This is compensated for a linearization hack (RGB*RGB and then sqrt())
 const mat3 P22D93 = mat3(
      1.00000, 0.00000, -0.06173,
      0.07111, 0.96887, -0.01136,
      0.00000, 0.08197,  1.07280);
+
+// SAT 0.95;0.9
+const mat3 SAT95 = mat3(
+     0.921259999275207500, 0.07151728868484497, 0.007221288979053497,
+     0.022333506494760513, 0.97512906789779660, 0.002537854015827179,
+     0.010629460215568542, 0.03575950860977173, 0.953611016273498500);
+*/
+
+
+// P22D93 * SAT95
+const mat3 P22D93SAT95 = mat3(
+     0.920603871345520000, 0.06930985301733017, -0.051645118743181230,
+     0.087028317153453830, 0.94945263862609860, -0.007860664278268814,
+     0.013233962468802929, 0.11829412728548050,  1.023241996765136700);
+
 
 
 vec2 Warp(vec2 pos)
@@ -215,7 +230,7 @@ void main()
     COMPAT_PRECISION float whichmask = floor(vTexCoord.x*4.0*OutputSize.x)*-MSCL.x;
     COMPAT_PRECISION float mask = 1.0 + float(fract(whichmask) < MSCL.y) * -MASK_DARK;
 
-    vec3 P22 = ((colour*colour) * P22D93) * vig;
+    vec3 P22 = ((colour*colour) * P22D93SAT95) * vig;
     colour = max(vec3(0.0),P22);
 
     COMPAT_PRECISION float scanLineWeight = (1.5 - SCANLINE_WEIGHT*(Y - Y*Y));
