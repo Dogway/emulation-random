@@ -37,7 +37,7 @@ Dogway: I modified zfast_crt.glsl shader to include screen curvature,
 // Parameter lines go here:
 #pragma parameter SCANLINE_WEIGHT "Scanline Amount"     7.0 0.0 15.0 0.5
 #pragma parameter MASK_DARK       "Mask Effect Amount"  0.5 0.0 1.0 0.05
-#pragma parameter g_vstr          "Vignette Strength"   50.0 0.0 50.0 1.0
+#pragma parameter g_vstr          "Vignette Strength"   20.0 0.0 50.0 1.0
 #pragma parameter g_vpower        "Vignette Power"      0.40 0.0 0.5 0.01
 
 #if defined(VERTEX)
@@ -86,7 +86,7 @@ uniform COMPAT_PRECISION float g_vpower;
 #else
 #define SCANLINE_WEIGHT 7.0
 #define MASK_DARK 0.5
-#define g_vstr 50.0
+#define g_vstr 20.0
 #define g_vpower 0.40
 #endif
 
@@ -144,7 +144,7 @@ uniform COMPAT_PRECISION float g_vpower;
 #else
 #define SCANLINE_WEIGHT 7.0
 #define MASK_DARK 0.5
-#define g_vstr 50.0
+#define g_vstr 20.0
 #define g_vpower 0.40
 #endif
 
@@ -176,7 +176,7 @@ void main()
     xy    /= scale;
 
     vpos  *= (1.0 - vpos.xy);
-    float vig = vpos.x * vpos.y * g_vstr;
+    float vig = vpos.x * vpos.y * max(10.0,-1.8*g_vstr+100.0);
     vig = min(pow(vig, g_vpower), 1.0);
     vig = vig >= 0.5 ? smoothstep(0.0,1.0,vig) : vig;
 
