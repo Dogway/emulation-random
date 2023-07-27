@@ -97,7 +97,7 @@ uniform COMPAT_PRECISION float blury;
 void main()
 {
     gl_Position = MVPMatrix * VertexCoord;
-    TEX0.xy = TexCoord.xy*1.00001;
+    TEX0.xy     = TexCoord.xy*1.00001;
 }
 
 #elif defined(FRAGMENT)
@@ -190,24 +190,21 @@ vec2 Warp(vec2 pos)
 
 void main()
 {
-    vec2 vpos = vTexCoord*scale;
-    vec2 xy   = Warp(vpos);
+    vec2 vpos   = vTexCoord*scale;
+    vec2 xy     = Warp(vpos);
 
-    vec2 corn = min(xy,vec2(1.0)-xy); // This is used to mask the rounded
-    corn.x = 0.0001/corn.x;           // corners later on
+    vec2 corn   = min(xy,vec2(1.0)-xy); // This is used to mask the rounded
+         corn.x = 0.0001/corn.x;        // corners later on
 
-    xy    /= scale;
+         xy    /= scale;
 
+    COMPAT_PRECISION vec2 sample1 =       COMPAT_TEXTURE(Source,vec2(xy.x + blur_x, xy.y - blur_y)).rg;
+    COMPAT_PRECISION vec3 sample2 = 0.5 * COMPAT_TEXTURE(Source,     xy).rgb;
+    COMPAT_PRECISION vec2 sample3 =       COMPAT_TEXTURE(Source,vec2(xy.x - blur_x, xy.y + blur_y)).gb;
 
-    COMPAT_PRECISION vec3 colour  = COMPAT_TEXTURE(Source,     xy).rgb;
-
-    COMPAT_PRECISION vec3 sample1 = COMPAT_TEXTURE(Source,vec2(xy.x + blur_x, xy.y - blur_y)).rgb;
-    COMPAT_PRECISION vec3 sample2 = 0.5*colour;
-    COMPAT_PRECISION vec3 sample3 = COMPAT_TEXTURE(Source,vec2(xy.x - blur_x, xy.y + blur_y)).rgb;
-
-    colour = clamp(vec3(sample1.r*0.50 + sample2.r,
-                        sample1.g*0.25 + sample2.g + sample3.g*0.25,
-                                         sample2.b + sample3.b*0.50),vec3(0.0),vec3(1.0));
+    vec3 colour =    vec3(sample1.r*0.50 + sample2.r,
+                          sample1.g*0.25 + sample2.g + sample3.r*0.25,
+                                           sample2.b + sample3.g*0.50);
 
     vpos  *= (1.0 - vpos.xy);
     float vig = vpos.x * vpos.y * max(10.0,-1.8*g_vstr+100.0);
@@ -225,7 +222,7 @@ void main()
     float f = ratio_scale - i;
     COMPAT_PRECISION float Y = f*f;
 
-    vec2 MSCL = OutputSize.y > 1499.0 ? vec2(0.30) : vec2(0.499999, 0.5);
+    vec2 MSCL = OutputSize.y > 1499.0 ? vec2(0.30) : vec2(0.5);
 
     COMPAT_PRECISION float whichmask = floor(vTexCoord.x*4.0*OutputSize.x)*-MSCL.x;
     COMPAT_PRECISION float mask = 1.0 + float(fract(whichmask) < MSCL.y) * -MASK_DARK;
@@ -235,7 +232,7 @@ void main()
 
     COMPAT_PRECISION float scanLineWeight = (1.5 - SCANLINE_WEIGHT*(Y - Y*Y));
 
-    if (corn.y <= corn.x || corn.x < 0.0001 )
+    if (corn.y <= corn.x || corn.x < 0.0001)
     colour = vec3(0.0);
 
     FragColor.rgba = vec4(sqrt(colour.rgb*(mix(scanLineWeight*mask, 1.0, dot(colour.rgb,vec3(0.26667))))),1.0);
