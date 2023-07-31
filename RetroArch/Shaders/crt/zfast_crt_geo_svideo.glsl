@@ -20,26 +20,16 @@ Notes:  This shader does scaling with a weighted linear filter
         This shader runs at ~60fps on the Chromecast HD (10GFlops) on a 1080p display.
         (https://forums.libretro.com/t/android-googletv-compatible-shaders-nitpicky)
 
-Dogway: I modified zfast_crt.glsl shader to include screen curvature,
-        vignetting, round corners, S-Video like blur, phosphor*temperature and some desaturation.
-        The scanlines and mask are also now performed in the recommended linear light.
-        For this to run smoothly on GPU deprived platforms like the Chromecast and
-        older consoles, I had to remove several parameters and hardcode them into the shader.
-        Another POV is to run the shader on handhelds like the Switch or SteamDeck so they consume less battery.
+Dogway: This is the same as zfast_crt_geo but with extra blurring and some desaturation for an S-Video effect.
 
 */
 
-//For testing compilation
-//#define FRAGMENT
-//#define VERTEX
 
 // Parameter lines go here:
-#pragma parameter SCANLINE_WEIGHT "Scanline Amount"     7.0 0.0 15.0 0.5
-#pragma parameter MASK_DARK       "Mask Effect Amount"  0.5 0.0 1.0 0.05
-#pragma parameter g_vstr          "Vignette Strength"   20.0 0.0 50.0 1.0
-#pragma parameter g_vpower        "Vignette Power"      0.40 0.0 0.5 0.01
-#pragma parameter blurx           "Convergence X-Axis"  0.50 -2.0 2.0 0.05
-#pragma parameter blury           "Convergence Y-Axis" -0.20 -2.0 2.0 0.05
+#pragma parameter SCANLINE_WEIGHT "Scanline Amount"     9.0 0.0 15.0 0.5
+#pragma parameter MASK_DARK       "Mask Effect Amount"  0.4 0.0 1.0 0.05
+#pragma parameter blurx           "Convergence X-Axis"  0.70 -2.0 2.0 0.05
+#pragma parameter blury           "Convergence Y-Axis" -0.30 -2.0 2.0 0.05
 
 #if defined(VERTEX)
 
@@ -81,17 +71,13 @@ uniform COMPAT_PRECISION vec2 InputSize;
 // All parameter floats need to have COMPAT_PRECISION in front of them
 uniform COMPAT_PRECISION float SCANLINE_WEIGHT;
 uniform COMPAT_PRECISION float MASK_DARK;
-uniform COMPAT_PRECISION float g_vstr;
-uniform COMPAT_PRECISION float g_vpower;
 uniform COMPAT_PRECISION float blurx;
 uniform COMPAT_PRECISION float blury;
 #else
-#define SCANLINE_WEIGHT 7.0
-#define MASK_DARK 0.5
-#define g_vstr 20.0
-#define g_vpower 0.40
-#define blurx 0.50
-#define blury -0.20
+#define SCANLINE_WEIGHT 9.0
+#define MASK_DARK 0.4
+#define blurx 0.70
+#define blury -0.30
 #endif
 
 void main()
@@ -135,25 +121,24 @@ COMPAT_VARYING vec4 TEX0;
 #define Source Texture
 #define vTexCoord TEX0.xy
 #define scale vec2(TextureSize.xy/InputSize.xy)
-#define blur_y blury/(TextureSize.y*2.0)
-#define blur_x blurx/(TextureSize.x*2.0)
+#define blur_xy vec2(vec2(blurx,blury)/(TextureSize*2.0))
 
 #ifdef PARAMETER_UNIFORM
 // All parameter floats need to have COMPAT_PRECISION in front of them
 uniform COMPAT_PRECISION float SCANLINE_WEIGHT;
 uniform COMPAT_PRECISION float MASK_DARK;
-uniform COMPAT_PRECISION float g_vstr;
-uniform COMPAT_PRECISION float g_vpower;
 uniform COMPAT_PRECISION float blurx;
 uniform COMPAT_PRECISION float blury;
 #else
-#define SCANLINE_WEIGHT 7.0
-#define MASK_DARK 0.5
-#define g_vstr 20.0
-#define g_vpower 0.40
-#define blurx 0.50
-#define blury -0.20
+#define SCANLINE_WEIGHT 9.0
+#define MASK_DARK 0.4
+#define blurx 0.70
+#define blury -0.30
 #endif
+
+#define MSCL (OutputSize.y > 1499.0 ? 0.30 : 0.5)
+// This compensates the scanline+mask embedded gamma from the beam dynamics
+#define pwr vec3(1.0/((-0.0325*SCANLINE_WEIGHT+1.0)*(-0.311*MASK_DARK+1.0))-1.2)
 
 
 /*
@@ -171,7 +156,6 @@ const mat3 SAT95 = mat3(
      0.010629460215568542, 0.03575950860977173, 0.953611016273498500);
 */
 
-
 // P22D93 * SAT95
 const mat3 P22D93SAT95 = mat3(
      0.920603871345520000, 0.06930985301733017, -0.051645118743181230,
@@ -179,6 +163,14 @@ const mat3 P22D93SAT95 = mat3(
      0.013233962468802929, 0.11829412728548050,  1.023241996765136700);
 
 
+// Returns gamma corrected output, compensated for scanline+mask embedded gamma
+vec3 inv_gamma(vec3 col, vec3 power)
+{
+    vec3 cir  = col-1.0;
+         cir *= cir;
+         col  = mix(sqrt(col),sqrt(1.0-cir),power);
+    return col;
+}
 
 vec2 Warp(vec2 pos)
 {
@@ -193,49 +185,42 @@ void main()
     vec2 vpos   = vTexCoord*scale;
     vec2 xy     = Warp(vpos);
 
-    vec2 corn   = min(xy,vec2(1.0)-xy); // This is used to mask the rounded
-         corn.x = 0.0001/corn.x;        // corners later on
+    vec2 corn   = min(xy,1.0-xy); // This is used to mask the rounded
+         corn.x = 0.0001/corn.x;  // corners later on
 
          xy    /= scale;
 
-    COMPAT_PRECISION vec2 sample1 =       COMPAT_TEXTURE(Source,vec2(xy.x + blur_x, xy.y - blur_y)).rg;
-    COMPAT_PRECISION vec3 sample2 = 0.5 * COMPAT_TEXTURE(Source,     xy).rgb;
-    COMPAT_PRECISION vec2 sample3 =       COMPAT_TEXTURE(Source,vec2(xy.x - blur_x, xy.y + blur_y)).gb;
 
-    vec3 colour =    vec3(sample1.r*0.50 + sample2.r,
-                          sample1.g*0.25 + sample2.g + sample3.r*0.25,
-                                           sample2.b + sample3.g*0.50);
+    COMPAT_PRECISION vec2 sample1 = COMPAT_TEXTURE(Source,vec2(xy.x + blur_xy.x, xy.y - blur_xy.y)).rg;
+    COMPAT_PRECISION vec3 sample2 = COMPAT_TEXTURE(Source,     xy).rgb;
+    COMPAT_PRECISION vec2 sample3 = COMPAT_TEXTURE(Source,vec2(xy.x - blur_xy.x, xy.y + blur_xy.y)).gb;
+
+    vec3 colour =    vec3(sample1.r*0.50, sample1.g*0.25 + sample3.r*0.25, sample3.g*0.50) + 0.5 * sample2;
 
     vpos  *= (1.0 - vpos.xy);
-    float vig = vpos.x * vpos.y * max(10.0,-1.8*g_vstr+100.0);
-    vig = min(pow(vig, g_vpower), 1.0);
-    vig = vig >= 0.5 ? smoothstep(0.0,1.0,vig) : vig;
+    float vig = vpos.x * vpos.y * 46.0;
+          vig = min(sqrt(vig), 1.0);
 
 
     // Of all the pixels that are mapped onto the texel we are
     // currently rendering, which pixel are we currently rendering?
-    float ratio_scale = xy.y * TextureSize.y - 0.5;
+    COMPAT_PRECISION float ratio_scale = vTexCoord.y * TextureSize.y;
     // Snap to the center of the underlying texel.
-    float i = floor(ratio_scale) + 0.5;
-
     // This is just like "Quilez Scaling" but sharper
-    float f = ratio_scale - i;
+    COMPAT_PRECISION float f = ratio_scale - (floor(ratio_scale) + 0.5);
     COMPAT_PRECISION float Y = f*f;
 
-    vec2 MSCL = OutputSize.y > 1499.0 ? vec2(0.30) : vec2(0.5);
+    COMPAT_PRECISION float whichmask = floor(vTexCoord.x*4.0*OutputSize.x)*-MSCL;
+    COMPAT_PRECISION float mask = 1.0 + float(fract(whichmask) < MSCL)    *-MASK_DARK;
 
-    COMPAT_PRECISION float whichmask = floor(vTexCoord.x*4.0*OutputSize.x)*-MSCL.x;
-    COMPAT_PRECISION float mask = 1.0 + float(fract(whichmask) < MSCL.y) * -MASK_DARK;
-
-    vec3 P22 = ((colour*colour) * P22D93SAT95) * vig;
-    colour = max(vec3(0.0),P22);
+    colour = max((colour*colour) * (P22D93SAT95 * vig), 0.0);
 
     COMPAT_PRECISION float scanLineWeight = (1.5 - SCANLINE_WEIGHT*(Y - Y*Y));
 
     if (corn.y <= corn.x || corn.x < 0.0001)
     colour = vec3(0.0);
 
-    FragColor.rgba = vec4(sqrt(colour.rgb*(mix(scanLineWeight*mask, 1.0, dot(colour.rgb,vec3(0.26667))))),1.0);
+    FragColor.rgba = vec4(inv_gamma(colour.rgb*mix(scanLineWeight*mask, 1.0, colour.r*0.26667+colour.g*0.26667+colour.b*0.26667),pwr),1.0);
 
 }
 #endif
