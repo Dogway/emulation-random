@@ -176,9 +176,9 @@ void main()
 
          xy    /= scale;
 
-    vpos  *= (1.0 - vpos.xy);
-    float vig = vpos.x * vpos.y * 46.0;
-          vig = min(sqrt(vig), 1.0);
+          vpos *= (1.0 - vpos.xy);
+    float vig   = vpos.x * vpos.y * 46.0;
+          vig   = min(sqrt(vig), 1.0);
 
 
     // Of all the pixels that are mapped onto the texel we are
