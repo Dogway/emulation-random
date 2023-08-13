@@ -20,7 +20,7 @@ Notes:  This shader does scaling with a weighted linear filter
         This shader runs at ~60fps on the Chromecast HD (10GFlops) on a 1080p display.
         (https://forums.libretro.com/t/android-googletv-compatible-shaders-nitpicky)
 
-Dogway: This is the same as zfast_crt_geo but with extra blurring and some desaturation for an S-Video effect.
+Dogway: Same as zfast_crt_geo but with extra blurring based on zfast_crt_composite and some desaturation for an S-Video effect.
 
 */
 
