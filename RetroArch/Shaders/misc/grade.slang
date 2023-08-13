@@ -69,6 +69,11 @@ layout(std140, set = 0, binding = 0) uniform UBO
     float g_Dark_to_Dim;
     float g_GCompress;
     float wp_temperature;
+    float g_analog;
+    float g_digital;
+    float g_sfixes;
+    float g_MD_Pal;
+    float g_SMS_bl;
     float g_CRT_br;
     float g_CRT_bg;
     float g_CRT_bb;
@@ -77,8 +82,6 @@ layout(std140, set = 0, binding = 0) uniform UBO
     float g_satr;
     float g_satg;
     float g_satb;
-    float g_digital;
-    float g_analog;
     float LUT_Size1;
     float LUT1_toggle;
     float LUT_Size2;
@@ -86,7 +89,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 } global;
 
 /*
-   Grade (17-07-2023)
+   Grade (13-08-2023)
    > See settings decriptions at: https://forums.libretro.com/t/dogways-grading-shader-slang/27148/442
 
    > Ubershader grouping some monolithic color related shaders:
@@ -146,9 +149,14 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #pragma parameter g_vstr         "Vignette Strength"          50.0   0.0  50.0  1.0
 #pragma parameter g_vpower       "Vignette Power"             0.50   0.0   0.5  0.01
 
+// Sega related fixes
+#pragma parameter g_sfixes       "// SEGA FIXES //"           0.0  0.0 1.0 1.0
+#pragma parameter g_lum_fix      "Sega Luma Fix"              0.0  0.0 1.0 1.0
+#pragma parameter g_MD_Pal       "MD Palette"                 0.0  0.0 1.0 1.0
+#pragma parameter g_SMS_bl       "SMS Blue Lift"              0.0  0.0 1.0 1.0
+
 // Digital controls
 #pragma parameter g_digital      "// DIGITAL CONTROLS //"     0.0  0.0 1.0 1.0
-#pragma parameter g_lum_fix      "Sega Luma Fix"              0.0  0.0 1.0 1.0
 #pragma parameter g_lum          "Brightness"                 0.0 -0.5 1.0 0.01
 #pragma parameter g_cntrst       "Contrast"                   0.0 -1.0 1.0 0.05
 #pragma parameter g_mid          "Contrast Pivot"             0.5  0.0 1.0 0.01
@@ -175,8 +183,9 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #pragma parameter LUT_Size2      "LUT Size 2"                 64.0 0.0 64.0 16.0
 #pragma parameter LUT2_toggle    "LUT 2 Toggle"               0.0  0.0 1.0 1.0
 
-#define M_PI            3.1415926535897932384626433832795/180.0
-#define RW              vec3(0.950457397565471, 1.0, 1.089436035930324)
+
+#define M_PI            3.1415926535897932384626433832795/180.0         // 1º (one degree) in radians
+#define RW              vec3(0.950457397565471, 1.0, 1.089436035930324) // D65 Reference White
 #define signal          params.g_signal_type
 #define crtgamut        params.g_crtgamut
 #define SPC             params.g_space_out
@@ -187,6 +196,8 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #define V_MUL           params.g_V_MUL
 #define CRT_l           -(100000.*log((72981.-500000./(3.*max(2.3,params.g_CRT_l)))/9058.))/945461.
 #define lum_fix         params.g_lum_fix
+#define SMS_bl          global.g_SMS_bl
+#define MD_Palette      global.g_MD_Pal
 #define vignette        global.g_vignette
 #define GCompress       global.g_GCompress
 #define vstr            params.g_vstr
@@ -764,6 +775,14 @@ void main()
 
     vec3 src = texture(Source, vTexCoord.xy).rgb * lum_exp;
 
+// Adding Sega Master System 1 non-linear blue "lift": https://github.com/ekeeke/Genesis-Plus-GX/issues/345#issuecomment-820885780
+         src = SMS_bl     > 0.0 ? pow(src, vec3(1.0,1.0,1.0/1.16)) : src;
+
+// Reproduce the Sega MegaDrive palette (same as the BlastEm core output so don't use in this core): https://github.com/ekeeke/Genesis-Plus-GX/issues/345
+         src = MD_Palette > 0.0 ? vec3(contrast_sigmoid_inv(src.r,2.578419881,0.520674), \
+                                       contrast_sigmoid_inv(src.g,2.578419881,0.520674), \
+                                       contrast_sigmoid_inv(src.b,2.578419881,0.520674)) : src;
+
 // Clipping Logic / Gamut Limiting
     bool NTSC_U = crtgamut < 2.0;
 
@@ -778,7 +797,7 @@ void main()
 
 // YUV Analogue Color Controls (HUE + Color Shift + Color Burst)
     float hue_radians = hue_degrees * M_PI;
-    float hue = atan(col.z, col.y) + hue_radians;
+    float hue         = hue_radians + (col.z==0.0 && col.y==0.0 ? 0.0 : atan(col.z, col.y));
     float chroma = sqrt(col.z * col.z + col.y * col.y);  // Euclidean Distance
 
     col.y    = (mod((chroma * cos(hue) + 1.0) + U_SHIFT, 2.0) - 1.0) * U_MUL;
@@ -927,7 +946,6 @@ void main()
     vec3 TRC  = (SPC == 3.0) ?     clamp(pow(src_h, vec3(1./ (563./256.))),        0., 1.) : \
                 (SPC == 0.0) ? moncurve_r_f3(src_h,           2.20 + 0.20,         0.0550) : \
                                clamp(pow(    src_h, vec3(1./((2.20 + 0.20)*DtD))), 0., 1.) ;
-
 
 // External Flare for Surround Illuminant 2700K (Soft White) at F0 (Lambertian reflectance); defines offset thus also black lift
     vec3 Flare = 0.01 * (global.g_CRT_rf/5.0)*(0.049433*global.g_CRT_sl - 0.188367) * vec3(0.459993/0.410702,1.0,0.129305/0.410702);
