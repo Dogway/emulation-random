@@ -78,7 +78,7 @@
 #pragma parameter g_CRT_rf       "CRT Lambert Refl. in %"     5.0    2.0   5.0  0.1
 #pragma parameter g_CRT_sl       "Surround Luminance -nits-"  0.0    0.0 100.0  1.0
 #pragma parameter g_vignette     "Vignette Toggle"            0.0    0.0   1.0  1.0
-#pragma parameter g_vstr         "Vignette Strength"         40.0   0.0  50.0  1.0
+#pragma parameter g_vstr         "Vignette Strength"         40.0    0.0  50.0  1.0
 #pragma parameter g_vpower       "Vignette Power"             0.20   0.0   0.5  0.01
 
 // Sega related fixes
