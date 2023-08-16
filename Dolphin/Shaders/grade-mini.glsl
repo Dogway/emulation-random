@@ -21,7 +21,7 @@
 
 
 /*
-   Grade-mini (06-07-2023)
+   Grade-mini (16-08-2023)
 
    > CRT emulation shader (composite signal, phosphor, gamma, temperature...)
    > Abridged port of RetroArch's Grade shader.
@@ -50,7 +50,7 @@
 
 
 // Test the following Phosphor gamuts and try to reach to a conclusion
-// For GC  Japan developed games you can use -2 (Rear Projection TVs) or 2 (CRT Tube)
+// For GC  Japan developed games you can use -2 (Rear Projection TVs) or 2 (CRT Tube) (Plasma gamut is not included)
 // For Wii Japan developed games probably -3 (SMPTE-C), -2 (Rear Projection TVs) or 0 (sRGB/noop)
 // For Japan developed games use a temperature ~8500K (default)
 // For EU/US developed games use a temperature ~7100K
@@ -73,7 +73,7 @@ StepAmount = 1
 DefaultValue = 2
 
 [OptionRangeInteger]
-GUIName = Diplay Color Space (0:709 1:sRGB 2:P3-D65 3:Custom (Edit L508))
+GUIName = Display Color Space (0:709 1:sRGB 2:P3-D65 3:Custom (Edit L501))
 OptionName = g_space_out
 MinValue = 0
 MaxValue = 3
@@ -102,7 +102,7 @@ OptionName = g_CRT_l
 MinValue = 2.30
 MaxValue = 2.60
 StepAmount = 0.05
-DefaultValue = 2.50
+DefaultValue = 2.40
 
 [OptionBool]
 GUIName = Dark to Dim adaptation
@@ -138,7 +138,6 @@ DefaultValue = 1.0, 1.0, 1.0
 
 // D65 Reference White
 #define RW float3(0.950457397565471, 1.0, 1.089436035930324)
-#define M_PI 3.1415926535897932384626433832795/180.0
 #define g_bl -(100000.*log((72981.-500000./(3.*max(2.3,GetOption(g_CRT_l))))/9058.))/945461.
 
 
@@ -236,8 +235,14 @@ float EOTF_1886a(float color, float bl, float brightness, float contrast) {
           float sl = k * pow(Vc + Lb, a1-a2);        // Slope for knee gamma
 
     color = color >= Vc ? k * pow(color + Lb, a1 ) : sl * pow(color + Lb, a2 );
+
+    // Black lift compensation
+    float bc = 0.00446395*pow(bl,1.23486);
+    color    = max(color-bc,0.0)*(1.0/(1.0-bc));
+
     return color;
  }
+
 
 float3 EOTF_1886a_f3( float3 color, float BlackLevel, float brightness, float contrast) {
 
@@ -411,20 +416,6 @@ const mat3 conv_mat = mat3(
  }
 
 
-// FP32 to 8-bit mid-tread uniform quantization
-float Quantize8(float col) {
-    col = min(255.0,floor(col * 255.0 + 0.5));
-    return col;
- }
-
-float3 Quantize8_f3(float3 col) {
-    col.r = Quantize8(col.r);
-    col.g = Quantize8(col.g);
-    col.b = Quantize8(col.b);
-    return col.rgb;
- }
-
-
 
 
 //*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/
@@ -499,9 +490,12 @@ const mat3 DCIP3_prims = mat3(
      0.320, 0.690, 0.060,
      0.000, 0.045, 0.790);
 
-// Custom - Add here the primaries of your D65 calibrated display to -partially- color manage Dolphin. Only the matrix part (hue+saturation, gamma is left out)
-// How: Check the log of DisplayCAL calibration/profiling, search where it says "Increasing saturation of actual primaries..."
-// Note down in vertical order (column-major) the R xy, G xy and B xy values before "->" mark
+// Custom - Add here the primaries of your D65 calibrated display to -partially- color manage Dolphin.
+// Only the matrix part will be applied here (hue+saturation), gamma being handled by the display's profile via DisplayCAL.
+// - Launch "Profile Info" from DisplayCAL start menu entry
+// - Drop your profile (icc or icm) into the window
+// - Copy Primaries from "Chromaticity (Illuminant-relative)"
+// - Note down in vertical order (column-major) the R xy, G xy and B xy values
 // For full Dolphin color management, alongside the custom matrix you should also have DisplayCAL Profile Loader enabled...
 // ...since it will also load the VCGT/LUT part -white point, grey balance and tone response-)
 const mat3 Custom_prims = mat3(
@@ -523,27 +517,27 @@ void main()
     float4    c0  = Sample();
     float3    src = c0.rgb;
 
+// Mask compensation (highlight recovery)
+              src = 1.0-pow(1.0-src, float3(1.0/1.10));
+
 // Clipping Logic / Gamut Limiting
     bool   NTSC_U = g_crtgamut < 2.0;
 
-    float2 UVmax  = float2(112.0, 157.0);
-    float2 Ymax   = NTSC_U ? float2(16.0, 235.0) : float2(0.0, 235.0);
+    float2 UVmax  = float2(0.435812284313725, 0.615857694117647);  // 112.0,157.0
+    float2 Ymax   = NTSC_U ? float2(16.0/255.0, 235.0/255.0) : float2(0.0, 235.0/255.0);
 
 
 // Assumes framebuffer in Rec.601 full range with baked gamma
-// Quantize to 8-bit to replicate CRT's circuit board arithmetics
-    float3 col    = clamp(Quantize8_f3(r601_YUV(src, NTSC_U ? 1.0 : 0.0)), float3(Ymax.x,  -UVmax.x, -UVmax.y),      \
-                                                                           float3(Ymax.y,   UVmax.x,  UVmax.y))/255.0;
+    float3 col    = clamp(r601_YUV(src, NTSC_U ? 1.0 : 0.0), float3(Ymax.x, -UVmax.x, -UVmax.y),\
+                                                             float3(Ymax.y,  UVmax.x,  UVmax.y));
 
 // YUV Analogue Color Controls (Color Burst)
-    float hue_radians = 0.0 * M_PI;
-    float    hue  = atan(col.z,  col.y) + hue_radians;
+    float    hue  = col.z==0.0 && col.y==0.0 ? 0.0 : atan(col.z,  col.y);
     float chroma  = sqrt(col.z * col.z  + col.y * col.y);  // Euclidean Distance
-    col.yz        = clamp(float2(chroma * cos(hue), chroma * sin(hue)) * float2(g_U_MUL,g_V_MUL), float2(-UVmax.x, -UVmax.y)/255.0, \
-                                                                                                  float2( UVmax.x,  UVmax.y)/255.0);
+    col.yz        = float2(chroma * cos(hue), chroma * sin(hue)) * float2(g_U_MUL,g_V_MUL);
 
 // Back to R'G'B' full
-    col   = OptionEnabled(g_signal_type) ? Quantize8_f3(clamp(YUV_r601(col.xyz, NTSC_U ? 1.0 : 0.0), 0.0, 1.0))/255.0 : src;
+    col   = OptionEnabled(g_signal_type) ? clamp(YUV_r601(min(col.xyz, 1.0), NTSC_U ? 1.0 : 0.0), 0.0, 1.0) : src;
 
 // CRT EOTF. To Display Referred Linear: Undo developer baked CRT gamma (from 2.40 at default 0.1 CRT black level, to 2.60 at 0.0 CRT black level)
     col   = EOTF_1886a_f3(col, g_bl, 50., 50.);
