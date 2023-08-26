@@ -135,6 +135,7 @@ uniform COMPAT_PRECISION float MASK_DARK;
 #define MASK_DARK 0.5
 #endif
 
+// NTSC Consumer CRTs usually had ~330 TVL (in the 300-350 range while for PVMs were 450 and above)
 #define MSCL (OutputSize.y > 1499.0 ? 0.30 : 0.5)
 // This compensates the scanline+mask embedded gamma from the beam dynamics
 #define pwr vec3(1.0/((-0.0325*SCANLINE_WEIGHT+1.0)*(-0.311*MASK_DARK+1.0))-1.2)
