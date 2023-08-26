@@ -85,7 +85,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 } global;
 
 /*
-   Grade (13-08-2023)
+   Grade (26-08-2023)
    > See settings decriptions at: https://forums.libretro.com/t/dogways-grading-shader-slang/27148/442
 
    > Ubershader grouping some monolithic color related shaders:
@@ -128,14 +128,14 @@ layout(std140, set = 0, binding = 0) uniform UBO
 // Analogue controls
 #pragma parameter g_analog       "// ANALOG CONTROLS //"      0.0    0.0   1.0  1.0
 #pragma parameter wp_temperature "White Point"                6504.0 5004.0 12004.0 100.0
+#pragma parameter g_CRT_l        "CRT Gamma"                  2.50   2.30  2.60 0.01
+#pragma parameter g_CRT_b        "CRT Brightness"            50.0    0.0 100.0  1.0
+#pragma parameter g_CRT_c        "CRT Contrast"              50.0    0.0 100.0  1.0
 #pragma parameter g_hue_degrees  "CRT Hue"                    0.0 -180.0 180.0  1.0
 #pragma parameter g_U_SHIFT      "CRT U Shift"                0.0   -0.2   0.2  0.01
 #pragma parameter g_V_SHIFT      "CRT V Shift"                0.0   -0.2   0.2  0.01
 #pragma parameter g_U_MUL        "CRT U Multiplier"           1.0    0.0   2.0  0.01
 #pragma parameter g_V_MUL        "CRT V Multiplier"           1.0    0.0   2.0  0.01
-#pragma parameter g_CRT_l        "CRT Gamma"                  2.50   2.30  2.60 0.01
-#pragma parameter g_CRT_b        "CRT Brightness"            50.0    0.0 100.0  1.0
-#pragma parameter g_CRT_c        "CRT Contrast"              50.0    0.0 100.0  1.0
 #pragma parameter g_CRT_br       "CRT Beam Red"               1.0    0.0   1.2  0.01
 #pragma parameter g_CRT_bg       "CRT Beam Green"             1.0    0.0   1.2  0.01
 #pragma parameter g_CRT_bb       "CRT Beam Blue"              1.0    0.0   1.2  0.01
@@ -161,7 +161,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #pragma parameter g_satr         "Hue vs Sat Red"             0.0 -1.0 1.0 0.01
 #pragma parameter g_satg         "Hue vs Sat Green"           0.0 -1.0 1.0 0.01
 #pragma parameter g_satb         "Hue vs Sat Blue"            0.0 -1.0 1.0 0.01
-#pragma parameter g_lift         "Black Level"                0.0 -0.5 0.5 0.01
+#pragma parameter g_lift         "Black Level"                0.0 -15.0 15.0 1.0
 #pragma parameter blr            "Black-Red Tint"             0.0  0.0 1.0 0.01
 #pragma parameter blg            "Black-Green Tint"           0.0  0.0 1.0 0.01
 #pragma parameter blb            "Black-Blue Tint"            0.0  0.0 1.0 0.01
@@ -187,6 +187,7 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #define U_MUL           params.g_U_MUL
 #define V_MUL           params.g_V_MUL
 #define CRT_l           -(100000.*log((72981.-500000./(3.*max(2.3,params.g_CRT_l)))/9058.))/945461.
+#define wp_temp         global.wp_temperature
 #define lum_fix         params.g_lum_fix
 #define SMS_bl          global.g_SMS_bl
 #define MD_Palette      global.g_MD_Pal
@@ -205,7 +206,8 @@ layout(std140, set = 0, binding = 0) uniform UBO
 #define lum             params.g_lum
 #define cntrst          params.g_cntrst
 #define mid             params.g_mid
-#define lift            params.g_lift
+// lift goes from -15 to 15 points on an 8-bit scale (0-255)
+#define lift            (SPC==0.0 ? moncurve_f(abs(params.g_lift)/255.0,2.4,0.055) : pow(abs(params.g_lift)/255.0,SPC==3.0?2.199:2.4)) * sign(params.g_lift)
 #define blr             params.blr
 #define blg             params.blg
 #define blb             params.blb
@@ -359,6 +361,12 @@ float EOTF_1886a(float color, float bl, float brightness, float contrast) {
           float sl = k * pow(Vc + Lb, a1-a2);        // Slope for knee gamma
 
     color = color >= Vc ? k * pow(color + Lb, a1 ) : sl * pow(color + Lb, a2 );
+
+    // Black lift compensation
+    float bc = 0.00446395*pow(bl,1.23486);
+    color    = min(max(color-bc,0.0)*(1.0/(1.0-bc)), 1.0);  // Undo Lift
+    color    = pow(color,1.0-0.00843283*pow(bl,1.22744));   // Restore Gamma from 'Undo Lift'
+
     return color;
  }
 
@@ -488,8 +496,8 @@ vec3 GamutCompression (vec3 rgb, float grey) {
     // Limit/Thres order is Cyan, Magenta, Yellow
     vec3  beam = max(vec3(0.0),vec3(beamg,(beamb+beamr)/2.,(beamr+beamg)/2.));
     vec3  sat  = max(vec3(0.0),vec3(satg, (satb +satr) /2.,(satr +satg) /2.)+1.); // center at 1
-    float temp = max(0.0,abs(global.wp_temperature-7000.)-1000.)/825.+1.;         // center at 1
-    vec3  WPD  = global.wp_temperature < 7000. ? vec3(1.,temp,(temp-1.)/2.+1.) : vec3((temp-1.)/2.+1.,temp,1.);
+    float temp = max(0.0,abs(wp_temp-7000.)-1000.)/825.+1.;                       // center at 1
+    vec3  WPD  = wp_temp < 7000. ? vec3(1.,temp,(temp-1.)/2.+1.) : vec3((temp-1.)/2.+1.,temp,1.);
           sat  = max(0.0,g_sat+1.0)*(sat*beam) * WPD;
 
     mat2x3 LimThres =    mat2x3( 0.100000,0.100000,0.100000,
@@ -755,7 +763,7 @@ void main()
 // Adding Sega Master System 1 non-linear blue "lift": https://github.com/ekeeke/Genesis-Plus-GX/issues/345#issuecomment-820885780
          src = SMS_bl     > 0.0 ? pow(src, vec3(1.0,1.0,1.0/1.16)) : src;
 
-// Reproduce the Sega MegaDrive palette (same as the BlastEm core output so don't use in this core): https://github.com/ekeeke/Genesis-Plus-GX/issues/345
+// Reproduce the Sega MegaDrive palette (same as the BlastEm core output so don't use for this core): https://github.com/ekeeke/Genesis-Plus-GX/issues/345
          src = MD_Palette > 0.0 ? vec3(contrast_sigmoid_inv(src.r,2.578419881,0.520674), \
                                        contrast_sigmoid_inv(src.g,2.578419881,0.520674), \
                                        contrast_sigmoid_inv(src.b,2.578419881,0.520674)) : src;
@@ -826,7 +834,8 @@ void main()
 
 
 // White Point Mapping
-    col = wp_adjust(screen.rgb, global.wp_temperature, m_in, m_ou);
+    col = (signal==0.0) && (m_in==m_ou) && (6499. < wp_temp) && (wp_temp < 6505.) ? screen.rgb : \
+                            wp_adjust(screen.rgb,   wp_temp,   m_in,   m_ou);
 
 
 //  SAT + HUE vs SAT (in IPT space)
@@ -890,7 +899,7 @@ void main()
 
 // Lift + Gain -PP Digital Controls- (Could do in Yxy but performance reasons)
     src_h = clamp(rolled_gain_v3(contrast, clamp(lum, -0.49, 0.99)), 0.0, 1.0);
-    src_h += (lift / 20.0) * (1.0 - contrast);
+    src_h += lift * (1.0 - contrast);
 
 
 // Vignetting (in linear space, so after EOTF^-1 it's power shaped; 0.5 thres converts to ~0.75)
