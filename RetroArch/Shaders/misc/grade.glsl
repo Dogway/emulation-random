@@ -1,3 +1,5 @@
+#version 140
+
 /*
    Grade - CRT emulation and color manipulation shader
 
@@ -21,7 +23,7 @@
 
 
 /*
-   Grade (26-08-2023)
+   Grade (11-09-2023)
    > See settings decriptions at: https://forums.libretro.com/t/dogways-grading-shader-slang/27148/442
 
    > Ubershader grouping some monolithic color related shaders:
@@ -159,7 +161,7 @@ void main()
 #if __VERSION__ >= 130
 #define COMPAT_VARYING in
 #define COMPAT_TEXTURE texture
-out COMPAT_PRECISION vec4 FragColor;
+out vec4 FragColor;
 #else
 #define COMPAT_VARYING varying
 #define FragColor gl_FragColor
